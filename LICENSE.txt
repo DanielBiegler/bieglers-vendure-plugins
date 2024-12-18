@@ -1,0 +1,2 @@
+Since this is a mono-repo including multiple separate packages, take a look at the individually included `LICENSE.txt` files inside their respective package folders.
+

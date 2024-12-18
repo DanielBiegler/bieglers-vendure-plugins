@@ -1,0 +1,47 @@
+{
+  "name": "@danielbiegler/bieglers-vendure-plugins",
+  "version": "1.0.0",
+  "description": "High quality plugins for your commerce pleasure.",
+  "repository": "https://github.com/DanielBiegler/bieglers-vendure-plugins",
+  "license": "MIT",
+  "private": false,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {},
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.2",
+    "@graphql-codegen/typed-document-node": "^5.0.9",
+    "@graphql-codegen/typescript": "^4.0.9",
+    "@graphql-codegen/typescript-operations": "^4.2.3",
+    "@swc/core": "^1.7.1",
+    "@vendure/admin-ui-plugin": "3.1.7",
+    "@vendure/asset-server-plugin": "3.1.7",
+    "@vendure/cli": "3.1.7",
+    "@vendure/core": "3.1.7",
+    "@vendure/testing": "3.1.7",
+    "@vendure/ui-devkit": "3.1.7",
+    "better-sqlite3": "^9.6.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
+    "graphql-tag": "^2.12.6",
+    "lerna": "^8.1.8",
+    "prettier": "3.3.3",
+    "rimraf": "^6.0.1",
+    "ts-node": "10.9.2",
+    "typescript": "5.3.3",
+    "unplugin-swc": "^1.5.1",
+    "vitest": "^2.0.4"
+  }
+}
