@@ -74,9 +74,16 @@ See [api-extensions.ts](./src/api/api-extensions.ts) for a complete overview of 
 
 ### 1. Add the plugin to your Vendure Config
 
+You can find the package over on [npm](https://www.npmjs.com/package/@danielbiegler/vendure-plugin-blurry-image-lazy-loading) and install it via:
+
+```bash
+npm i @danielbiegler/vendure-plugin-blurry-image-lazy-loading
+```
+
 The simplest way is relying on the defaults and just adding the plugin with a hashing strategy.
 
 ```ts
+import { PreviewImageHashPlugin, ThumbHashStrategy } from "@danielbiegler/vendure-plugin-blurry-image-lazy-loading";
 export const config: VendureConfig = {
   // ...
   plugins: [
