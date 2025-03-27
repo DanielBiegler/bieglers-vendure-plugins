@@ -1,8 +1,10 @@
-![thumbnail](./assets/thumbnail_16x9.jpeg)
+![Banner Image](https://raw.githubusercontent.com/DanielBiegler/bieglers-vendure-plugins/master/packages/blurry-image-lazy-loading/assets/thumbnail_16x9.jpeg)
 
 # Vendure Plugin: Blurry Image Lazy Loading
 
 Generates image hashes for displaying blurry previews when loading images on the frontend.
+
+[![npm version badge](https://badge.fury.io/js/@danielbiegler%2Fvendure-plugin-blurry-image-lazy-loading.svg)](https://www.npmjs.com/package/@danielbiegler/vendure-plugin-blurry-image-lazy-loading)
 
 ## Features
 
@@ -30,13 +32,13 @@ Generates image hashes for displaying blurry previews when loading images on the
 
 The [ThumbHash Website](https://evanw.github.io/thumbhash/) has an interactive online comparison generator.
 
-![size-comparison-banner.png](./assets/size-comparison-banner.png)
+![size-comparison-banner.png](https://github.com/DanielBiegler/bieglers-vendure-plugins/raw/master/packages/blurry-image-lazy-loading/assets/size-comparison-banner.png)
 
-![size-comparison-camera.png](./assets/size-comparison-camera.png)
+![size-comparison-camera.png](https://github.com/DanielBiegler/bieglers-vendure-plugins/raw/master/packages/blurry-image-lazy-loading/assets/size-comparison-camera.png)
 
-![size-comparison-lipstick.png](./assets/size-comparison-lipstick.png)
+![size-comparison-lipstick.png](https://github.com/DanielBiegler/bieglers-vendure-plugins/raw/master/packages/blurry-image-lazy-loading/assets/size-comparison-lipstick.png)
 
-![size-comparison-opera.png](./assets/size-comparison-opera.png)
+![size-comparison-opera.png](https://github.com/DanielBiegler/bieglers-vendure-plugins/raw/master/packages/blurry-image-lazy-loading/assets/size-comparison-opera.png)
 
 ## How To: Usage
 
