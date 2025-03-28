@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3 (2025-03-28)
+
+- Update changelog
+
+## 0.1.2 (2025-03-28)
+
+- Only allow positive integer for batch size
+
 ## 0.1.1 (2025-03-27)
 
 - Remove root changelog. Packages have their own changelogs
