@@ -20,12 +20,12 @@ Generates image hashes for displaying blurry previews when loading images on the
 ### End-To-End Tests
 
 ```
- ✓ blurry-image-lazy-loading/e2e/blurhash.e2e-spec.ts (8) 13006ms
- ✓ blurry-image-lazy-loading/e2e/common.e2e-spec.ts (9) 12031ms
- ✓ blurry-image-lazy-loading/e2e/thumbhash.e2e-spec.ts (8) 13508ms
+ ✓ blurry-image-lazy-loading/e2e/blurhash.e2e-spec.ts (8)
+ ✓ blurry-image-lazy-loading/e2e/common.e2e-spec.ts (11)
+ ✓ blurry-image-lazy-loading/e2e/thumbhash.e2e-spec.ts (8)
 
  Test Files  3 passed (3)
-      Tests  25 passed (25)
+      Tests  27 passed (27)
 ```
 
 ## Example comparisons

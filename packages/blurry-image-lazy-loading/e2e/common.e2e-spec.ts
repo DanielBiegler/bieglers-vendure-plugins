@@ -64,6 +64,30 @@ describe("General API", () => {
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
   });
 
+  test("Successfully enqueue hashing for collection with batch size zero", async ({ expect }) => {
+    await adminClient.asSuperAdmin();
+    const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
+      CREATE_FOR_COLLECTION,
+      { input: { idCollection: "1", batchSize: 0 } },
+    );
+
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
+    // TODO would be good to seed a more practical env
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+  });
+
+  test("Successfully enqueue hashing for collection with negative batch size", async ({ expect }) => {
+    await adminClient.asSuperAdmin();
+    const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
+      CREATE_FOR_COLLECTION,
+      { input: { idCollection: "1", batchSize: -1 } },
+    );
+
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
+    // TODO would be good to seed a more practical env
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+  });
+
   test("Successfully add task to job queue", async ({ expect }) => {
     await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(

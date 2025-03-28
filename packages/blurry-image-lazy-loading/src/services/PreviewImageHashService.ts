@@ -311,7 +311,7 @@ export class PreviewImageHashService implements OnModuleInit {
       }
     }
 
-    const take = input.batchSize ?? DEFAULT_COLLECTION_PAGINATION;
+    const take = input.batchSize && input.batchSize > 0 ? input.batchSize : DEFAULT_COLLECTION_PAGINATION;
     let skip = 0;
     let hasMoreVariants = true;
     do {
