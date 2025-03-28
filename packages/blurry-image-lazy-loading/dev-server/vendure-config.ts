@@ -23,7 +23,7 @@ export const config: VendureConfig = {
       password: "superadmin",
     },
   },
-  logger: new DefaultLogger({ level: LogLevel.Debug }),
+  logger: new DefaultLogger({ level: LogLevel.Verbose }),
   dbConnectionOptions: {
     type: "better-sqlite3",
     synchronize: true,

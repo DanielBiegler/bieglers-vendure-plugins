@@ -2921,6 +2921,13 @@ export type Mutation = {
   /**
    * Create preview image hashes for an entire collection.
    * This includes the collection, the contained Product-assets and related ProductVariant-assets.
+   *
+   * Due to how large collections can become, you may want to disable the deduplication of asset ids.
+   * If deduplication is enabled, jobs will be created only after gathering all assets first.
+   * If disabled, jobs will be created as the assets are being read.
+   *
+   * No deduplication may result in assets being hashed multiple times, but the tradeoff is not having
+   * to hold potentially millions of records in memory and just letting the worker take care of them eventually.
    */
   pluginPreviewImageHashCreateImageHashesForCollection: PluginPreviewImageHashResult;
   /**
@@ -4662,6 +4669,14 @@ export type PluginPreviewImageHashForCollectionInput = {
   deduplicateAssetIds?: InputMaybe<Scalars['Boolean']['input']>;
   /** ID of a collection */
   idCollection: Scalars['ID']['input'];
+  /**
+   * Collections can be quite large, so by default this mutation skips over assets that already have a hash set, in order to minimize the needed compute.
+   * This can be undesirable, for example after you change the strategy, the encoding or resize options.
+   * Setting this option to `true` will overwrite the existing hashes, letting you update your existing assets.
+   *
+   * @default false
+   */
+  regenerateExistingHashes?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type PluginPreviewImageHashForProductInput = {
@@ -4671,6 +4686,7 @@ export type PluginPreviewImageHashForProductInput = {
 
 export type PluginPreviewImageHashResult = {
   __typename?: 'PluginPreviewImageHashResult';
+  assetsSkipped: Scalars['Int']['output'];
   code: PluginPreviewImageHashResultCode;
   jobsAddedToQueue: Scalars['Int']['output'];
   message: Scalars['String']['output'];

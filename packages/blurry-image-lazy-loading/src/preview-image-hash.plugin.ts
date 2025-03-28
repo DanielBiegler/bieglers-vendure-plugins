@@ -1,7 +1,7 @@
 import { LanguageCode, PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver, PluginPreviewImageHashCreateResultResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
-import { PLUGIN_INIT_OPTIONS } from "./constants";
+import { CUSTOMFIELD_NAME, PLUGIN_INIT_OPTIONS } from "./constants";
 import { PreviewImageHashService } from "./services/PreviewImageHashService";
 import { PluginPreviewImageHashOptions } from "./types";
 
@@ -137,7 +137,7 @@ import { PluginPreviewImageHashOptions } from "./types";
   },
   configuration: (config) => {
     config.customFields.Asset.push({
-      name: "previewImageHash",
+      name: CUSTOMFIELD_NAME,
       type: "string",
       nullable: true,
       public: true,

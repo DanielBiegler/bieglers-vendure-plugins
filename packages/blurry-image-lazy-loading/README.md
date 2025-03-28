@@ -133,6 +133,7 @@ mutation {
     ... on PluginPreviewImageHashResult {
       code
       jobsAddedToQueue
+      assetsSkipped
       message
     }
 

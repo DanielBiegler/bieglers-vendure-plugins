@@ -62,6 +62,7 @@ describe("General API", () => {
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
     // TODO would be good to seed a more practical env
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
   test("Successfully enqueue hashing for collection with batch size zero", async ({ expect }) => {
@@ -74,6 +75,7 @@ describe("General API", () => {
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
     // TODO would be good to seed a more practical env
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
   test("Successfully enqueue hashing for collection with negative batch size", async ({ expect }) => {
@@ -86,6 +88,7 @@ describe("General API", () => {
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
     // TODO would be good to seed a more practical env
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
   test("Successfully add task to job queue", async ({ expect }) => {
@@ -101,8 +104,9 @@ describe("General API", () => {
     );
 
     assert(result.pluginPreviewImageHashCreateImageHash.__typename === "PluginPreviewImageHashResult");
-    expect(result.pluginPreviewImageHashCreateImageHash.jobsAddedToQueue).toStrictEqual(1);
     expect(result.pluginPreviewImageHashCreateImageHash.code).toBe(CODE.OK);
+    expect(result.pluginPreviewImageHashCreateImageHash.jobsAddedToQueue).toStrictEqual(1);
+    expect(result.pluginPreviewImageHashCreateImageHash.assetsSkipped).toStrictEqual(0);
   });
 
   test("Successfully enqueue job for product", async ({ expect }) => {
@@ -115,8 +119,10 @@ describe("General API", () => {
     );
 
     assert(result.pluginPreviewImageHashCreateImageHashesForProduct.__typename === "PluginPreviewImageHashResult");
-    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(0);
     expect(result.pluginPreviewImageHashCreateImageHashesForProduct.code).toBe(CODE.OK);
+    // TODO would be good to seed a more practical env
+    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.assetsSkipped).toStrictEqual(0);
   });
 
   test("Fail to enqueue job for non-existent product", async ({ expect }) => {
@@ -129,8 +135,9 @@ describe("General API", () => {
     );
 
     assert(result.pluginPreviewImageHashCreateImageHashesForProduct.__typename === "PluginPreviewImageHashResult");
-    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(0);
     expect(result.pluginPreviewImageHashCreateImageHashesForProduct.code).toBe(CODE.ENTITY_NOT_FOUND);
+    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.assetsSkipped).toStrictEqual(0);
   });
 
   test("Fail to enqueue hashing for collection due to non-existing collection id", async ({ expect }) => {
@@ -142,6 +149,7 @@ describe("General API", () => {
 
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.ENTITY_NOT_FOUND);
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
   test("Fail to generate hash due to non-existent asset via api", async ({ expect }) => {
@@ -159,6 +167,7 @@ describe("General API", () => {
     assert(result.pluginPreviewImageHashCreateImageHash.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHash.code).toBe(CODE.ENTITY_NOT_FOUND);
     expect(result.pluginPreviewImageHashCreateImageHash.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHash.assetsSkipped).toStrictEqual(0);
   });
 
   test("Fail to generate hash due to insufficient permissions", async ({ expect }) => {

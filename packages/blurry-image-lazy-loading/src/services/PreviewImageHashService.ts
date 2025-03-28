@@ -28,6 +28,7 @@ import {
   DEFAULT_COLLECTION_PAGINATION,
   DEFAULT_DEDUPLICATE_ASSET_IDS,
   DEFAULT_ENQUEUE_HASHING_AFTER_ASSET_CREATION,
+  DEFAULT_REGENERATE_HASHES,
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
   SUPPORTED_IMG_TYPES,
@@ -76,7 +77,7 @@ export class PreviewImageHashService implements OnModuleInit {
       input,
     });
 
-    Logger.info(`Image hashing job "${job.id}" added to queue "${job.queueName}"`, loggerCtx);
+    Logger.verbose(`Image hashing job "${job.id}" added to queue "${job.queueName}"`, loggerCtx);
 
     return job;
   }
@@ -86,12 +87,14 @@ export class PreviewImageHashService implements OnModuleInit {
    */
   private result(
     jobsAddedToQueue: PluginPreviewImageHashResult["jobsAddedToQueue"],
+    assetsSkipped: PluginPreviewImageHashResult["assetsSkipped"],
     code: PluginPreviewImageHashResult["code"],
     message: PluginPreviewImageHashResult["message"],
   ): PluginPreviewImageHashResult {
     return {
       __typename: "PluginPreviewImageHashResult",
       jobsAddedToQueue,
+      assetsSkipped,
       code,
       message,
     };
@@ -145,7 +148,7 @@ export class PreviewImageHashService implements OnModuleInit {
     // Early exit if the job queue should take over
     if (!input.runSynchronously) {
       await this.addToJobQueue(ctx, input);
-      return this.result(1, CODE.OK, "Successfully added task to job queue");
+      return this.result(1, 0, CODE.OK, "Successfully added task to job queue");
     }
 
     const asset = await this.assetService.findOne(ctx, input.idAsset);
@@ -153,7 +156,7 @@ export class PreviewImageHashService implements OnModuleInit {
     if (!asset) {
       const errorMsg = `Failed to find asset with ID: "${input.idAsset}"`;
       Logger.error(errorMsg, loggerCtx);
-      return this.result(0, CODE.ENTITY_NOT_FOUND, errorMsg);
+      return this.result(0, 0, CODE.ENTITY_NOT_FOUND, errorMsg);
     }
 
     let mimetype: MIMEType | null = null;
@@ -163,18 +166,18 @@ export class PreviewImageHashService implements OnModuleInit {
       if (mimetype.type !== "image") {
         const errorMsg = `Asset is not of type "image", found type: "${mimetype.type}"`;
         Logger.error(errorMsg, loggerCtx);
-        return this.result(0, CODE.WRONG_MIMETYPE, errorMsg);
+        return this.result(0, 0, CODE.WRONG_MIMETYPE, errorMsg);
       }
 
       if (SUPPORTED_IMG_TYPES.includes(mimetype.subtype) === false) {
         const errorMsg = `Image is not any of subtype [${SUPPORTED_IMG_TYPES}], found subtype: "${mimetype.subtype}"`;
         Logger.error(errorMsg, loggerCtx);
-        return this.result(0, CODE.WRONG_MIMETYPE, errorMsg);
+        return this.result(0, 0, CODE.WRONG_MIMETYPE, errorMsg);
       }
     } catch (error) {
       const errorMsg = "Failed to parse mimetype";
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(0, CODE.WRONG_MIMETYPE, errorMsg);
+      return this.result(0, 0, CODE.WRONG_MIMETYPE, errorMsg);
     }
 
     let bufferInput: Buffer | null = null;
@@ -183,13 +186,13 @@ export class PreviewImageHashService implements OnModuleInit {
     } catch (error) {
       const errorMsg = `Failed to fetch image from URL: "${asset.preview}"`;
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(0, CODE.FAIL_FETCH, errorMsg);
+      return this.result(0, 0, CODE.FAIL_FETCH, errorMsg);
     }
 
     if (bufferInput.length === 0) {
       const errorMsg = `Image buffer is empty. Aborting now.`;
       Logger.error(errorMsg, loggerCtx);
-      return this.result(0, CODE.FAIL_EMPTY_BUFFER, errorMsg);
+      return this.result(0, 0, CODE.FAIL_EMPTY_BUFFER, errorMsg);
     }
 
     let bufferOutput: sharp.Sharp | null = null;
@@ -198,7 +201,7 @@ export class PreviewImageHashService implements OnModuleInit {
     } catch (error) {
       const errorMsg = "Failed to open image via sharp";
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(0, CODE.FAIL_ENCODE, errorMsg);
+      return this.result(0, 0, CODE.FAIL_ENCODE, errorMsg);
     }
 
     let hash: string | null = null;
@@ -207,7 +210,7 @@ export class PreviewImageHashService implements OnModuleInit {
     } catch (error) {
       const errorMsg = "Failed to encode image";
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(0, CODE.FAIL_ENCODE, errorMsg);
+      return this.result(0, 0, CODE.FAIL_ENCODE, errorMsg);
     }
 
     try {
@@ -218,11 +221,12 @@ export class PreviewImageHashService implements OnModuleInit {
 
       Logger.info(`Generated preview image hash for asset: "${asset.id}"`, loggerCtx);
 
+      // @ts-expect-error Because we extend the CustomAssetField type (see types.ts) which doesnt quite match the gql type
       return assertFound(this.assetService.findOne(ctx, input.idAsset, relations));
     } catch (error) {
       const errorMsg = "Failed to update asset entity";
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(0, CODE.FAIL_SAVE_ASSET, errorMsg);
+      return this.result(0, 0, CODE.FAIL_SAVE_ASSET, errorMsg);
     }
   }
 
@@ -238,18 +242,20 @@ export class PreviewImageHashService implements OnModuleInit {
   ): Promise<PluginPreviewImageHashResult> {
     let product: Translated<Product> | undefined | null = null;
     let jobsAddedToQueue = 0;
+    let assetsSkipped = 0;
+
     try {
       product = await this.productService.findOne(ctx, input.idProduct, ["assets", "variants.assets"]);
     } catch (error) {
       const errorMsg = "Something unexpected happened when fetching the product";
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(jobsAddedToQueue, CODE.UNEXPECTED_ERROR, errorMsg);
+      return this.result(jobsAddedToQueue, assetsSkipped, CODE.UNEXPECTED_ERROR, errorMsg);
     }
 
     if (!product) {
       const errorMsg = `Failed to find product with ID: "${input.idProduct}"`;
       Logger.error(errorMsg, loggerCtx);
-      return this.result(jobsAddedToQueue, CODE.ENTITY_NOT_FOUND, errorMsg);
+      return this.result(jobsAddedToQueue, assetsSkipped, CODE.ENTITY_NOT_FOUND, errorMsg);
     }
 
     const assetIds = new Set<ID>();
@@ -270,14 +276,44 @@ export class PreviewImageHashService implements OnModuleInit {
 
     return this.result(
       jobsAddedToQueue,
+      assetsSkipped,
       CODE.OK,
-      "Successfully added hashing of product and its variants assets to job queue",
+      "Successfully added all eligible hashing-tasks of product-/ and its variant-assets to job queue",
     );
+  }
+
+  /**
+   * Helper for determining whether or not we should skip hash generation for a given asset.
+   * Useful for keeping the logging DRY.
+   *
+   * @param shouldRegenerate Whether or not you want to regenerate existing hashes
+   * @param asset The asset for which you would like to check
+   * @returns Whether or not you should skip this asset
+   */
+  private shouldSkipGeneratingHash(shouldRegenerate: Boolean, asset: Asset): Boolean {
+    if (asset.customFields.previewImageHash && !shouldRegenerate) {
+      Logger.verbose(
+        `Skipped generating hash for asset "${asset.id}", because regeneration of existing hashes is disabled`,
+        loggerCtx,
+      );
+
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /**
    * Enqueues hashing jobs for each asset inside a collection. This includes the collection itself,
    * the contained products and all of their variants.
+   *
+   * Due to how large collections can become, you may want to disable the deduplication of asset ids.
+   *
+   * If deduplication is enabled, jobs will be created only after gathering all assets first.
+   * If disabled, jobs will be created as the assets are being read.
+   *
+   * No deduplication may result in assets being hashed multiple times, but the tradeoff is not having
+   * to hold potentially millions of records in memory and just letting the worker take care of them eventually.
    */
   async createForCollection(
     ctx: RequestContext,
@@ -285,24 +321,31 @@ export class PreviewImageHashService implements OnModuleInit {
   ): Promise<PluginPreviewImageHashResult> {
     let collection: Translated<Collection> | undefined | null = null;
     let jobsAddedToQueue = 0;
+    let assetsSkipped = 0;
 
     try {
       collection = await this.collectionService.findOne(ctx, input.idCollection, ["assets"]);
     } catch (error) {
       const errorMsg = "Something unexpected happened when fetching the collection";
       Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-      return this.result(jobsAddedToQueue, CODE.UNEXPECTED_ERROR, errorMsg);
+      return this.result(jobsAddedToQueue, assetsSkipped, CODE.UNEXPECTED_ERROR, errorMsg);
     }
 
     if (!collection) {
       const errorMsg = `Failed to find collection with ID: "${input.idCollection}"`;
       Logger.error(errorMsg, loggerCtx);
-      return this.result(jobsAddedToQueue, CODE.ENTITY_NOT_FOUND, errorMsg);
+      return this.result(jobsAddedToQueue, assetsSkipped, CODE.ENTITY_NOT_FOUND, errorMsg);
     }
 
+    const regenerateExistingHashes = input.regenerateExistingHashes ?? DEFAULT_REGENERATE_HASHES;
     const deduplicateAssetIds = input.deduplicateAssetIds ?? DEFAULT_DEDUPLICATE_ASSET_IDS;
     const assetIds = new Set<ID>();
     for (const asset of collection.assets) {
+      if (this.shouldSkipGeneratingHash(regenerateExistingHashes, asset.asset)) {
+        assetsSkipped += 1;
+        continue;
+      }
+
       if (deduplicateAssetIds) {
         assetIds.add(asset.assetId);
       } else {
@@ -324,7 +367,7 @@ export class PreviewImageHashService implements OnModuleInit {
       } catch (error) {
         const errorMsg = "Something unexpected happened when querying product variants";
         Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
-        return this.result(jobsAddedToQueue, CODE.UNEXPECTED_ERROR, errorMsg);
+        return this.result(jobsAddedToQueue, assetsSkipped, CODE.UNEXPECTED_ERROR, errorMsg);
       }
       hasMoreVariants = variants.items.length > 0;
 
@@ -333,6 +376,11 @@ export class PreviewImageHashService implements OnModuleInit {
 
       for (const variant of variants.items) {
         for (const asset of variant.assets) {
+          if (this.shouldSkipGeneratingHash(regenerateExistingHashes, asset.asset)) {
+            assetsSkipped += 1;
+            continue;
+          }
+
           if (deduplicateAssetIds) {
             assetIds.add(asset.assetId);
           } else {
@@ -342,6 +390,11 @@ export class PreviewImageHashService implements OnModuleInit {
         }
 
         for (const asset of variant.product.assets) {
+          if (this.shouldSkipGeneratingHash(regenerateExistingHashes, asset.asset)) {
+            assetsSkipped += 1;
+            continue;
+          }
+
           if (deduplicateAssetIds) {
             assetIds.add(asset.assetId);
           } else {
@@ -361,8 +414,9 @@ export class PreviewImageHashService implements OnModuleInit {
 
     return this.result(
       jobsAddedToQueue,
+      assetsSkipped,
       CODE.OK,
-      "Successfully added hashing of collection and product variant assets to job queue",
+      "Successfully added all eligible hashing-tasks of collection-/, product-/ and its variant-assets to job queue",
     );
   }
 }

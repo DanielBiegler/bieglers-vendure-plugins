@@ -8,6 +8,7 @@ export const CREATE_PREVIEW_IMG_HASH = gql`
       ... on PluginPreviewImageHashResult {
         code
         jobsAddedToQueue
+        assetsSkipped
         message
       }
 
@@ -27,6 +28,7 @@ export const CREATE_FOR_COLLECTION = gql`
       __typename
       code
       jobsAddedToQueue
+      assetsSkipped
       message
     }
   }
@@ -38,6 +40,7 @@ export const CREATE_FOR_PRODUCT = gql`
       __typename
       code
       jobsAddedToQueue
+      assetsSkipped
       message
     }
   }

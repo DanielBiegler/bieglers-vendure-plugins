@@ -1,4 +1,5 @@
 import { PreviewImageHashStrategy } from "./config/PreviewImageHashStrategy";
+import { CUSTOMFIELD_NAME } from "./constants";
 
 /**
  * These are the configuration options for the plugin.
@@ -24,4 +25,11 @@ export interface PluginPreviewImageHashOptions {
    * @see BlurHash https://github.com/woltapp/blurhash
    */
   hashingStrategy: PreviewImageHashStrategy;
+}
+
+declare module "@vendure/core/dist/entity/custom-entity-fields" {
+  interface CustomAssetFields {
+    /** Technically its nullable, but typescript complains that the type is `string | undefined` */
+    [CUSTOMFIELD_NAME]: string | null;
+  }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0 (2025-03-28)
+
+- Allow mutation for hashing entire collections to skip already hashed images
+- Reduce log level job queue add-feedback to verbose
+- Increase log level of dev server to verbose
+
 ## 0.1.3 (2025-03-28)
 
 - Update changelog

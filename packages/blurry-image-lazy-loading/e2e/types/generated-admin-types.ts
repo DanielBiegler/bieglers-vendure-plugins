@@ -2922,6 +2922,13 @@ export type Mutation = {
   /**
    * Create preview image hashes for an entire collection.
    * This includes the collection, the contained Product-assets and related ProductVariant-assets.
+   *
+   * Due to how large collections can become, you may want to disable the deduplication of asset ids.
+   * If deduplication is enabled, jobs will be created only after gathering all assets first.
+   * If disabled, jobs will be created as the assets are being read.
+   *
+   * No deduplication may result in assets being hashed multiple times, but the tradeoff is not having
+   * to hold potentially millions of records in memory and just letting the worker take care of them eventually.
    */
   pluginPreviewImageHashCreateImageHashesForCollection: PluginPreviewImageHashResult;
   /**
@@ -4663,6 +4670,14 @@ export type PluginPreviewImageHashForCollectionInput = {
   deduplicateAssetIds?: InputMaybe<Scalars['Boolean']['input']>;
   /** ID of a collection */
   idCollection: Scalars['ID']['input'];
+  /**
+   * Collections can be quite large, so by default this mutation skips over assets that already have a hash set, in order to minimize the needed compute.
+   * This can be undesirable, for example after you change the strategy, the encoding or resize options.
+   * Setting this option to `true` will overwrite the existing hashes, letting you update your existing assets.
+   *
+   * @default false
+   */
+  regenerateExistingHashes?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type PluginPreviewImageHashForProductInput = {
@@ -4672,6 +4687,7 @@ export type PluginPreviewImageHashForProductInput = {
 
 export type PluginPreviewImageHashResult = {
   __typename?: 'PluginPreviewImageHashResult';
+  assetsSkipped: Scalars['Int']['output'];
   code: PluginPreviewImageHashResultCode;
   jobsAddedToQueue: Scalars['Int']['output'];
   message: Scalars['String']['output'];
@@ -6828,23 +6844,23 @@ export type CreatePreviewImageHashMutationVariables = Exact<{
 }>;
 
 
-export type CreatePreviewImageHashMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHash: { __typename: 'Asset', mimeType: string, customFields?: { __typename?: 'AssetCustomFields', previewImageHash?: string } } | { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, message: string } };
+export type CreatePreviewImageHashMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHash: { __typename: 'Asset', mimeType: string, customFields?: { __typename?: 'AssetCustomFields', previewImageHash?: string } } | { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, assetsSkipped: number, message: string } };
 
 export type CreateForCollectionMutationVariables = Exact<{
   input: PluginPreviewImageHashForCollectionInput;
 }>;
 
 
-export type CreateForCollectionMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHashesForCollection: { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, message: string } };
+export type CreateForCollectionMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHashesForCollection: { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, assetsSkipped: number, message: string } };
 
 export type CreateForProductMutationVariables = Exact<{
   input: PluginPreviewImageHashForProductInput;
 }>;
 
 
-export type CreateForProductMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHashesForProduct: { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, message: string } };
+export type CreateForProductMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHashesForProduct: { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, assetsSkipped: number, message: string } };
 
 
-export const CreatePreviewImageHashDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createPreviewImageHash"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashCreateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHash"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashResult"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mimeType"}},{"kind":"Field","name":{"kind":"Name","value":"customFields"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"previewImageHash"}}]}}]}}]}}]}}]} as unknown as DocumentNode<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>;
-export const CreateForCollectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForCollection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForCollectionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForCollection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForCollectionMutation, CreateForCollectionMutationVariables>;
-export const CreateForProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForProductInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForProductMutation, CreateForProductMutationVariables>;
+export const CreatePreviewImageHashDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createPreviewImageHash"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashCreateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHash"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashResult"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mimeType"}},{"kind":"Field","name":{"kind":"Name","value":"customFields"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"previewImageHash"}}]}}]}}]}}]}}]} as unknown as DocumentNode<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>;
+export const CreateForCollectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForCollection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForCollectionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForCollection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForCollectionMutation, CreateForCollectionMutationVariables>;
+export const CreateForProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForProductInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForProductMutation, CreateForProductMutationVariables>;
