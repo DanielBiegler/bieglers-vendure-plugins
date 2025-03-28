@@ -4,7 +4,9 @@
 
 Generates image hashes for displaying blurry previews when loading images on the frontend.
 
-[![npm version badge](https://badge.fury.io/js/@danielbiegler%2Fvendure-plugin-blurry-image-lazy-loading.svg)](https://www.npmjs.com/package/@danielbiegler/vendure-plugin-blurry-image-lazy-loading)
+<a href="https://www.npmjs.com/package/@danielbiegler/vendure-plugin-blurry-image-lazy-loading" target="_blank">
+  <img src="https://badge.fury.io/js/@danielbiegler%2Fvendure-plugin-blurry-image-lazy-loading.svg" alt="npm version badge" height="18">
+</a>
 
 ## Features
 
