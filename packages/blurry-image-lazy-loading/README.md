@@ -179,11 +179,19 @@ query {
 2. For example with the `ThumbHashStrategy` and its `BufferEncoding` set to the default `"base64"` you can now decode the hashes with the [provided helper](https://github.com/evanw/thumbhash/blob/a652ce6ed691242f459f468f0a8756cda3b90a82/js/thumbhash.js#L278-L288) like so:
     
 ```ts
+// Node
 const buffer = Buffer.from(previewImagehash, "base64");
 const dataUrl = thumbHashToDataURL(buffer);
 ```
 
-3. Use the result in your frontend, for example in an imaginary react component.
+```ts
+// Browser
+// Warning: `atob` can throw! You should make a proper helper method with error handling. Skipping that here for brevity.
+const buffer = Uint8Array.from(atob(previewImagehash), (v) => v.charCodeAt(0));
+const dataUrl = thumbHashToDataURL(buffer);
+```
+
+3. Use the result in your frontend. There are some environment specific implementation details, so we'll use an imaginary react component here for brevity.
 
 ```jsx
 <MyCustomImgComponent
