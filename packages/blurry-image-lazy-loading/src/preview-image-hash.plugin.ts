@@ -146,6 +146,8 @@ import { PluginPreviewImageHashOptions } from "./types";
       label: [
         { languageCode: LanguageCode.en, value: "Preview Image Hash" },
         { languageCode: LanguageCode.de, value: "Vorschaubild Hash" },
+        { languageCode: LanguageCode.nl, value: "Miniatuurafbeelding Hash" },
+        { languageCode: LanguageCode.ru, value: "Хеш миниатюр" },
       ],
       description: [
         {
@@ -155,6 +157,15 @@ import { PluginPreviewImageHashOptions } from "./types";
         {
           languageCode: LanguageCode.de,
           value: "Bild-Hash um verschwommene Vorschaubilder für ladende Bilder anzeigen zu können.",
+        },
+        {
+          languageCode: LanguageCode.nl,
+          value: "Afbeeldingshash om onscherpe voorbeeldafbeeldingen weer te geven bij het laden van afbeeldingen.",
+        },
+        {
+          languageCode: LanguageCode.ru,
+          value:
+            "Хеш изображения для отображения размытых изображений предварительного просмотра при загрузке изображений.",
         },
       ],
     });

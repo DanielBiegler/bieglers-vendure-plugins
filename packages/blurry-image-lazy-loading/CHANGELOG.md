@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 (2025-04-02)
+
+- Add example in README for generating DataUrl in browsers
+- Add translations: Dutch, Russian
+
 ## 1.0.0 (2025-03-28)
 
 - Allow mutation for hashing entire collections to skip already hashed images
