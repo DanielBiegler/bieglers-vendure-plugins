@@ -1,0 +1,150 @@
+import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+import { GqlContextType, GqlExecutionContext } from "@nestjs/graphql";
+import {
+  EventBus,
+  NativeAuthStrategyError,
+  PluginCommonModule,
+  RequestContext,
+  RequestContextService,
+  VendurePlugin,
+} from "@vendure/core";
+import type { Request, Response } from "express";
+import type { GraphQLResolveInfo } from "graphql";
+import { Observable } from "rxjs";
+import { PLUGIN_INIT_OPTIONS } from "./constants";
+import { UserRegistrationBlockedEvent } from "./events/user-registration-blocked.event";
+import { MutationCreateAdministratorArgs } from "./generated-admin-types";
+import { MutationRegisterCustomerAccountArgs } from "./generated-shop-types";
+import { AssertFunctionShopApi, PluginUserRegistrationGuardOptions } from "./types";
+
+/**
+ * Since this interceptor will be registered globally it will run between every single request.
+ * This means we must make sure to exit as early as possible in order to not slow down the Vendure instance.
+ */
+@Injectable()
+export class UserRegistrationInterceptor implements NestInterceptor {
+  constructor(
+    private eventBus: EventBus,
+    private requestContextService: RequestContextService,
+    @Inject(PLUGIN_INIT_OPTIONS)
+    private options: PluginUserRegistrationGuardOptions,
+  ) {}
+
+  /** @internal */
+  private async isAllowed(
+    ctx: RequestContext,
+    assertFunctions: AssertFunctionShopApi[],
+    args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
+  ): Promise<boolean> {
+    const promises = assertFunctions.map((f) => f(ctx, args.input));
+    const results = await Promise.allSettled(promises);
+    const rejecteds = results.filter((r) => r.status === "rejected");
+    if (rejecteds.length !== 0) throw rejecteds; // TODO is this ok? Maybe return `new NativeAuthStrategyError();`
+
+    // Typescript needed a little help here (2025-04-25)
+    // The compiler failed because it couldnt infer the fulfilled promises and thought its `PromiseSettledResult<boolean>`
+    const fulfilleds = results.filter((r) => r.status === "fulfilled") as PromiseFulfilledResult<boolean>[];
+    const failures = fulfilleds.filter((f) => f.value === false);
+
+    switch (this.options.shop.assert.logicalOperator) {
+      case "AND": // In a logical "AND" everything must be true
+        return failures.length === 0;
+
+      case "OR": // In a logical "OR" at least one must be true
+        return failures.length !== fulfilleds.length;
+
+      default:
+        // TODO is error ok?
+        throw new Error(
+          `Unknown "logicalOperator" (${this.options.shop.assert.logicalOperator}) - This should never happen.`,
+        );
+    }
+  }
+
+  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+    // Irrelevant contexts
+    if (context.getType<GqlContextType>() !== "graphql") return next.handle();
+    // No work that needs to be done
+    if (this.options.shop.assert.functions.length === 0) return next.handle();
+    // TODO admin
+
+    const gqlCtx = GqlExecutionContext.create(context);
+    const info = gqlCtx.getInfo<GraphQLResolveInfo>();
+
+    if (info?.path?.typename !== "Mutation") return next.handle();
+
+    const requestContext = await this.requestContextService.fromRequest(
+      gqlCtx.getContext<{ req: Request; res: Response }>().req,
+      info,
+    );
+
+    let isAllowed: boolean;
+    let args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs;
+    switch (info?.path?.key) {
+      case "registerCustomerAccount":
+        args = gqlCtx.getArgs<MutationRegisterCustomerAccountArgs>();
+        isAllowed = await this.isAllowed(requestContext, this.options.shop.assert.functions, args);
+        break;
+      case "createAdministrator":
+        args = gqlCtx.getArgs<MutationCreateAdministratorArgs>();
+        isAllowed = false; // TODO is allowed
+        break;
+
+      default:
+        return next.handle();
+    }
+
+    if (!isAllowed) {
+      await this.eventBus.publish(new UserRegistrationBlockedEvent(requestContext, args.input)); // TODO pass in failures
+      return new Observable<NativeAuthStrategyError>((s) => {
+        s.next(new NativeAuthStrategyError());
+        s.complete();
+      });
+    }
+
+    return next.handle();
+  }
+}
+
+/**
+ * // TODO
+ *
+ * @category Plugin
+ */
+@VendurePlugin({
+  imports: [PluginCommonModule],
+  providers: [
+    {
+      provide: PLUGIN_INIT_OPTIONS,
+      useFactory: () => UserRegistrationGuardPlugin.options,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: UserRegistrationInterceptor,
+    },
+  ],
+  configuration: (config) => {
+    return config;
+  },
+  compatibility: ">=3.0.0",
+})
+export class UserRegistrationGuardPlugin {
+  /** @internal */
+  static options: PluginUserRegistrationGuardOptions;
+
+  /**
+   * The static `init()` method is called with the options to configure the plugin.
+   *
+   * @example
+   * ```ts
+   * UserRegistrationGuardPlugin.init({
+   *   // TODO
+   * }),
+   * ```
+   */
+  static init(options: PluginUserRegistrationGuardOptions) {
+    this.options = options;
+    return UserRegistrationGuardPlugin;
+  }
+}

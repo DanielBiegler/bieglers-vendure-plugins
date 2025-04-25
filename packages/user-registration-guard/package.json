@@ -1,0 +1,45 @@
+{
+  "name": "@danielbiegler/vendure-plugin-user-registration-guard",
+  "description": "Reduce fraud by blocking disposable email providers from registering with your Vendure instance or harden your admin accounts by only allowing specific domains in email addresses.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "ts-node dev-server/index.ts",
+    "codegen": "ts-node generate-types.ts",
+    "build": "rimraf dist && tsc -p ./tsconfig.build.json",
+    "e2e": "cross-env PACKAGE=user-registration-guard vitest -c ../../utils/e2e/vitest.config.mts"
+  },
+  "author": {
+    "name": "Daniel Biegler",
+    "url": "https://www.danielbiegler.de"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanielBiegler/bieglers-vendure-plugins/"
+  },
+  "keywords": [
+    "vendure",
+    "plugin",
+    "vendure-plugin",
+    "ecommerce",
+    "headless",
+    "graphql",
+    "typescript",
+    "whitelist",
+    "allowlist",
+    "blacklist",
+    "blocklist"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "LICENSE.txt",
+    "CHANGELOG.md",
+    "docs"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}
