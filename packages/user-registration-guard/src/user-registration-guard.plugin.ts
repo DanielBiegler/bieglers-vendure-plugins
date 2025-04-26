@@ -45,7 +45,11 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     const promises = assertFunctions.map((f) => f(ctx, args.input)); // TODO Why does typescript want to merge the types here?
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
-    if (rejecteds.length !== 0) throw rejecteds; // TODO is this ok? Maybe return `new NativeAuthStrategyError();`
+    if (rejecteds.length !== 0)
+      throw new Error(
+        `${rejecteds.length} AssertionFunctions rejected. This should never happen. Handle errors in your assertions.`,
+        { cause: rejecteds },
+      );
 
     // Typescript needed a little help here (2025-04-25)
     // The compiler failed because it couldnt infer the fulfilled promises and thought its `PromiseSettledResult<AssertFunctionResult>`
@@ -54,7 +58,9 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     ) as PromiseFulfilledResult<AssertFunctionResult>[];
     const failures = fulfilleds.filter((f) => f.value.isAllowed === false);
 
-    switch (this.options.shop.assert.logicalOperator) {
+    const operator =
+      ctx.apiType === "shop" ? this.options.shop.assert.logicalOperator : this.options.admin.assert.logicalOperator;
+    switch (operator) {
       case "AND": // In a logical "AND" everything must be true
         return { isAllowed: failures.length === 0, results: fulfilleds.map((f) => f.value) };
 
@@ -72,9 +78,6 @@ export class UserRegistrationInterceptor implements NestInterceptor {
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
     // Irrelevant contexts
     if (context.getType<GqlContextType>() !== "graphql") return next.handle();
-    // No work that needs to be done
-    if (this.options.shop.assert.functions.length === 0) return next.handle();
-    // TODO admin
 
     const gqlCtx = GqlExecutionContext.create(context);
     const info = gqlCtx.getInfo<GraphQLResolveInfo>();
@@ -85,6 +88,20 @@ export class UserRegistrationInterceptor implements NestInterceptor {
       gqlCtx.getContext<{ req: Request; res: Response }>().req,
       info,
     );
+
+    // Check if we can exit early
+    switch (requestContext.apiType) {
+      case "shop":
+        if (this.options.shop.assert.functions.length === 0) return next.handle();
+        break;
+
+      case "admin":
+        if (this.options.admin.assert.functions.length === 0) return next.handle();
+        break;
+
+      default:
+        return next.handle();
+    }
 
     let result;
     let args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs;
