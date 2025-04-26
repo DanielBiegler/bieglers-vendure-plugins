@@ -47,7 +47,7 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     const rejecteds = results.filter((r) => r.status === "rejected");
     if (rejecteds.length !== 0)
       throw new Error(
-        `${rejecteds.length} AssertionFunctions rejected. This should never happen. Handle errors in your assertions.`,
+        `${rejecteds.length}/${results.length} AssertionFunctions rejected. This should never happen. Handle errors in your assertions.`,
         { cause: rejecteds },
       );
 
