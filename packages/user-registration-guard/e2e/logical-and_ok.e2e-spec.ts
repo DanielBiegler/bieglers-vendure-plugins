@@ -5,11 +5,13 @@ import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { AssertFunctionShopApi } from "../src/types";
 import { UserRegistrationGuardPlugin } from "../src/user-registration-guard.plugin";
+import { CREATE_ADMIN } from "./graphql/admin-e2e-definitions";
 import { REGISTER_CUSTOMER } from "./graphql/shop-e2e-definitions";
+import { CreateMutation, CreateMutationVariables } from "./types/generated-admin-types";
 import { RegisterMutation, RegisterMutationVariables } from "./types/generated-shop-types";
 
 const alwaysTrue: AssertFunctionShopApi = async (ctx, input) => {
-  return true;
+  return { isAllowed: true };
 };
 
 describe("Logical AND", { concurrent: true }, async () => {
@@ -23,7 +25,12 @@ describe("Logical AND", { concurrent: true }, async () => {
             functions: [alwaysTrue, alwaysTrue],
           },
         },
-        admin: {},
+        admin: {
+          assert: {
+            logicalOperator: "AND",
+            functions: [alwaysTrue, alwaysTrue],
+          },
+        },
       }),
     ],
   });
@@ -34,17 +41,32 @@ describe("Logical AND", { concurrent: true }, async () => {
       initialData: initialData,
       customerCount: 2,
     });
+    await adminClient.asSuperAdmin();
   }, 60000);
 
   afterAll(async () => {
     await server.destroy();
   });
 
-  test("Success for logical AND where the assertions are: [true, true]", async ({ expect }) => {
+  test("Success for logical AND where the assertions are: [true, true] for customers", async ({ expect }) => {
     const res = await shopClient.query<RegisterMutation, RegisterMutationVariables>(REGISTER_CUSTOMER, {
       input: { emailAddress: "example@example.com" },
     });
 
     expect(res.registerCustomerAccount.__typename).toStrictEqual("Success");
+  });
+
+  test("Success for logical AND where the assertions are: [true, true] for admins", async ({ expect }) => {
+    const res = await adminClient.query<CreateMutation, CreateMutationVariables>(CREATE_ADMIN, {
+      input: {
+        emailAddress: "example@example.com",
+        firstName: "",
+        lastName: "",
+        password: "",
+        roleIds: [],
+      },
+    });
+
+    expect(res.createAdministrator.__typename).toStrictEqual("Administrator");
   });
 });

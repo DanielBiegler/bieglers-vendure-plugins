@@ -16,7 +16,12 @@ import { PLUGIN_INIT_OPTIONS } from "./constants";
 import { UserRegistrationBlockedEvent } from "./events/user-registration-blocked.event";
 import { MutationCreateAdministratorArgs } from "./generated-admin-types";
 import { MutationRegisterCustomerAccountArgs } from "./generated-shop-types";
-import { AssertFunctionShopApi, PluginUserRegistrationGuardOptions } from "./types";
+import {
+  AssertFunctionAdminApi,
+  AssertFunctionResult,
+  AssertFunctionShopApi,
+  PluginUserRegistrationGuardOptions,
+} from "./types";
 
 /**
  * Since this interceptor will be registered globally it will run between every single request.
@@ -32,27 +37,29 @@ export class UserRegistrationInterceptor implements NestInterceptor {
   ) {}
 
   /** @internal */
-  private async isAllowed(
+  private async _isAllowed(
     ctx: RequestContext,
-    assertFunctions: AssertFunctionShopApi[],
+    assertFunctions: AssertFunctionShopApi[] | AssertFunctionAdminApi[],
     args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
-  ): Promise<boolean> {
-    const promises = assertFunctions.map((f) => f(ctx, args.input));
+  ): Promise<{ isAllowed: boolean; results: AssertFunctionResult[] }> {
+    const promises = assertFunctions.map((f) => f(ctx, args.input)); // TODO Why does typescript want to merge the types here?
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
     if (rejecteds.length !== 0) throw rejecteds; // TODO is this ok? Maybe return `new NativeAuthStrategyError();`
 
     // Typescript needed a little help here (2025-04-25)
-    // The compiler failed because it couldnt infer the fulfilled promises and thought its `PromiseSettledResult<boolean>`
-    const fulfilleds = results.filter((r) => r.status === "fulfilled") as PromiseFulfilledResult<boolean>[];
-    const failures = fulfilleds.filter((f) => f.value === false);
+    // The compiler failed because it couldnt infer the fulfilled promises and thought its `PromiseSettledResult<AssertFunctionResult>`
+    const fulfilleds = results.filter(
+      (r) => r.status === "fulfilled",
+    ) as PromiseFulfilledResult<AssertFunctionResult>[];
+    const failures = fulfilleds.filter((f) => f.value.isAllowed === false);
 
     switch (this.options.shop.assert.logicalOperator) {
       case "AND": // In a logical "AND" everything must be true
-        return failures.length === 0;
+        return { isAllowed: failures.length === 0, results: fulfilleds.map((f) => f.value) };
 
       case "OR": // In a logical "OR" at least one must be true
-        return failures.length !== fulfilleds.length;
+        return { isAllowed: failures.length !== fulfilleds.length, results: fulfilleds.map((f) => f.value) };
 
       default:
         // TODO is error ok?
@@ -79,26 +86,32 @@ export class UserRegistrationInterceptor implements NestInterceptor {
       info,
     );
 
-    let isAllowed: boolean;
+    let result;
     let args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs;
     switch (info?.path?.key) {
       case "registerCustomerAccount":
         args = gqlCtx.getArgs<MutationRegisterCustomerAccountArgs>();
-        isAllowed = await this.isAllowed(requestContext, this.options.shop.assert.functions, args);
+        result = await this._isAllowed(requestContext, this.options.shop.assert.functions, args);
         break;
       case "createAdministrator":
         args = gqlCtx.getArgs<MutationCreateAdministratorArgs>();
-        isAllowed = false; // TODO is allowed
+        result = await this._isAllowed(requestContext, this.options.admin.assert.functions, args);
         break;
 
       default:
         return next.handle();
     }
 
-    if (!isAllowed) {
-      await this.eventBus.publish(new UserRegistrationBlockedEvent(requestContext, args.input)); // TODO pass in failures
+    if (!result.isAllowed) {
+      await this.eventBus.publish(new UserRegistrationBlockedEvent(requestContext, args.input, result.results));
       return new Observable<NativeAuthStrategyError>((s) => {
-        s.next(new NativeAuthStrategyError());
+        if (requestContext.apiType === "shop") {
+          // Registering doesnt throw but returns a union
+          s.next(new NativeAuthStrategyError());
+        } else {
+          // CreateAdmin Mutation normally only returns `Administrator`, so we throw
+          s.error(new NativeAuthStrategyError());
+        }
         s.complete();
       });
     }

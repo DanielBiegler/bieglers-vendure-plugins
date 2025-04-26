@@ -7,5 +7,5 @@
  * - events
  * - custom strategies that can be configured by the user of the plugin
  */
-export { PluginUserRegistrationGuardOptions } from "./types";
+export * from "./types";
 export * from "./user-registration-guard.plugin";

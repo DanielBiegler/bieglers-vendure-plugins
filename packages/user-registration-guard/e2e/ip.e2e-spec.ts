@@ -5,15 +5,19 @@ import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { AssertFunctionShopApi } from "../src/types";
 import { UserRegistrationGuardPlugin } from "../src/user-registration-guard.plugin";
+import { CREATE_ADMIN } from "./graphql/admin-e2e-definitions";
 import { REGISTER_CUSTOMER } from "./graphql/shop-e2e-definitions";
+import { CreateMutation, CreateMutationVariables } from "./types/generated-admin-types";
 import { RegisterMutation, RegisterMutationVariables } from "./types/generated-shop-types";
 
 const onlyAllowLocalIp: AssertFunctionShopApi = async (ctx, input) => {
   // `includes` instead of strict comparison because local ips may include other bits
-  return ctx?.req?.ip?.includes("127.0.0.1") ?? false;
+  return {
+    isAllowed: ctx.req?.ip?.includes("127.0.0.1") ?? false,
+  };
 };
 
-describe("Ip address", async () => {
+describe("Ip address", { concurrent: true }, async () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8002),
     plugins: [
@@ -24,7 +28,12 @@ describe("Ip address", async () => {
             functions: [onlyAllowLocalIp],
           },
         },
-        admin: {},
+        admin: {
+          assert: {
+            logicalOperator: "AND",
+            functions: [onlyAllowLocalIp],
+          },
+        },
       }),
     ],
   });
@@ -35,17 +44,32 @@ describe("Ip address", async () => {
       initialData: initialData,
       customerCount: 2,
     });
+    await adminClient.asSuperAdmin();
   }, 60000);
 
   afterAll(async () => {
     await server.destroy();
   });
 
-  test("Successfully allow localhost IP", async ({ expect }) => {
+  test("Successfully allow localhost IP for customers", async ({ expect }) => {
     const res = await shopClient.query<RegisterMutation, RegisterMutationVariables>(REGISTER_CUSTOMER, {
       input: { emailAddress: "example@example.com" },
     });
 
     expect(res.registerCustomerAccount.__typename).toStrictEqual("Success");
+  });
+
+  test("Successfully allow localhost IP for admins", async ({ expect }) => {
+    const res = await adminClient.query<CreateMutation, CreateMutationVariables>(CREATE_ADMIN, {
+      input: {
+        emailAddress: "example@example.com",
+        firstName: "",
+        lastName: "",
+        password: "",
+        roleIds: [],
+      },
+    });
+
+    expect(res.createAdministrator.__typename).toStrictEqual("Administrator");
   });
 });
