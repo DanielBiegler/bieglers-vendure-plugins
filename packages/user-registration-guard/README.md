@@ -17,7 +17,16 @@ Reduce fraud by blocking disposable email providers from registering with your V
 ### End-To-End Tests
 
 ```
-TODO
+ ✓ user-registration-guard/e2e/email.e2e-spec.ts (4)
+ ✓ user-registration-guard/e2e/ip.e2e-spec.ts (2)
+ ✓ user-registration-guard/e2e/logical-and_fail.e2e-spec.ts (2)
+ ✓ user-registration-guard/e2e/logical-and_ok.e2e-spec.ts (2)
+ ✓ user-registration-guard/e2e/logical-or_fail.e2e-spec.ts (2)
+ ✓ user-registration-guard/e2e/logical-or_ok.e2e-spec.ts (2)
+ ✓ user-registration-guard/e2e/reject.e2e-spec.ts (2)
+
+ Test Files  7 passed (7)
+      Tests  16 passed (16)
 ```
 
 ## Example
