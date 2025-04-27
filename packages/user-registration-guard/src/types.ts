@@ -1,17 +1,23 @@
 import { RequestContext } from "@vendure/core";
-import { CreateAdministratorInput } from "./generated-admin-types";
-import { RegisterCustomerInput } from "./generated-shop-types";
+import { MutationCreateAdministratorArgs } from "./generated-admin-types";
+import { MutationRegisterCustomerAccountArgs } from "./generated-shop-types";
 
 export type AssertFunctionResult = { isAllowed: boolean; reason?: string };
 
-export type AssertFunctionShopApi = (
+/**
+ * Override the generic in case you extended your Graphql types
+ */
+export type AssertFunctionShopApi<GraphqlArgs = MutationRegisterCustomerAccountArgs> = (
   ctx: RequestContext,
-  input: RegisterCustomerInput,
+  args: GraphqlArgs,
 ) => Promise<AssertFunctionResult>;
 
-export type AssertFunctionAdminApi = (
+/**
+ * Override the generic in case you extended your Graphql types
+ */
+export type AssertFunctionAdminApi<GraphqlArgs = MutationCreateAdministratorArgs> = (
   ctx: RequestContext,
-  input: CreateAdministratorInput,
+  args: GraphqlArgs,
 ) => Promise<AssertFunctionResult>;
 
 /**
@@ -40,7 +46,7 @@ export interface PluginUserRegistrationGuardOptions {
        * The assertions run in parallel and the final allow/block decision is made afterwards depending
        * on the configured `shop.assert.logicalOperator`.
        */
-      functions: AssertFunctionShopApi[];
+      functions: AssertFunctionShopApi<any>[];
     };
   };
   /**
@@ -63,7 +69,7 @@ export interface PluginUserRegistrationGuardOptions {
        * The assertions run in parallel and the final allow/block decision is made afterwards depending
        * on the configured `shop.assert.logicalOperator`.
        */
-      functions: AssertFunctionAdminApi[];
+      functions: AssertFunctionAdminApi<any>[];
     };
   };
 }

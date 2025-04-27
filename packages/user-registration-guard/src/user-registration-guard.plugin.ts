@@ -39,10 +39,10 @@ export class UserRegistrationInterceptor implements NestInterceptor {
   /** @internal */
   private async _isAllowed(
     ctx: RequestContext,
-    assertFunctions: AssertFunctionShopApi[] | AssertFunctionAdminApi[],
+    assertFunctions: AssertFunctionShopApi<any>[] | AssertFunctionAdminApi<any>[],
     args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
   ): Promise<{ isAllowed: boolean; results: AssertFunctionResult[] }> {
-    const promises = assertFunctions.map((f) => f(ctx, args.input)); // TODO Why does typescript want to merge the types here?
+    const promises = assertFunctions.map((f) => f(ctx, args));
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
     if (rejecteds.length !== 0)

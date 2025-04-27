@@ -16,6 +16,7 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
 - Logical operators (`AND`, `OR`) for when you have multiple checks
 - Publishes a [`UserRegistrationBlockedEvent`](./src/events/user-registration-blocked.event.ts) on the [EventBus](https://docs.vendure.io/guides/developer-guide/events/) for your consumption, for example if you'd like to monitor failed attempts
 - Works via [Nestjs Interceptor](https://docs.nestjs.com/interceptors) and does not(!) override the existing mutation APIs ([`registerCustomerAccount`](https://docs.vendure.io/reference/graphql-api/shop/mutations#registercustomeraccount), [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator)), which makes this plugin integrate seamlessly with your own [resolver overrides](https://docs.vendure.io/guides/developer-guide/extend-graphql-api/#override-built-in-resolvers)
+  - Also supports TypeScript Generics so you can use your own extended types!
 - Nicely commented and documented
 - No dependencies
 

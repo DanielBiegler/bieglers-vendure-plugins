@@ -3,20 +3,12 @@ import path from "path";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { AssertFunctionShopApi } from "../src/types";
 import { UserRegistrationGuardPlugin } from "../src/user-registration-guard.plugin";
+import { alwaysFalse } from "./fixtures/assertions";
 import { CREATE_ADMIN } from "./graphql/admin-e2e-definitions";
 import { REGISTER_CUSTOMER } from "./graphql/shop-e2e-definitions";
 import { CreateMutation, CreateMutationVariables } from "./types/generated-admin-types";
 import { RegisterMutation, RegisterMutationVariables } from "./types/generated-shop-types";
-
-const alwaysTrue: AssertFunctionShopApi = async (ctx, input) => {
-  return { isAllowed: true };
-};
-
-const alwaysFalse: AssertFunctionShopApi = async (ctx, input) => {
-  return { isAllowed: false };
-};
 
 describe("Logical OR", { concurrent: true }, async () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
