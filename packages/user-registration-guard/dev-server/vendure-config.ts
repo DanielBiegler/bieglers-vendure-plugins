@@ -42,10 +42,15 @@ export const config: VendureConfig = {
       shop: {
         assert: {
           logicalOperator: "AND",
+          functions: [async () => ({ isAllowed: false, reason: "Customer Registration disabled" })],
+        },
+      },
+      admin: {
+        assert: {
+          logicalOperator: "AND",
           functions: [],
         },
       },
-      admin: {},
     }),
     DefaultSearchPlugin.init({}),
     AdminUiPlugin.init({
