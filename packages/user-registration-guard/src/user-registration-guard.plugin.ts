@@ -68,13 +68,13 @@ export class UserRegistrationInterceptor implements NestInterceptor {
         return { isAllowed: failures.length !== fulfilleds.length, results: fulfilleds.map((f) => f.value) };
 
       default:
-        // TODO is error ok?
         throw new Error(
           `Unknown "logicalOperator" (${this.options.shop.assert.logicalOperator}) - This should never happen.`,
         );
     }
   }
 
+  /** @internal */
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
     // Irrelevant contexts
     if (context.getType<GqlContextType>() !== "graphql") return next.handle();
@@ -138,6 +138,8 @@ export class UserRegistrationInterceptor implements NestInterceptor {
 }
 
 /**
+ * The UserRegistrationGuardPlugin let's you flexibly customize if and how you prevent users from registering with your Vendure instance.
+ *
  * // TODO
  *
  * @category Plugin
@@ -169,7 +171,18 @@ export class UserRegistrationGuardPlugin {
    * @example
    * ```ts
    * UserRegistrationGuardPlugin.init({
-   *   // TODO
+   *   shop: {
+   *     assert: {
+   *       logicalOperator: "AND",
+   *       functions: [firstFunc, secondFunc],
+   *     },
+   *   },
+   *   admin: {
+   *     assert: {
+   *       logicalOperator: "OR",
+   *       functions: [],
+   *     },
+   *   },
    * }),
    * ```
    */
