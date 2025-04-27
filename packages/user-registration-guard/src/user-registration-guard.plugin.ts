@@ -13,7 +13,10 @@ import type { Request, Response } from "express";
 import type { GraphQLResolveInfo } from "graphql";
 import { Observable } from "rxjs";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
-import { UserRegistrationBlockedEvent } from "./events/user-registration-blocked.event";
+import {
+  BlockedCreateAdministratorEvent,
+  BlockedCustomerRegistrationEvent,
+} from "./events/user-registration-blocked.event";
 import { MutationCreateAdministratorArgs } from "./generated-admin-types";
 import { MutationRegisterCustomerAccountArgs } from "./generated-shop-types";
 import {
@@ -120,14 +123,19 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     }
 
     if (!result.isAllowed) {
-      await this.eventBus.publish(new UserRegistrationBlockedEvent(requestContext, args.input, result.results));
       return new Observable<NativeAuthStrategyError>((s) => {
         if (requestContext.apiType === "shop") {
           // Registering doesnt throw but returns a union
           s.next(new NativeAuthStrategyError());
+          this.eventBus
+            .publish(new BlockedCustomerRegistrationEvent(requestContext, args, result.results))
+            .catch(() => {});
         } else {
           // CreateAdmin Mutation normally only returns `Administrator`, so we throw
           s.error(new NativeAuthStrategyError());
+          this.eventBus
+            .publish(new BlockedCreateAdministratorEvent(requestContext, args, result.results))
+            .catch(() => {});
         }
         s.complete();
       });
@@ -181,7 +189,7 @@ export class UserRegistrationInterceptor implements NestInterceptor {
  * };
  * ```
  *
- * The `reason` field is helpful for when you're subscribing to the published {@link UserRegistrationBlockedEvent} and want to log or understand why somebody got blocked.
+ * The `reason` field is helpful for when you're subscribing to the published {@link BlockedCustomerRegistrationEvent} or {@link BlockedCreateAdministratorEvent} and want to log or understand why somebody got blocked.
  *
  * In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and the GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
  *
@@ -245,6 +253,30 @@ export class UserRegistrationInterceptor implements NestInterceptor {
  * In contrast, for admins we do throw the error! This is a little different because by default the [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator) mutation does not return a Union with error types.
  *
  * Granted, the `NativeAuthStrategyError` is technically not correct for blocking registrations and doesn't communicate the blocking properly, but it's the only reasonable error type in the Union for a default non-api-extended Vendure instance. You might want to add some comments in your registration logic that the error means blockage.
+ *
+ * ### 5. Subscribe to events
+ *
+ * You may want to [subscribe](https://docs.vendure.io/guides/developer-guide/events/#subscribing-to-events) to the [EventBus](https://docs.vendure.io/reference/typescript-api/events/event-bus) to monitor blocked registration attempts.
+ *
+ * ```ts
+ * this.eventBus
+ *   .ofType(BlockedCustomerRegistrationEvent<MutationRegisterCustomerAccountArgs>)
+ *   .subscribe(async (event) => {
+ *     const rejecteds = event.assertions.filter((a) => !a.isAllowed);
+ *     console.log(`Blocked customer registration! ${rejecteds.length}/${event.assertions.length} assertions failed, see reasons:`);
+ *     rejecteds.forEach(r => console.log("  -", r.reason));
+ *
+ *     // Example output:
+ *     // Blocked customer registration! 1/1 assertions failed, see reasons:
+ *     //   - Failed because email ends with "example.com"
+ *   });
+ *
+ * this.eventBus
+ *   // You can even override the passed in args if you've extended your Graphql API
+ *   .ofType(BlockedCreateAdministratorEvent<{ example: boolean }>).subscribe(async (event) => {
+ *     event.args.example // is typed now! :)
+ *   });
+ * ```
  *
  * @category Plugin
  */

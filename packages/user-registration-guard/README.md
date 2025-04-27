@@ -14,7 +14,7 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
 
 - Let's you create arbitrarily complex assertions for Customer registrations and Administrator creations
 - Logical operators (`AND`, `OR`) for when you have multiple checks
-- Publishes a [`UserRegistrationBlockedEvent`](./src/events/user-registration-blocked.event.ts) on the [EventBus](https://docs.vendure.io/guides/developer-guide/events/) for your consumption, for example if you'd like to monitor failed attempts
+- Publishes a [`BlockedCustomerRegistrationEvent`](./src/events/user-registration-blocked.event.ts) or [`BlockedCreateAdministratorEvent`](./src/events/user-registration-blocked.event.ts) on the [EventBus](https://docs.vendure.io/guides/developer-guide/events/) for your consumption, for example if you'd like to monitor failed attempts
 - Works via [Nestjs Interceptor](https://docs.nestjs.com/interceptors) and does not(!) override the existing mutation APIs ([`registerCustomerAccount`](https://docs.vendure.io/reference/graphql-api/shop/mutations#registercustomeraccount), [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator)), which makes this plugin integrate seamlessly with your own [resolver overrides](https://docs.vendure.io/guides/developer-guide/extend-graphql-api/#override-built-in-resolvers)
   - Also supports TypeScript Generics so you can use your own extended types!
 - Nicely commented and documented
@@ -90,7 +90,7 @@ const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args) => {
 };
 ```
 
-The `reason` field is helpful for when you're subscribing to the published [`UserRegistrationBlockedEvent`](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
+The `reason` field is helpful for when you're subscribing to the published [events](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
 
 In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and the GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
 
@@ -151,6 +151,30 @@ It respects [`RegisterCustomerAccountResult`](https://docs.vendure.io/reference/
 In contrast, for admins we do throw the error! This is a little different because by default the [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator) mutation does not return a Union with error types.
 
 Granted, the `NativeAuthStrategyError` is technically not correct for blocking registrations and doesn't communicate the blocking properly, but it's the only reasonable error type in the Union for a default non-api-extended Vendure instance. You might want to add some comments in your registration logic that the error means blockage.
+
+### 5. Subscribe to events
+
+You may want to [subscribe](https://docs.vendure.io/guides/developer-guide/events/#subscribing-to-events) to the [EventBus](https://docs.vendure.io/reference/typescript-api/events/event-bus) to monitor blocked registration attempts.
+
+```ts
+this.eventBus
+  .ofType(BlockedCustomerRegistrationEvent<MutationRegisterCustomerAccountArgs>)
+  .subscribe(async (event) => {
+    const rejecteds = event.assertions.filter((a) => !a.isAllowed);
+    console.log(`Blocked customer registration! ${rejecteds.length}/${event.assertions.length} assertions failed, see reasons:`);
+    rejecteds.forEach(r => console.log("  -", r.reason));
+
+    // Example output:
+    // Blocked customer registration! 1/1 assertions failed, see reasons:
+    //   - Failed because email ends with "example.com"
+  });
+
+this.eventBus
+  // You can even override the passed in args if you've extended your Graphql API
+  .ofType(BlockedCreateAdministratorEvent<{ example: boolean }>).subscribe(async (event) => {
+    event.args.example // is typed now! :)
+  });
+```
 
 ---
 

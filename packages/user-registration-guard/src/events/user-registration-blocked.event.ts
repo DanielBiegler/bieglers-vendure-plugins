@@ -1,15 +1,32 @@
 import { RequestContext, VendureEvent } from "@vendure/core";
-import { CreateAdministratorInput } from "../generated-admin-types";
-import { RegisterCustomerInput } from "../generated-shop-types";
+import { MutationCreateAdministratorArgs } from "../generated-admin-types";
+import { MutationRegisterCustomerAccountArgs } from "../generated-shop-types";
 import { AssertFunctionResult } from "../types";
 
 /**
- * This event is fired whenever registration was blocked
+ * This event is fired whenever a customer registration was blocked.
+ *
+ * Override the generic in case you extended your Graphql types.
  */
-export class UserRegistrationBlockedEvent extends VendureEvent {
+export class BlockedCustomerRegistrationEvent<GraphqlArgs = MutationRegisterCustomerAccountArgs> extends VendureEvent {
   constructor(
     public ctx: RequestContext,
-    public input: RegisterCustomerInput | CreateAdministratorInput,
+    public args: GraphqlArgs,
+    public assertions: AssertFunctionResult[],
+  ) {
+    super();
+  }
+}
+
+/**
+ * This event is fired whenever the creation of a new admin was blocked.
+ *
+ * Override the generic in case you extended your Graphql types.
+ */
+export class BlockedCreateAdministratorEvent<GraphqlArgs = MutationCreateAdministratorArgs> extends VendureEvent {
+  constructor(
+    public ctx: RequestContext,
+    public args: GraphqlArgs,
     public assertions: AssertFunctionResult[],
   ) {
     super();
