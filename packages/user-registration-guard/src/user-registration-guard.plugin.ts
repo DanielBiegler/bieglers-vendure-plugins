@@ -140,7 +140,111 @@ export class UserRegistrationInterceptor implements NestInterceptor {
 /**
  * The UserRegistrationGuardPlugin let's you flexibly customize if and how you prevent users from registering with your Vendure instance.
  *
- * // TODO
+ * ```ts
+ * import { UserRegistrationGuardPlugin } from "@danielbiegler/vendure-plugin-user-registration-guard";
+ * export const config: VendureConfig = {
+ *   // ...
+ *   plugins: [
+ *     UserRegistrationGuardPlugin.init({
+ *       shop: {
+ *         assert: {
+ *           // AND means every single assertion must be true to allow user registration
+ *           logicalOperator: "AND",
+ *           functions: [ ], // Insert your assertions here
+ *         },
+ *       },
+ *       admin: {
+ *         assert: {
+ *           // OR means user registration is allowed if a single assertion is true
+ *           logicalOperator: "OR",
+ *           functions: [ ], // You may leave this empty too
+ *         },
+ *       },
+ *     }),
+ *   ],
+ * }
+ * ```
+ *
+ * Please refer to the specific [docs](./src/types.ts) for how and what you can customize.
+ *
+ * ### 2. Create an assertion
+ *
+ * Here's an example assertion where we block customer registrations if the email ends with `example.com`:
+ *
+ * ```ts
+ * const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args) => {
+ *   const isAllowed = !args.input.emailAddress.endsWith("example.com");
+ *   return {
+ *     isAllowed,
+ *     reason: !isAllowed ? 'Failed because email ends with "example.com"' : undefined,
+ *   };
+ * };
+ * ```
+ *
+ * The `reason` field is helpful for when you're subscribing to the published [`UserRegistrationBlockedEvent`](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
+ *
+ * In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and the GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
+ *
+ * If you've extended your GraphQL API types you may override the TypeScript Generic to get completions in your assertion functions like so:
+ *
+ * ```ts
+ * const example: AssertFunctionShopApi<{
+ *   example: boolean;
+ *   // ...
+ * }> = async (ctx, args) => {
+ *   return { isAllowed: args.example };
+ * };
+ * ```
+ *
+ * ### 3. Add it to the plugin
+ *
+ * ```ts
+ * import { UserRegistrationGuardPlugin } from "@danielbiegler/vendure-plugin-user-registration-guard";
+ * export const config: VendureConfig = {
+ *   // ...
+ *   plugins: [
+ *     UserRegistrationGuardPlugin.init({
+ *       shop: {
+ *         assert: {
+ *           logicalOperator: "AND",
+ *           functions: [ blockExampleDotCom ],
+ *         },
+ *       },
+ *       admin: {
+ *         assert: {
+ *           logicalOperator: "AND",
+ *           functions: [],
+ *         },
+ *       },
+ *     }),
+ *   ],
+ * }
+ * ```
+ *
+ * ### 4. Try registering new customers
+ *
+ * ```graphql
+ * mutation {
+ *   registerCustomerAccount(input: {
+ *     emailAddress: "example@example.com",
+ *     # ...
+ *   }) {
+ *     __typename
+ *   }
+ * }
+ * ```
+ *
+ * This user will now be blocked from registering according to our `blockExampleDotCom` assertion.
+ *
+ * #### Handling errors
+ *
+ * The plugin is non-intrusive and does not extend the API itself to avoid introducing unhandled errors in your code.
+ *
+ * It respects [`RegisterCustomerAccountResult`](https://docs.vendure.io/reference/graphql-api/shop/object-types#registercustomeraccountresult) being a Union, so we don't throw an error, but return a [`NativeAuthStrategyError`](https://docs.vendure.io/reference/graphql-api/shop/object-types#nativeauthstrategyerror). You may handle the error just like the other `RegisterCustomerAccountResult` types like [`PasswordValidationError`](https://docs.vendure.io/reference/graphql-api/shop/object-types#passwordvalidationerror) for example.
+ *
+ * In contrast, for admins we do throw the error! This is a little different because by default the [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator) mutation does not return a Union with error types.
+ *
+ * Granted, the `NativeAuthStrategyError` is technically not correct for blocking registrations and doesn't communicate the blocking properly, but it's the only reasonable error type in the Union for a default non-api-extended Vendure instance. You might want to add some comments in your registration logic that the error means blockage.
  *
  * @category Plugin
  */
