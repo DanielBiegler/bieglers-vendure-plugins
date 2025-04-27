@@ -27,6 +27,13 @@ import {
 } from "./types";
 
 /**
+ * Had to make an explicit type here.
+ * Narrowing types with private functions with `this` return type fails.
+ * @see https://github.com/microsoft/TypeScript/issues/44785
+ */
+type _isAllowedResult = { isAllowed: boolean; results: AssertFunctionResult[] };
+
+/**
  * Since this interceptor will be registered globally it will run between every single request.
  * This means we must make sure to exit as early as possible in order to not slow down the Vendure instance.
  */
@@ -44,7 +51,7 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     ctx: RequestContext,
     assertFunctions: AssertFunctionShopApi<any>[] | AssertFunctionAdminApi<any>[],
     args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
-  ): Promise<{ isAllowed: boolean; results: AssertFunctionResult[] }> {
+  ): Promise<_isAllowedResult> {
     const promises = assertFunctions.map((f) => f(ctx, args));
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
@@ -106,7 +113,7 @@ export class UserRegistrationInterceptor implements NestInterceptor {
         return next.handle();
     }
 
-    let result;
+    let result: _isAllowedResult;
     let args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs;
     switch (info?.path?.key) {
       case "registerCustomerAccount":
