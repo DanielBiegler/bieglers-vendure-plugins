@@ -165,7 +165,7 @@ export class UserRegistrationInterceptor implements NestInterceptor {
  * }
  * ```
  *
- * Please refer to the specific [docs](./src/types.ts) for how and what you can customize.
+ * Please refer to the specific {@link PluginUserRegistrationGuardOptions} for how and what you can customize.
  *
  * ### 2. Create an assertion
  *
@@ -181,7 +181,7 @@ export class UserRegistrationInterceptor implements NestInterceptor {
  * };
  * ```
  *
- * The `reason` field is helpful for when you're subscribing to the published [`UserRegistrationBlockedEvent`](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
+ * The `reason` field is helpful for when you're subscribing to the published {@link UserRegistrationBlockedEvent} and want to log or understand why somebody got blocked.
  *
  * In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and the GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
  *
