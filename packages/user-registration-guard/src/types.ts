@@ -37,8 +37,8 @@ export interface PluginUserRegistrationGuardOptions {
       /**
        * How the assertions are logically combined to evaluate the final allow/block decision.
        *
-       * - `"AND"` means every single assertion must return `true` to allow user registration
-       * - `"OR"` means user registration is allowed if a single assertion returns `true`
+       * - `"AND"` means every single assertion must be true to allow user registration
+       * - `"OR"` means user registration is allowed if a single assertion is true
        */
       logicalOperator: "AND" | "OR";
       /**
@@ -60,8 +60,8 @@ export interface PluginUserRegistrationGuardOptions {
       /**
        * How the assertions are logically combined to evaluate the final allow/block decision.
        *
-       * - `"AND"` means every single assertion must return `true` to allow user registration
-       * - `"OR"` means user registration is allowed if a single assertion returns `true`
+       * - `"AND"` means every single assertion must be true to allow user registration
+       * - `"OR"` means user registration is allowed if a single assertion is true
        */
       logicalOperator: "AND" | "OR";
       /**

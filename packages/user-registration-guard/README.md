@@ -55,13 +55,17 @@ export const config: VendureConfig = {
     UserRegistrationGuardPlugin.init({
       shop: {
         assert: {
+          /* AND means every single assertion must
+             be true to allow user registration */
           logicalOperator: "AND",
           functions: [ /* Insert your assertions here */ ],
         },
       },
       admin: {
         assert: {
-          logicalOperator: "AND",
+          /* OR means user registration is allowed
+             if a single assertion is true */
+          logicalOperator: "OR",
           functions: [ /* You may leave this empty too */ ],
         },
       },
@@ -77,8 +81,8 @@ Please refer to the specific [docs](./src/types.ts) for how and what you can cus
 Here's an example assertion where we block customer registrations if the email ends with `example.com`:
 
 ```ts
-const blockExampleDotCom: AssertFunctionShopApi = async (ctx, input) => {
-  const isAllowed = !input.emailAddress.endsWith("example.com");
+const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args) => {
+  const isAllowed = !args.input.emailAddress.endsWith("example.com");
   return {
     isAllowed,
     reason: !isAllowed ? 'Failed because email ends with "example.com"' : undefined,
@@ -88,7 +92,15 @@ const blockExampleDotCom: AssertFunctionShopApi = async (ctx, input) => {
 
 The `reason` field is helpful for when you're subscribing to the published [`UserRegistrationBlockedEvent`](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
 
-In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying Express [Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
+In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and the GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
+
+If you've extended your GraphQL API types you may override the TypeScript Generic to get completions in your assertion functions like so:
+
+```ts
+const example: AssertFunctionShopApi<{ example: boolean; /* ... */ }> = async (ctx, args) => {
+  return { isAllowed: args.example };
+};
+```
 
 ### 3. Add it to the plugin
 
