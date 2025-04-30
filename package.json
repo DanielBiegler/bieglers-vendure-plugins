@@ -8,14 +8,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "README.md",
-    "CHANGELOG.md"
-  ],
-  "scripts": {},
   "workspaces": [
     "packages/*"
   ],
@@ -25,12 +17,12 @@
     "@graphql-codegen/typescript": "^4.0.9",
     "@graphql-codegen/typescript-operations": "^4.2.3",
     "@swc/core": "^1.7.1",
-    "@vendure/admin-ui-plugin": "3.2.0",
-    "@vendure/asset-server-plugin": "3.2.0",
-    "@vendure/cli": "3.2.0",
-    "@vendure/core": "3.2.0",
-    "@vendure/testing": "3.2.0",
-    "@vendure/ui-devkit": "3.2.0",
+    "@vendure/admin-ui-plugin": "3.2.3",
+    "@vendure/asset-server-plugin": "3.2.3",
+    "@vendure/cli": "3.2.3",
+    "@vendure/core": "3.2.3",
+    "@vendure/testing": "3.2.3",
+    "@vendure/ui-devkit": "3.2.3",
     "better-sqlite3": "^9.6.0",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
