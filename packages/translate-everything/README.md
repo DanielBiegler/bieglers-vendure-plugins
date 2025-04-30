@@ -49,4 +49,4 @@ Please refer to the specific [docs](./src/types.ts) for how and what you can cus
 
 #### Credits
 
-- TODO, edited by [Daniel Biegler](https://www.danielbiegler.de/)
+- Photo by Mikhail Nilov from [Pexels](https://www.pexels.com/photo/close-up-shot-of-a-person-holding-a-globe-8542559/), edited by [Daniel Biegler](https://www.danielbiegler.de/)
