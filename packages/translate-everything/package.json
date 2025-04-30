@@ -1,0 +1,44 @@
+{
+  "name": "@danielbiegler/vendure-plugin-translate-everything",
+  "description": "The one stop shop to translate everything in your Vendure instance.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "ts-node dev-server/index.ts",
+    "codegen": "ts-node generate-types.ts",
+    "build": "rimraf dist && tsc -p ./tsconfig.build.json",
+    "e2e": "cross-env PACKAGE=translate-everything vitest -c ../../utils/e2e/vitest.config.mts"
+  },
+  "author": {
+    "name": "Daniel Biegler",
+    "url": "https://www.danielbiegler.de"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanielBiegler/bieglers-vendure-plugins/"
+  },
+  "keywords": [
+    "vendure",
+    "plugin",
+    "vendure-plugin",
+    "ecommerce",
+    "headless",
+    "graphql",
+    "typescript",
+    "translation",
+    "translate",
+    "i18n"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "LICENSE.txt",
+    "CHANGELOG.md",
+    "docs"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}
