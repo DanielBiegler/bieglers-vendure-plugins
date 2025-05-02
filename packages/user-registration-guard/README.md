@@ -26,6 +26,7 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
 ```
  ✓ user-registration-guard/e2e/email.e2e-spec.ts (4)
  ✓ user-registration-guard/e2e/events.e2e-spec.ts (4)
+ ✓ user-registration-guard/e2e/injector.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/ip.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/logical-and_fail.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/logical-and_ok.e2e-spec.ts (2)
@@ -33,8 +34,8 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
  ✓ user-registration-guard/e2e/logical-or_ok.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/reject.e2e-spec.ts (2)
 
- Test Files  8 passed (8)
-      Tests  20 passed (20)
+ Test Files  9 passed (9)
+      Tests  22 passed (22)
 ```
 
 ## How To: Usage
