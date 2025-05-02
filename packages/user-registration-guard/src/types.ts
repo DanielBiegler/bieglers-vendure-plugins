@@ -1,4 +1,4 @@
-import { RequestContext, Injector } from "@vendure/core";
+import { Injector, RequestContext } from "@vendure/core";
 import { MutationCreateAdministratorArgs } from "./generated-admin-types";
 import { MutationRegisterCustomerAccountArgs } from "./generated-shop-types";
 
