@@ -1,4 +1,4 @@
-import { RequestContext } from "@vendure/core";
+import { RequestContext, Injector } from "@vendure/core";
 import { MutationCreateAdministratorArgs } from "./generated-admin-types";
 import { MutationRegisterCustomerAccountArgs } from "./generated-shop-types";
 
@@ -10,6 +10,7 @@ export type AssertFunctionResult = { isAllowed: boolean; reason?: string };
 export type AssertFunctionShopApi<GraphqlArgs = MutationRegisterCustomerAccountArgs> = (
   ctx: RequestContext,
   args: GraphqlArgs,
+  injector: Injector,
 ) => Promise<AssertFunctionResult>;
 
 /**
@@ -18,6 +19,7 @@ export type AssertFunctionShopApi<GraphqlArgs = MutationRegisterCustomerAccountA
 export type AssertFunctionAdminApi<GraphqlArgs = MutationCreateAdministratorArgs> = (
   ctx: RequestContext,
   args: GraphqlArgs,
+  injector: Injector,
 ) => Promise<AssertFunctionResult>;
 
 /**

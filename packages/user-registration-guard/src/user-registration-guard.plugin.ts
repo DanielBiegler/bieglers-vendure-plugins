@@ -1,8 +1,9 @@
-import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from "@nestjs/common";
-import { APP_INTERCEPTOR } from "@nestjs/core";
+import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor, OnApplicationBootstrap } from "@nestjs/common";
+import { APP_INTERCEPTOR, ModuleRef } from "@nestjs/core";
 import { GqlContextType, GqlExecutionContext } from "@nestjs/graphql";
 import {
   EventBus,
+  Injector,
   NativeAuthStrategyError,
   PluginCommonModule,
   RequestContext,
@@ -38,13 +39,23 @@ type _isAllowedResult = { isAllowed: boolean; results: AssertFunctionResult[] };
  * This means we must make sure to exit as early as possible in order to not slow down the Vendure instance.
  */
 @Injectable()
-export class UserRegistrationInterceptor implements NestInterceptor {
+export class UserRegistrationInterceptor implements NestInterceptor, OnApplicationBootstrap {
+  private injector: Injector | undefined;
+
   constructor(
     private eventBus: EventBus,
+    private moduleRef: ModuleRef,
     private requestContextService: RequestContextService,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: PluginUserRegistrationGuardOptions,
-  ) {}
+  ) {
+    
+  }
+
+  /** @internal */
+  async onApplicationBootstrap(): Promise<void> {
+    this.injector = new Injector(this.moduleRef);
+  }
 
   /** @internal */
   private async _isAllowed(
@@ -52,7 +63,10 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     assertFunctions: AssertFunctionShopApi<any>[] | AssertFunctionAdminApi<any>[],
     args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
   ): Promise<_isAllowedResult> {
-    const promises = assertFunctions.map((f) => f(ctx, args));
+    // This should never happen but calms the TS compiler
+    if(!this.injector) throw new Error('Injector is not initialized');
+
+    const promises = assertFunctions.map((f) => f(ctx, args, this.injector));
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
     if (rejecteds.length !== 0)
