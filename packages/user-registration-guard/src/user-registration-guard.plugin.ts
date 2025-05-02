@@ -1,4 +1,11 @@
-import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor, OnApplicationBootstrap } from "@nestjs/common";
+import {
+  CallHandler,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  NestInterceptor,
+  OnApplicationBootstrap,
+} from "@nestjs/common";
 import { APP_INTERCEPTOR, ModuleRef } from "@nestjs/core";
 import { GqlContextType, GqlExecutionContext } from "@nestjs/graphql";
 import {
@@ -48,9 +55,7 @@ export class UserRegistrationInterceptor implements NestInterceptor, OnApplicati
     private requestContextService: RequestContextService,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: PluginUserRegistrationGuardOptions,
-  ) {
-    
-  }
+  ) {}
 
   /** @internal */
   async onApplicationBootstrap(): Promise<void> {
@@ -63,10 +68,17 @@ export class UserRegistrationInterceptor implements NestInterceptor, OnApplicati
     assertFunctions: AssertFunctionShopApi<any>[] | AssertFunctionAdminApi<any>[],
     args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
   ): Promise<_isAllowedResult> {
-    // This should never happen but calms the TS compiler
-    if(!this.injector) throw new Error('Injector is not initialized');
+    /**
+     * This should never happen, because Nestjs initializes the injector via `this.onApplicationBootstrap`,
+     * but TypeScript can't guarantee that the value of `this.injector` won't change between checking and execution of the closure.
+     * Each closure creates a new context where previous type narrowing isn't automatically carried forward.
+     * Capturing the injector locally like this let's us carry it into the closure in a type-safe manner,
+     * without using non-null assertion operator.
+     */
+    if (!this.injector) throw new Error("Injector is not initialized");
+    const _capturedInjector = this.injector;
 
-    const promises = assertFunctions.map((f) => f(ctx, args, this.injector));
+    const promises = assertFunctions.map((f) => f(ctx, args, _capturedInjector));
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
     if (rejecteds.length !== 0)
