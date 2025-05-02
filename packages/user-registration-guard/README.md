@@ -17,6 +17,7 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
 - Publishes a [`BlockedCustomerRegistrationEvent`](./src/events/user-registration-blocked.event.ts) or [`BlockedCreateAdministratorEvent`](./src/events/user-registration-blocked.event.ts) on the [EventBus](https://docs.vendure.io/guides/developer-guide/events/) for your consumption, for example if you'd like to monitor failed attempts
 - Works via [Nestjs Interceptor](https://docs.nestjs.com/interceptors) and does not(!) override the existing mutation APIs ([`registerCustomerAccount`](https://docs.vendure.io/reference/graphql-api/shop/mutations#registercustomeraccount), [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator)), which makes this plugin integrate seamlessly with your own [resolver overrides](https://docs.vendure.io/guides/developer-guide/extend-graphql-api/#override-built-in-resolvers)
   - Also supports TypeScript Generics so you can use your own extended types!
+  - Also let's you inject providers into your assertions i.e. use Vendure's or your own custom services
 - Nicely commented and documented
 - No dependencies
 
@@ -25,6 +26,7 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
 ```
  ✓ user-registration-guard/e2e/email.e2e-spec.ts (4)
  ✓ user-registration-guard/e2e/events.e2e-spec.ts (4)
+ ✓ user-registration-guard/e2e/injector.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/ip.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/logical-and_fail.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/logical-and_ok.e2e-spec.ts (2)
@@ -32,8 +34,8 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
  ✓ user-registration-guard/e2e/logical-or_ok.e2e-spec.ts (2)
  ✓ user-registration-guard/e2e/reject.e2e-spec.ts (2)
 
- Test Files  8 passed (8)
-      Tests  20 passed (20)
+ Test Files  9 passed (9)
+      Tests  22 passed (22)
 ```
 
 ## How To: Usage
@@ -82,7 +84,7 @@ Please refer to the specific [docs](./src/types.ts) for how and what you can cus
 Here's an example assertion where we block customer registrations if the email ends with `example.com`:
 
 ```ts
-const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args) => {
+const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args, injector) => {
   const isAllowed = !args.input.emailAddress.endsWith("example.com");
   return {
     isAllowed,
@@ -93,12 +95,38 @@ const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args) => {
 
 The `reason` field is helpful for when you're subscribing to the published [events](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
 
-In your assertions you'll receive the [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context) and the GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type. For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
+In your assertions, see the [types](./src/types.ts), you'll receive these arguments:
+
+- [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context)
+- GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type.
+- [`Injector`](https://docs.vendure.io/reference/typescript-api/common/injector) 
+
+For example, if you'd like to block IP ranges you can access the underlying [Express Request](https://docs.vendure.io/reference/typescript-api/request/request-context#req) object through the `RequestContext` .
+
+```ts
+export const onlyAllowLocalIp: AssertFunctionShopApi = async (ctx, args) => {
+  // `includes` instead of strict comparison because local ips may include other bits
+  return {
+    isAllowed: ctx.req?.ip?.includes("127.0.0.1") ?? false,
+  };
+};
+```
+
+If you'd like to delegate the decision to a service you may inject it like so:
+
+```ts
+export const example: AssertFunctionShopApi = async (ctx, args, injector) => {
+  const service = injector.get(BlacklistService);
+
+  // Make sure to handle errors in a real environment
+  return service.canUserRegister(ctx, args);
+};
+```
 
 If you've extended your GraphQL API types you may override the TypeScript Generic to get completions in your assertion functions like so:
 
 ```ts
-const example: AssertFunctionShopApi<{ example: boolean; /* ... */ }> = async (ctx, args) => {
+const example: AssertFunctionShopApi<{ example: boolean; /* ... */ }> = async (ctx, args, injector) => {
   return { isAllowed: args.example };
 };
 ```
