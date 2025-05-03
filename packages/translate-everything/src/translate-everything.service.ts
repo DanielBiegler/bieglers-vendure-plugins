@@ -1,6 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
-  DeepPartial,
+  AdministratorService,
+  ChannelService,
+  CustomFieldRelationService,
   EntityNotFoundError,
   FacetService,
   FacetValueService,
@@ -15,10 +17,12 @@ import {
   TransactionalConnection,
   Translated,
   Translation,
+  UnauthorizedError,
   UserInputError,
 } from "@vendure/core";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
-import { TranslateEverythingEntry } from "./translate-everything-entry.entity";
+import { TranslateEverythingEntryKindProduct } from "./generated-admin-types";
+import { TranslateEverythingEntryProduct } from "./translate-everything-entry.entity";
 import { PluginTranslateEverythingOptions } from "./types";
 
 /**
@@ -31,6 +35,9 @@ import { PluginTranslateEverythingOptions } from "./types";
 export class TranslateEverythingService {
   constructor(
     private connection: TransactionalConnection,
+    private channelService: ChannelService,
+    private cfRelationService: CustomFieldRelationService,
+    private adminService: AdministratorService,
     private productService: ProductService,
     private facetService: FacetService,
     private facetValueService: FacetValueService,
@@ -41,10 +48,11 @@ export class TranslateEverythingService {
 
   async createEntry(
     ctx: RequestContext,
-    input: DeepPartial<TranslateEverythingEntry>,
-  ): Promise<TranslateEverythingEntry> {
-    // TODO check after adding custom fields
-    return this.connection.getRepository(ctx, TranslateEverythingEntry).save(new TranslateEverythingEntry(input));
+    entity: TranslateEverythingEntryProduct,
+  ): Promise<TranslateEverythingEntryProduct> {
+    await this.channelService.assignToCurrentChannel(entity, ctx);
+    await this.cfRelationService.updateRelations(ctx, TranslateEverythingEntryProduct, entity, entity);
+    return this.connection.getRepository(ctx, TranslateEverythingEntryProduct).save(entity);
   }
 
   async translateProduct(
@@ -59,6 +67,10 @@ export class TranslateEverythingService {
     // ProductService.findOne is ChannelAware, not manually needed here
     const product = await this.productService.findOne(ctx, input.productId, relations);
     if (!product) throw new EntityNotFoundError("Product", input.productId);
+
+    if (!ctx.activeUserId) throw new UnauthorizedError();
+    const admin = await this.adminService.findOneByUserId(ctx, ctx.activeUserId);
+    if (!admin) throw new UnauthorizedError();
 
     const sourceTranslation = product.translations.find((t) => t.languageCode === input.sourceLanguage);
     if (!sourceTranslation)
@@ -85,13 +97,18 @@ export class TranslateEverythingService {
         targetTranslation.languageCode,
       );
 
-      await this.createEntry(ctx, {
-        sourceLanguage: input.sourceLanguage,
-        targetLanguage: input.targetLanguage,
-        sourceText: sourceTranslation.name,
-        targetText: targetTranslation.name,
-        adminId: ctx.activeUserId,
-      });
+      await this.createEntry(
+        ctx,
+        new TranslateEverythingEntryProduct({
+          sourceLanguage: input.sourceLanguage,
+          targetLanguage: input.targetLanguage,
+          sourceText: sourceTranslation.name,
+          targetText: targetTranslation.name,
+          translationKind: TranslateEverythingEntryKindProduct.NAME,
+          admin,
+          product,
+        }),
+      );
     }
 
     if (isMissingDesc) {
@@ -101,13 +118,19 @@ export class TranslateEverythingService {
         targetTranslation.languageCode,
       );
 
-      await this.createEntry(ctx, {
-        sourceLanguage: input.sourceLanguage,
-        targetLanguage: input.targetLanguage,
-        sourceText: sourceTranslation.description,
-        targetText: targetTranslation.description,
-        adminId: ctx.activeUserId,
-      });
+      await this.createEntry(
+        ctx,
+        new TranslateEverythingEntryProduct({
+          sourceLanguage: input.sourceLanguage,
+          targetLanguage: input.targetLanguage,
+          sourceText: sourceTranslation.description,
+          targetText: targetTranslation.description,
+          adminId: ctx.activeUserId,
+          translationKind: TranslateEverythingEntryKindProduct.DESCRIPTION,
+          admin,
+          product,
+        }),
+      );
     }
 
     if (isMissingSlug) {

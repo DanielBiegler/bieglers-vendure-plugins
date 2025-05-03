@@ -4,14 +4,14 @@ export const adminSchema = gql`
   """
   Helps differentiate between what specific field was translated.
   """
-  enum TranslateEverythingProductKind {
+  enum TranslateEverythingEntryKindProduct {
     NAME
     DESCRIPTION
     SLUG
-    # TODO customfield stuff? check how needed/feasible later.
+    CUSTOMFIELD # TODO check this
   }
 
-  type TranslateEverythingEntry implements Node {
+  interface TranslateEverythingEntry implements Node {
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
@@ -19,10 +19,22 @@ export const adminSchema = gql`
     adminId: ID!
     admin: Administrator!
 
-    """
-    Helps differentiate between what specific field was translated.
-    """
-    translationKind: TranslateEverythingProductKind!
+    sourceLanguage: LanguageCode!
+    targetLanguage: LanguageCode!
+
+    sourceText: String!
+    targetText: String!
+
+    # TODO customfields
+  }
+
+  type TranslateEverythingEntryProduct implements TranslateEverythingEntry & Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+
+    adminId: ID!
+    admin: Administrator!
 
     sourceLanguage: LanguageCode!
     targetLanguage: LanguageCode!
@@ -30,22 +42,25 @@ export const adminSchema = gql`
     sourceText: String!
     targetText: String!
 
-    # TODO maybe add m2a type fields so you can find
-
-    # TODO customfields
+    """
+    Helps differentiate between what specific field was translated.
+    """
+    translationKind: TranslateEverythingEntryKindProduct!
   }
 
-  type TranslateEverythingEntryList implements PaginatedList {
-    items: [TranslateEverythingEntry!]!
+  type TranslateEverythingEntryProductList implements PaginatedList {
+    items: [TranslateEverythingEntryProduct!]!
     totalItems: Int!
   }
 
   # Generated at run-time by Vendure
-  input TranslateEverythingEntryListOptions
+  input TranslateEverythingEntryProductListOptions
 
   extend type Query {
-    translateEverythingEntry(id: ID!): TranslateEverythingEntry!
-    translateEverythingEntries(options: TranslateEverythingEntryListOptions): TranslateEverythingEntryList!
+    translateEverythingEntryProduct(id: ID!): TranslateEverythingEntryProduct!
+    translateEverythingEntryProducts(
+      options: TranslateEverythingEntryProductListOptions
+    ): TranslateEverythingEntryProductList!
   }
 
   input TranslateProductInput {

@@ -8,6 +8,7 @@
  * - custom strategies that can be configured by the user of the plugin
  */
 export { TranslationStrategy } from "./config/translation-strategy";
-export { TranslateEverythingEntry } from "./translate-everything-entry.entity";
+// TODO customfield classes?
+export { TranslateEverythingEntryProduct } from "./translate-everything-entry.entity";
 export * from "./translate-everything.plugin";
 export * from "./types";

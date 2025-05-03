@@ -5147,8 +5147,8 @@ export type Query = {
   taxRates: TaxRateList;
   testEligibleShippingMethods: Array<ShippingMethodQuote>;
   testShippingMethod: TestShippingMethodResult;
-  translateEverythingEntries: TranslateEverythingEntryList;
-  translateEverythingEntry: TranslateEverythingEntry;
+  translateEverythingEntryProduct: TranslateEverythingEntryProduct;
+  translateEverythingEntryProducts: TranslateEverythingEntryProductList;
   zone?: Maybe<Zone>;
   zones: ZoneList;
 };
@@ -5428,13 +5428,13 @@ export type QueryTestShippingMethodArgs = {
 };
 
 
-export type QueryTranslateEverythingEntriesArgs = {
-  options?: InputMaybe<TranslateEverythingEntryListOptions>;
+export type QueryTranslateEverythingEntryProductArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
-export type QueryTranslateEverythingEntryArgs = {
-  id: Scalars['ID']['input'];
+export type QueryTranslateEverythingEntryProductsArgs = {
+  options?: InputMaybe<TranslateEverythingEntryProductListOptions>;
 };
 
 
@@ -6382,8 +6382,28 @@ export type TransitionOrderToStateResult = Order | OrderStateTransitionError;
 
 export type TransitionPaymentToStateResult = Payment | PaymentStateTransitionError;
 
-export type TranslateEverythingEntry = Node & {
-  __typename?: 'TranslateEverythingEntry';
+export type TranslateEverythingEntry = {
+  admin: Administrator;
+  adminId: Scalars['ID']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  sourceLanguage: LanguageCode;
+  sourceText: Scalars['String']['output'];
+  targetLanguage: LanguageCode;
+  targetText: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** Helps differentiate between what specific field was translated. */
+export enum TranslateEverythingEntryKindProduct {
+  CUSTOMFIELD = 'CUSTOMFIELD',
+  DESCRIPTION = 'DESCRIPTION',
+  NAME = 'NAME',
+  SLUG = 'SLUG'
+}
+
+export type TranslateEverythingEntryProduct = Node & TranslateEverythingEntry & {
+  __typename?: 'TranslateEverythingEntryProduct';
   admin: Administrator;
   adminId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
@@ -6393,13 +6413,13 @@ export type TranslateEverythingEntry = Node & {
   targetLanguage: LanguageCode;
   targetText: Scalars['String']['output'];
   /** Helps differentiate between what specific field was translated. */
-  translationKind: TranslateEverythingProductKind;
+  translationKind: TranslateEverythingEntryKindProduct;
   updatedAt: Scalars['DateTime']['output'];
 };
 
-export type TranslateEverythingEntryFilterParameter = {
-  _and?: InputMaybe<Array<TranslateEverythingEntryFilterParameter>>;
-  _or?: InputMaybe<Array<TranslateEverythingEntryFilterParameter>>;
+export type TranslateEverythingEntryProductFilterParameter = {
+  _and?: InputMaybe<Array<TranslateEverythingEntryProductFilterParameter>>;
+  _or?: InputMaybe<Array<TranslateEverythingEntryProductFilterParameter>>;
   adminId?: InputMaybe<IdOperators>;
   createdAt?: InputMaybe<DateOperators>;
   id?: InputMaybe<IdOperators>;
@@ -6411,26 +6431,26 @@ export type TranslateEverythingEntryFilterParameter = {
   updatedAt?: InputMaybe<DateOperators>;
 };
 
-export type TranslateEverythingEntryList = PaginatedList & {
-  __typename?: 'TranslateEverythingEntryList';
-  items: Array<TranslateEverythingEntry>;
+export type TranslateEverythingEntryProductList = PaginatedList & {
+  __typename?: 'TranslateEverythingEntryProductList';
+  items: Array<TranslateEverythingEntryProduct>;
   totalItems: Scalars['Int']['output'];
 };
 
-export type TranslateEverythingEntryListOptions = {
+export type TranslateEverythingEntryProductListOptions = {
   /** Allows the results to be filtered */
-  filter?: InputMaybe<TranslateEverythingEntryFilterParameter>;
+  filter?: InputMaybe<TranslateEverythingEntryProductFilterParameter>;
   /** Specifies whether multiple top-level "filter" fields should be combined with a logical AND or OR operation. Defaults to AND. */
   filterOperator?: InputMaybe<LogicalOperator>;
   /** Skips the first n results, for use in pagination */
   skip?: InputMaybe<Scalars['Int']['input']>;
   /** Specifies which properties to sort the results by */
-  sort?: InputMaybe<TranslateEverythingEntrySortParameter>;
+  sort?: InputMaybe<TranslateEverythingEntryProductSortParameter>;
   /** Takes n results, for use in pagination */
   take?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type TranslateEverythingEntrySortParameter = {
+export type TranslateEverythingEntryProductSortParameter = {
   adminId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
@@ -6438,13 +6458,6 @@ export type TranslateEverythingEntrySortParameter = {
   targetText?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
 };
-
-/** Helps differentiate between what specific field was translated. */
-export enum TranslateEverythingProductKind {
-  DESCRIPTION = 'DESCRIPTION',
-  NAME = 'NAME',
-  SLUG = 'SLUG'
-}
 
 export type TranslateProductInput = {
   productId: Scalars['ID']['input'];

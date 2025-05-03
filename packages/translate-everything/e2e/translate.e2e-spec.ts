@@ -12,7 +12,7 @@ import {
   TranslateProductMutationVariables,
 } from "./types/generated-admin-types";
 
-describe("Email", { concurrent: true }, async () => {
+describe("Plugin Translate Everything", { concurrent: true }, async () => {
   const { server, adminClient } = createTestEnvironment({
     ...testConfig(8001),
     plugins: [
@@ -33,6 +33,30 @@ describe("Email", { concurrent: true }, async () => {
 
   afterAll(async () => {
     await server.destroy();
+  });
+
+  test("Fail due to non-existing product", async ({ expect }) => {
+    const productId = "1337"; // Doesnt exist
+    const sourceLanguage = LanguageCode.en;
+    const targetLanguage = LanguageCode.de;
+
+    const res = adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(TRANSLATE_PRODUCT, {
+      input: { productId, sourceLanguage, targetLanguage },
+    });
+
+    await expect(res).rejects.toThrow(`No Product with the id "${productId}" could be found`);
+  });
+
+  test("Fail due to missing source translation", async ({ expect }) => {
+    const productId = "1";
+    const sourceLanguage = LanguageCode.ru; // Doesnt exist
+    const targetLanguage = LanguageCode.de;
+
+    const res = adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(TRANSLATE_PRODUCT, {
+      input: { productId, sourceLanguage, targetLanguage },
+    });
+
+    await expect(res).rejects.toThrow("pluginTranslateEverything.error.sourceLanguageNotFound");
   });
 
   test("Successfully translate product", async ({ expect }) => {
@@ -64,7 +88,7 @@ describe("Email", { concurrent: true }, async () => {
     assert(target, `Failed to find target translation: ${targetLanguage}`);
 
     expect(target.name).toStrictEqual(testTranslator(source.name, sourceLanguage, targetLanguage));
-    expect(target.description).toStrictEqual(testTranslator(source.name, sourceLanguage, targetLanguage));
+    expect(target.description).toStrictEqual(testTranslator(source.description, sourceLanguage, targetLanguage));
     expect(target.slug).toStrictEqual(""); // TODO empty for now
 
     // // // Generated Entries

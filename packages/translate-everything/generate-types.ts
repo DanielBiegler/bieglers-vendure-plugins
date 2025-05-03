@@ -15,7 +15,10 @@ generateTypes(
   },
   {
     pluginDir: __dirname,
-    e2e: true,
+    e2e: {
+      admin: true,
+      shop: false,
+    },
     ui: false,
   },
 ).then(() => process.exit(0));

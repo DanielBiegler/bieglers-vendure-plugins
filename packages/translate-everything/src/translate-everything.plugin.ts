@@ -2,7 +2,7 @@ import { PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { adminSchema } from "./api/api-extensions";
 import { TranslateEverythingAdminResolver } from "./api/translate-everything.resolver";
 import { PermissionTranslateEverything, PermissionTranslateEverythingEntry, PLUGIN_INIT_OPTIONS } from "./constants";
-import { TranslateEverythingEntry } from "./translate-everything-entry.entity";
+import { TranslateEverythingEntryProduct } from "./translate-everything-entry.entity";
 import { TranslateEverythingService } from "./translate-everything.service";
 import { PluginTranslateEverythingOptions } from "./types";
 
@@ -24,7 +24,7 @@ import { PluginTranslateEverythingOptions } from "./types";
     schema: adminSchema,
     resolvers: [TranslateEverythingAdminResolver],
   },
-  entities: [TranslateEverythingEntry],
+  entities: [TranslateEverythingEntryProduct],
   configuration: (config) => {
     config.authOptions.customPermissions.push(PermissionTranslateEverything);
     config.authOptions.customPermissions.push(PermissionTranslateEverythingEntry);

@@ -1,27 +1,29 @@
-import { Administrator, DeepPartial, EntityId, ID, LanguageCode, VendureEntity } from "@vendure/core";
-import { Column, Entity, ManyToOne } from "typeorm";
-import { TranslateEverythingProductKind } from "./generated-admin-types";
+import {
+  Administrator,
+  Channel,
+  ChannelAware,
+  DeepPartial,
+  EntityId,
+  HasCustomFields,
+  ID,
+  LanguageCode,
+  Product,
+  VendureEntity,
+} from "@vendure/core";
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from "typeorm";
+import { TranslateEverythingEntryKindProduct } from "./generated-admin-types";
 
-// TODO might make sense to make entities per translated entity due to translationkind and
-// easier search via relationships for example ProductId, ProductVariantId, etc.
-@Entity()
-export class TranslateEverythingEntry extends VendureEntity {
-  constructor(input?: DeepPartial<TranslateEverythingEntry>) {
-    super(input);
-  }
+export class TranslateEverythingEntryCustomFields {}
 
-  @EntityId({ nullable: false })
-  adminId: ID;
-
-  // sqlite adapter doesnt support enum-type, lets use simple-enum
-  @Column("simple-enum", { enum: TranslateEverythingProductKind })
-  translationKind: TranslateEverythingProductKind;
-
+export abstract class TranslateEverythingEntry extends VendureEntity implements ChannelAware, HasCustomFields {
   /**
    * Who initiated this translation.
    */
   @ManyToOne((type) => Administrator, { nullable: false })
   admin: Administrator;
+
+  @EntityId()
+  adminId: ID;
 
   // sqlite adapter doesnt support enum-type, lets use simple-enum
   @Column("simple-enum", { enum: LanguageCode })
@@ -43,7 +45,35 @@ export class TranslateEverythingEntry extends VendureEntity {
   @Column("text")
   targetText: string;
 
-  // TODO channelaware
+  @ManyToMany(() => Channel)
+  @JoinTable()
+  channels: Channel[];
 
-  // TODO might want custom fields on this for others to extend
+  // TODO dont know if this should be specific per entity
+  // Check how the usage feels in tests and decide after
+  @Column((type) => TranslateEverythingEntryCustomFields)
+  customFields: TranslateEverythingEntryCustomFields;
+}
+
+export class TranslateEverythingEntryProductCustomFields {}
+
+@Entity("translate_everything_entry_product")
+export class TranslateEverythingEntryProduct extends TranslateEverythingEntry {
+  // TODO maybe rather type out the needed fields instead of DeepPartial afterwards
+  constructor(input?: DeepPartial<TranslateEverythingEntryProduct>) {
+    super(input);
+  }
+
+  // sqlite adapter doesnt support enum-type, lets use simple-enum
+  @Column("simple-enum", { enum: TranslateEverythingEntryKindProduct })
+  translationKind: TranslateEverythingEntryKindProduct;
+
+  @EntityId()
+  productId: ID;
+
+  @ManyToOne((type) => Product, { nullable: false, onDelete: "CASCADE" })
+  product: Product;
+
+  // @Column((type) => TranslateEverythingEntryProductCustomFields)
+  // customFields: TranslateEverythingEntryProductCustomFields;
 }
