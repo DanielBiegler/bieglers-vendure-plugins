@@ -2910,6 +2910,7 @@ export type Mutation = {
   modifyOrder: ModifyOrderResult;
   /** Move a Collection to a different parent or index */
   moveCollection: Collection;
+  pluginTranslateProduct: Array<TranslateEverythingEntryProduct>;
   refundOrder: RefundOrderResult;
   reindex: Job;
   /** Removes Collections from the specified Channel */
@@ -2963,7 +2964,6 @@ export type Mutation = {
   transitionFulfillmentToState: TransitionFulfillmentToStateResult;
   transitionOrderToState?: Maybe<TransitionOrderToStateResult>;
   transitionPaymentToState: TransitionPaymentToStateResult;
-  translateProduct: Product;
   /** Unsets the billing address for a draft Order */
   unsetDraftOrderBillingAddress: Order;
   /** Unsets the shipping address for a draft Order */
@@ -3550,6 +3550,11 @@ export type MutationMoveCollectionArgs = {
 };
 
 
+export type MutationPluginTranslateProductArgs = {
+  input: TranslateProductInput;
+};
+
+
 export type MutationRefundOrderArgs = {
   input: RefundOrderInput;
 };
@@ -3698,11 +3703,6 @@ export type MutationTransitionOrderToStateArgs = {
 export type MutationTransitionPaymentToStateArgs = {
   id: Scalars['ID']['input'];
   state: Scalars['String']['input'];
-};
-
-
-export type MutationTranslateProductArgs = {
-  input: TranslateProductInput;
 };
 
 
@@ -6409,6 +6409,8 @@ export type TranslateEverythingEntryProduct = Node & TranslateEverythingEntry & 
   adminId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
+  product: Product;
+  productId: Scalars['ID']['output'];
   sourceLanguage: LanguageCode;
   sourceText: Scalars['String']['output'];
   targetLanguage: LanguageCode;
@@ -6424,6 +6426,7 @@ export type TranslateEverythingEntryProductFilterParameter = {
   adminId?: InputMaybe<IdOperators>;
   createdAt?: InputMaybe<DateOperators>;
   id?: InputMaybe<IdOperators>;
+  productId?: InputMaybe<IdOperators>;
   sourceLanguage?: InputMaybe<StringOperators>;
   sourceText?: InputMaybe<StringOperators>;
   targetLanguage?: InputMaybe<StringOperators>;
@@ -6455,6 +6458,7 @@ export type TranslateEverythingEntryProductSortParameter = {
   adminId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
+  productId?: InputMaybe<SortOrder>;
   sourceText?: InputMaybe<SortOrder>;
   targetText?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
@@ -6851,7 +6855,13 @@ export type TranslateProductMutationVariables = Exact<{
 }>;
 
 
-export type TranslateProductMutation = { __typename?: 'Mutation', translateProduct: { __typename: 'Product', name: string, description: string, slug: string, translations: Array<{ __typename?: 'ProductTranslation', languageCode: LanguageCode, name: string, description: string, slug: string }> } };
+export type TranslateProductMutation = { __typename?: 'Mutation', pluginTranslateProduct: Array<{ __typename: 'TranslateEverythingEntryProduct', id: string | number, createdAt: any, updatedAt: any, adminId: string | number, sourceLanguage: LanguageCode, targetLanguage: LanguageCode, sourceText: string, targetText: string, translationKind: TranslateEverythingEntryKindProduct, productId: string | number, admin: { __typename?: 'Administrator', id: string | number }, product: { __typename?: 'Product', id: string | number, name: string, description: string, slug: string, translations: Array<{ __typename?: 'ProductTranslation', languageCode: LanguageCode, name: string, description: string, slug: string }> } }> };
+
+export type GetActiveAdminIdQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export const TranslateProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"translateProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"TranslateProductInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"translateProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Product"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}}]}}]}}]}}]}}]} as unknown as DocumentNode<TranslateProductMutation, TranslateProductMutationVariables>;
+export type GetActiveAdminIdQuery = { __typename?: 'Query', activeAdministrator?: { __typename?: 'Administrator', id: string | number } };
+
+
+export const TranslateProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"translateProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"TranslateProductInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginTranslateProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"adminId"}},{"kind":"Field","name":{"kind":"Name","value":"admin"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"sourceLanguage"}},{"kind":"Field","name":{"kind":"Name","value":"targetLanguage"}},{"kind":"Field","name":{"kind":"Name","value":"sourceText"}},{"kind":"Field","name":{"kind":"Name","value":"targetText"}},{"kind":"Field","name":{"kind":"Name","value":"translationKind"}},{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}}]}}]}}]}}]}}]} as unknown as DocumentNode<TranslateProductMutation, TranslateProductMutationVariables>;
+export const GetActiveAdminIdDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getActiveAdminId"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeAdministrator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<GetActiveAdminIdQuery, GetActiveAdminIdQueryVariables>;

@@ -1,16 +1,63 @@
+import { ID } from "@vendure/core";
 import { createTestEnvironment } from "@vendure/testing";
 import path from "path";
-import { afterAll, assert, beforeAll, describe, test } from "vitest";
+import { afterAll, assert, beforeAll, describe, ExpectStatic, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { TranslateEverythingPlugin } from "../src";
 import { TestTranslationStrategy, testTranslator } from "./fixtures/strategy";
-import { TRANSLATE_PRODUCT } from "./graphql/admin-e2e-definitions";
+import { GET_CURRENT_ADMIN, TRANSLATE_PRODUCT } from "./graphql/admin-e2e-definitions";
 import {
+  GetActiveAdminIdQuery,
+  GetActiveAdminIdQueryVariables,
   LanguageCode,
+  TranslateEverythingEntryKindProduct as TKindProduct,
+  TranslateEverythingEntryProduct,
   TranslateProductMutation,
   TranslateProductMutationVariables,
 } from "./types/generated-admin-types";
+
+/**
+ * Generic helper to keep testing of translation entries DRY
+ * // TODO this whole thing seems to complicated, lets dumb it down
+ */
+async function testTranslation(
+  expect: ExpectStatic,
+  sourceLanguage: LanguageCode,
+  targetLanguage: LanguageCode,
+  adminId: ID,
+  productId: ID,
+  entry: TranslateEverythingEntryProduct,
+  kind: TKindProduct,
+) {
+  assert(entry.__typename === "TranslateEverythingEntryProduct");
+  assert(entry.product.translations.length === 2); // 1. default, 2. translated
+
+  const translationSource = entry.product.translations.find((t) => t.languageCode === sourceLanguage);
+  assert(translationSource);
+  const translationTarget = entry.product.translations.find((t) => t.languageCode === targetLanguage);
+  assert(translationTarget);
+
+  let field: keyof typeof translationSource;
+  if (kind === TKindProduct.NAME) field = "name";
+  else if (kind === TKindProduct.DESCRIPTION) field = "description";
+  else if (kind === TKindProduct.SLUG) field = "slug";
+  else throw new Error(`Unknown TranslateEverythingEntryKindProduct: ${kind}`); // TODO custom fields?
+
+  expect(entry.sourceLanguage).toStrictEqual(sourceLanguage);
+  expect(entry.targetLanguage).toStrictEqual(targetLanguage);
+  expect(entry.translationKind).toStrictEqual(kind);
+
+  expect(entry.sourceText).toStrictEqual(translationSource[field]);
+  expect(entry.targetText).toStrictEqual(translationTarget[field]);
+  expect(entry.targetText).toStrictEqual(testTranslator(translationSource[field], sourceLanguage, targetLanguage));
+
+  expect(entry.adminId).toStrictEqual(adminId);
+  expect(entry.admin.id).toStrictEqual(adminId);
+
+  expect(entry.productId).toStrictEqual(productId);
+  expect(entry.product.id).toStrictEqual(productId);
+}
 
 describe("Plugin Translate Everything", { concurrent: true }, async () => {
   const { server, adminClient } = createTestEnvironment({
@@ -56,11 +103,12 @@ describe("Plugin Translate Everything", { concurrent: true }, async () => {
       input: { productId, sourceLanguage, targetLanguage },
     });
 
+    // TODO see https://docs.vendure.io/guides/developer-guide/translations/#server-message-translations
     await expect(res).rejects.toThrow("pluginTranslateEverything.error.sourceLanguageNotFound");
   });
 
   test("Successfully translate product", async ({ expect }) => {
-    const productId = "1";
+    const productId = "T_1";
     const sourceLanguage = LanguageCode.en;
     const targetLanguage = LanguageCode.de;
 
@@ -69,30 +117,41 @@ describe("Plugin Translate Everything", { concurrent: true }, async () => {
       { input: { productId, sourceLanguage, targetLanguage } },
     );
 
-    expect(res.translateProduct.__typename).toStrictEqual("Product");
+    const resAdmin = await adminClient.query<GetActiveAdminIdQuery, GetActiveAdminIdQueryVariables>(GET_CURRENT_ADMIN);
+    assert(resAdmin.activeAdministrator);
 
-    // // // Source Translation
+    const translationName = res.pluginTranslateProduct.find((tp) => tp.translationKind === TKindProduct.NAME);
+    assert(translationName, `Failed to find translation entry with kind: ${TKindProduct.NAME}`);
 
-    const source = res.translateProduct.translations.find((t) => t.languageCode === sourceLanguage);
-    assert(source, `Failed to find source translation: ${sourceLanguage}`);
+    const translationDesc = res.pluginTranslateProduct.find((tp) => tp.translationKind === TKindProduct.DESCRIPTION);
+    assert(translationDesc, `Failed to find translation entry with kind: ${TKindProduct.DESCRIPTION}`);
 
-    expect(source.name).toStrictEqual("Laptop");
-    expect(source.description).toStrictEqual(
-      "Now equipped with seventh-generation Intel Core processors, Laptop is snappier than ever. From daily tasks like launching apps and opening files to more advanced computing, you can power through your day thanks to faster SSDs and Turbo Boost processing up to 3.6GHz.",
+    // Translated Name
+
+    await testTranslation(
+      expect,
+      sourceLanguage,
+      targetLanguage,
+      resAdmin.activeAdministrator.id,
+      productId,
+      // TODO typescript error
+      translationName,
+      TKindProduct.NAME,
     );
-    expect(source.slug).toStrictEqual("laptop");
 
-    // // // Target Translation
+    // Translated Description
 
-    const target = res.translateProduct.translations.find((t) => t.languageCode === targetLanguage);
-    assert(target, `Failed to find target translation: ${targetLanguage}`);
+    await testTranslation(
+      expect,
+      sourceLanguage,
+      targetLanguage,
+      resAdmin.activeAdministrator.id,
+      productId,
+      // TODO typescript error
+      translationDesc,
+      TKindProduct.DESCRIPTION,
+    );
 
-    expect(target.name).toStrictEqual(testTranslator(source.name, sourceLanguage, targetLanguage));
-    expect(target.description).toStrictEqual(testTranslator(source.description, sourceLanguage, targetLanguage));
-    expect(target.slug).toStrictEqual(""); // TODO empty for now
-
-    // // // Generated Entries
-
-    // TODO
+    // TODO slug?
   });
 });

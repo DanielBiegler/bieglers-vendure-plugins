@@ -46,6 +46,9 @@ export const adminSchema = gql`
     Helps differentiate between what specific field was translated.
     """
     translationKind: TranslateEverythingEntryKindProduct!
+
+    productId: ID!
+    product: Product!
   }
 
   type TranslateEverythingEntryProductList implements PaginatedList {
@@ -72,6 +75,6 @@ export const adminSchema = gql`
   extend type Mutation {
     # TODO rather return a union with notfound etc or throw error?
     # union is nice because its explicit and typed
-    translateProduct(input: TranslateProductInput!): Product!
+    pluginTranslateProduct(input: TranslateProductInput!): [TranslateEverythingEntryProduct!]!
   }
 `;

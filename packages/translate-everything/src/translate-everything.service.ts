@@ -15,7 +15,6 @@ import {
   RelationPaths,
   RequestContext,
   TransactionalConnection,
-  Translated,
   Translation,
   UnauthorizedError,
   UserInputError,
@@ -62,10 +61,10 @@ export class TranslateEverythingService {
       sourceLanguage: LanguageCode;
       targetLanguage: LanguageCode;
     },
-    relations?: RelationPaths<Product>,
-  ): Promise<Translated<Product>> {
+    relations?: RelationPaths<TranslateEverythingEntryProduct>,
+  ): Promise<TranslateEverythingEntryProduct[]> {
     // ProductService.findOne is ChannelAware, not manually needed here
-    const product = await this.productService.findOne(ctx, input.productId, relations);
+    let product = await this.productService.findOne(ctx, input.productId);
     if (!product) throw new EntityNotFoundError("Product", input.productId);
 
     if (!ctx.activeUserId) throw new UnauthorizedError();
@@ -85,7 +84,7 @@ export class TranslateEverythingService {
         languageCode: input.targetLanguage,
       });
 
-    // Which fields need translating: Name, slug, description?
+    // Which fields need translating: Name, description, slug?
     const isMissingName = sourceTranslation.name !== "";
     const isMissingDesc = sourceTranslation.description !== "";
     const isMissingSlug = sourceTranslation.slug !== "";
@@ -96,19 +95,6 @@ export class TranslateEverythingService {
         sourceTranslation.languageCode,
         targetTranslation.languageCode,
       );
-
-      await this.createEntry(
-        ctx,
-        new TranslateEverythingEntryProduct({
-          sourceLanguage: input.sourceLanguage,
-          targetLanguage: input.targetLanguage,
-          sourceText: sourceTranslation.name,
-          targetText: targetTranslation.name,
-          translationKind: TranslateEverythingEntryKindProduct.NAME,
-          admin,
-          product,
-        }),
-      );
     }
 
     if (isMissingDesc) {
@@ -116,20 +102,6 @@ export class TranslateEverythingService {
         sourceTranslation.description,
         sourceTranslation.languageCode,
         targetTranslation.languageCode,
-      );
-
-      await this.createEntry(
-        ctx,
-        new TranslateEverythingEntryProduct({
-          sourceLanguage: input.sourceLanguage,
-          targetLanguage: input.targetLanguage,
-          sourceText: sourceTranslation.description,
-          targetText: targetTranslation.description,
-          adminId: ctx.activeUserId,
-          translationKind: TranslateEverythingEntryKindProduct.DESCRIPTION,
-          admin,
-          product,
-        }),
       );
     }
 
@@ -140,9 +112,54 @@ export class TranslateEverythingService {
       targetTranslation.slug = "";
     }
 
-    return this.productService.update(ctx, {
+    const updatedProduct = await this.productService.update(ctx, {
       id: product.id,
       translations: [targetTranslation],
     });
+
+    // Constructing the output after the translations so that we can use the updated-product directly
+    // Otherwise we would have to mutate the entries which is more error prone imo
+
+    const output: TranslateEverythingEntryProduct[] = [];
+
+    if (targetTranslation.name)
+      output.push(
+        await this.createEntry(
+          ctx,
+          new TranslateEverythingEntryProduct({
+            sourceLanguage: input.sourceLanguage,
+            targetLanguage: input.targetLanguage,
+            sourceText: sourceTranslation.name,
+            targetText: targetTranslation.name,
+            translationKind: TranslateEverythingEntryKindProduct.NAME,
+            admin,
+            adminId: admin.id,
+            product: updatedProduct,
+            productId: updatedProduct.id,
+          }),
+        ),
+      );
+
+    if (targetTranslation.description)
+      output.push(
+        await this.createEntry(
+          ctx,
+          new TranslateEverythingEntryProduct({
+            sourceLanguage: input.sourceLanguage,
+            targetLanguage: input.targetLanguage,
+            sourceText: sourceTranslation.description,
+            targetText: targetTranslation.description,
+            translationKind: TranslateEverythingEntryKindProduct.DESCRIPTION,
+            admin,
+            adminId: admin.id,
+            product: updatedProduct,
+            productId: updatedProduct.id,
+          }),
+        ),
+      );
+
+    // TODO slug at some point
+
+    return output;
   }
 }

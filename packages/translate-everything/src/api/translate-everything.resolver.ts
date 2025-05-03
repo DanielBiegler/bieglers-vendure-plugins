@@ -1,7 +1,8 @@
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, Product, RelationPaths, Relations, RequestContext, Transaction, Translated } from "@vendure/core";
+import { Allow, Ctx, RelationPaths, Relations, RequestContext, Transaction } from "@vendure/core";
 import { PermissionTranslateEverything } from "../constants";
 import { TranslateProductInput } from "../generated-admin-types";
+import { TranslateEverythingEntryProduct } from "../translate-everything-entry.entity";
 import { TranslateEverythingService } from "../translate-everything.service";
 
 @Resolver()
@@ -20,11 +21,11 @@ export class TranslateEverythingAdminResolver {
   @Mutation()
   @Transaction()
   @Allow(PermissionTranslateEverything.Permission)
-  async translateProduct(
+  async pluginTranslateProduct(
     @Ctx() ctx: RequestContext,
     @Args() args: { input: TranslateProductInput },
-    @Relations(Product) relations?: RelationPaths<Product>,
-  ): Promise<Translated<Product>> {
+    @Relations(TranslateEverythingEntryProduct) relations?: RelationPaths<TranslateEverythingEntryProduct>,
+  ): Promise<TranslateEverythingEntryProduct[]> {
     return this.tService.translateProduct(ctx, args.input, relations);
   }
 }

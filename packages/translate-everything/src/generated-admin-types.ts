@@ -2909,6 +2909,7 @@ export type Mutation = {
   modifyOrder: ModifyOrderResult;
   /** Move a Collection to a different parent or index */
   moveCollection: Collection;
+  pluginTranslateProduct: Array<TranslateEverythingEntryProduct>;
   refundOrder: RefundOrderResult;
   reindex: Job;
   /** Removes Collections from the specified Channel */
@@ -2962,7 +2963,6 @@ export type Mutation = {
   transitionFulfillmentToState: TransitionFulfillmentToStateResult;
   transitionOrderToState?: Maybe<TransitionOrderToStateResult>;
   transitionPaymentToState: TransitionPaymentToStateResult;
-  translateProduct: Product;
   /** Unsets the billing address for a draft Order */
   unsetDraftOrderBillingAddress: Order;
   /** Unsets the shipping address for a draft Order */
@@ -3549,6 +3549,11 @@ export type MutationMoveCollectionArgs = {
 };
 
 
+export type MutationPluginTranslateProductArgs = {
+  input: TranslateProductInput;
+};
+
+
 export type MutationRefundOrderArgs = {
   input: RefundOrderInput;
 };
@@ -3697,11 +3702,6 @@ export type MutationTransitionOrderToStateArgs = {
 export type MutationTransitionPaymentToStateArgs = {
   id: Scalars['ID']['input'];
   state: Scalars['String']['input'];
-};
-
-
-export type MutationTranslateProductArgs = {
-  input: TranslateProductInput;
 };
 
 
@@ -6408,6 +6408,8 @@ export type TranslateEverythingEntryProduct = Node & TranslateEverythingEntry & 
   adminId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
+  product: Product;
+  productId: Scalars['ID']['output'];
   sourceLanguage: LanguageCode;
   sourceText: Scalars['String']['output'];
   targetLanguage: LanguageCode;
@@ -6423,6 +6425,7 @@ export type TranslateEverythingEntryProductFilterParameter = {
   adminId?: InputMaybe<IdOperators>;
   createdAt?: InputMaybe<DateOperators>;
   id?: InputMaybe<IdOperators>;
+  productId?: InputMaybe<IdOperators>;
   sourceLanguage?: InputMaybe<StringOperators>;
   sourceText?: InputMaybe<StringOperators>;
   targetLanguage?: InputMaybe<StringOperators>;
@@ -6454,6 +6457,7 @@ export type TranslateEverythingEntryProductSortParameter = {
   adminId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
+  productId?: InputMaybe<SortOrder>;
   sourceText?: InputMaybe<SortOrder>;
   targetText?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
