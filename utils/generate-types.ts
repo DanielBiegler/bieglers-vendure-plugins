@@ -45,7 +45,12 @@ export async function generateTypes(
     /**
      * Whether to generate types for e2e tests
      */
-    e2e: boolean;
+    e2e:
+      | boolean
+      | {
+          admin: boolean;
+          shop: boolean;
+        };
   },
 ) {
   const mergedConfig = mergeConfig(config, pluginConfig);
@@ -86,20 +91,24 @@ export async function generateTypes(
     tasks.push(generateTypes("admin", "src/ui/generated-types.ts", path.join(options.pluginDir, "src/ui/**/*.ts")));
   }
 
-  if (options.e2e) {
+  if (options.e2e === true || (typeof options.e2e === "object" && options.e2e.admin)) {
     tasks.push(
       generateTypes(
         "admin",
         "e2e/types/generated-admin-types.ts",
         path.join(options.pluginDir, "e2e/graphql/admin-e2e-definitions.ts"),
       ),
-      generateTypes(
-        "shop",
-        "e2e/types/generated-shop-types.ts",
-        path.join(options.pluginDir, "e2e/graphql/shop-e2e-definitions.ts"),
-      ),
     );
   }
+
+  if (options.e2e === true || (typeof options.e2e === "object" && options.e2e.shop)) {
+    generateTypes(
+      "shop",
+      "e2e/types/generated-shop-types.ts",
+      path.join(options.pluginDir, "e2e/graphql/shop-e2e-definitions.ts"),
+    );
+  }
+
   await Promise.allSettled(tasks);
   await app.close();
 }
