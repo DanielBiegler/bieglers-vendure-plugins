@@ -1,8 +1,16 @@
-import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from "@nestjs/common";
-import { APP_INTERCEPTOR } from "@nestjs/core";
+import {
+  CallHandler,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  NestInterceptor,
+  OnApplicationBootstrap,
+} from "@nestjs/common";
+import { APP_INTERCEPTOR, ModuleRef } from "@nestjs/core";
 import { GqlContextType, GqlExecutionContext } from "@nestjs/graphql";
 import {
   EventBus,
+  Injector,
   NativeAuthStrategyError,
   PluginCommonModule,
   RequestContext,
@@ -38,13 +46,21 @@ type _isAllowedResult = { isAllowed: boolean; results: AssertFunctionResult[] };
  * This means we must make sure to exit as early as possible in order to not slow down the Vendure instance.
  */
 @Injectable()
-export class UserRegistrationInterceptor implements NestInterceptor {
+export class UserRegistrationInterceptor implements NestInterceptor, OnApplicationBootstrap {
+  private injector: Injector | undefined;
+
   constructor(
     private eventBus: EventBus,
+    private moduleRef: ModuleRef,
     private requestContextService: RequestContextService,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: PluginUserRegistrationGuardOptions,
   ) {}
+
+  /** @internal */
+  async onApplicationBootstrap(): Promise<void> {
+    this.injector = new Injector(this.moduleRef);
+  }
 
   /** @internal */
   private async _isAllowed(
@@ -52,7 +68,17 @@ export class UserRegistrationInterceptor implements NestInterceptor {
     assertFunctions: AssertFunctionShopApi<any>[] | AssertFunctionAdminApi<any>[],
     args: MutationRegisterCustomerAccountArgs | MutationCreateAdministratorArgs,
   ): Promise<_isAllowedResult> {
-    const promises = assertFunctions.map((f) => f(ctx, args));
+    /**
+     * This should never happen, because Nestjs initializes the injector via `this.onApplicationBootstrap`,
+     * but TypeScript can't guarantee that the value of `this.injector` won't change between checking and execution of the closure.
+     * Each closure creates a new context where previous type narrowing isn't automatically carried forward.
+     * Capturing the injector locally like this let's us carry it into the closure in a type-safe manner,
+     * without using non-null assertion operator.
+     */
+    if (!this.injector) throw new Error("Injector is not initialized");
+    const _capturedInjector = this.injector;
+
+    const promises = assertFunctions.map((f) => f(ctx, args, _capturedInjector));
     const results = await Promise.allSettled(promises);
     const rejecteds = results.filter((r) => r.status === "rejected");
     if (rejecteds.length !== 0)
