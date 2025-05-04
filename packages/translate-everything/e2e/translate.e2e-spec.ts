@@ -1,7 +1,6 @@
-import { ID } from "@vendure/core";
 import { createTestEnvironment } from "@vendure/testing";
 import path from "path";
-import { afterAll, assert, beforeAll, describe, ExpectStatic, test } from "vitest";
+import { afterAll, assert, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { TranslateEverythingPlugin } from "../src";
@@ -12,52 +11,9 @@ import {
   GetActiveAdminIdQueryVariables,
   LanguageCode,
   TranslateEverythingEntryKindProduct as TKindProduct,
-  TranslateEverythingEntryProduct,
   TranslateProductMutation,
   TranslateProductMutationVariables,
 } from "./types/generated-admin-types";
-
-/**
- * Generic helper to keep testing of translation entries DRY
- * // TODO this whole thing seems to complicated, lets dumb it down
- */
-async function testTranslation(
-  expect: ExpectStatic,
-  sourceLanguage: LanguageCode,
-  targetLanguage: LanguageCode,
-  adminId: ID,
-  productId: ID,
-  entry: TranslateEverythingEntryProduct,
-  kind: TKindProduct,
-) {
-  assert(entry.__typename === "TranslateEverythingEntryProduct");
-  assert(entry.product.translations.length === 2); // 1. default, 2. translated
-
-  const translationSource = entry.product.translations.find((t) => t.languageCode === sourceLanguage);
-  assert(translationSource);
-  const translationTarget = entry.product.translations.find((t) => t.languageCode === targetLanguage);
-  assert(translationTarget);
-
-  let field: keyof typeof translationSource;
-  if (kind === TKindProduct.NAME) field = "name";
-  else if (kind === TKindProduct.DESCRIPTION) field = "description";
-  else if (kind === TKindProduct.SLUG) field = "slug";
-  else throw new Error(`Unknown TranslateEverythingEntryKindProduct: ${kind}`); // TODO custom fields?
-
-  expect(entry.sourceLanguage).toStrictEqual(sourceLanguage);
-  expect(entry.targetLanguage).toStrictEqual(targetLanguage);
-  expect(entry.translationKind).toStrictEqual(kind);
-
-  expect(entry.sourceText).toStrictEqual(translationSource[field]);
-  expect(entry.targetText).toStrictEqual(translationTarget[field]);
-  expect(entry.targetText).toStrictEqual(testTranslator(translationSource[field], sourceLanguage, targetLanguage));
-
-  expect(entry.adminId).toStrictEqual(adminId);
-  expect(entry.admin.id).toStrictEqual(adminId);
-
-  expect(entry.productId).toStrictEqual(productId);
-  expect(entry.product.id).toStrictEqual(productId);
-}
 
 describe("Plugin Translate Everything", { concurrent: true }, async () => {
   const { server, adminClient } = createTestEnvironment({
@@ -103,8 +59,7 @@ describe("Plugin Translate Everything", { concurrent: true }, async () => {
       input: { productId, sourceLanguage, targetLanguage },
     });
 
-    // TODO see https://docs.vendure.io/guides/developer-guide/translations/#server-message-translations
-    await expect(res).rejects.toThrow("pluginTranslateEverything.error.sourceLanguageNotFound");
+    await expect(res).rejects.toThrow("Product(id=1) has no source ProductTranslation with LanguageCode.ru");
   });
 
   test("Successfully translate product", async ({ expect }) => {
@@ -128,29 +83,55 @@ describe("Plugin Translate Everything", { concurrent: true }, async () => {
 
     // Translated Name
 
-    await testTranslation(
-      expect,
-      sourceLanguage,
-      targetLanguage,
-      resAdmin.activeAdministrator.id,
-      productId,
-      // TODO typescript error
-      translationName,
-      TKindProduct.NAME,
+    assert(translationName.__typename === "TranslateEverythingEntryProduct");
+    assert(translationName.product.translations.length === 2); // 1. default, 2. translated
+
+    const translationSourceName = translationName.product.translations.find((t) => t.languageCode === sourceLanguage);
+    assert(translationSourceName);
+    const translationTargetName = translationName.product.translations.find((t) => t.languageCode === targetLanguage);
+    assert(translationTargetName);
+
+    expect(translationName.sourceLanguage).toStrictEqual(sourceLanguage);
+    expect(translationName.targetLanguage).toStrictEqual(targetLanguage);
+    expect(translationName.translationKind).toStrictEqual(TKindProduct.NAME);
+
+    expect(translationName.sourceText).toStrictEqual(translationSourceName.name);
+    expect(translationName.targetText).toStrictEqual(translationTargetName.name);
+    expect(translationName.targetText).toStrictEqual(
+      testTranslator(translationSourceName.name, sourceLanguage, targetLanguage),
     );
+
+    expect(translationName.adminId).toStrictEqual(resAdmin.activeAdministrator.id);
+    expect(translationName.admin.id).toStrictEqual(resAdmin.activeAdministrator.id);
+
+    expect(translationName.productId).toStrictEqual(productId);
+    expect(translationName.product.id).toStrictEqual(productId);
 
     // Translated Description
 
-    await testTranslation(
-      expect,
-      sourceLanguage,
-      targetLanguage,
-      resAdmin.activeAdministrator.id,
-      productId,
-      // TODO typescript error
-      translationDesc,
-      TKindProduct.DESCRIPTION,
+    assert(translationDesc.__typename === "TranslateEverythingEntryProduct");
+    assert(translationDesc.product.translations.length === 2); // 1. default, 2. translated
+
+    const translationSourceDesc = translationDesc.product.translations.find((t) => t.languageCode === sourceLanguage);
+    assert(translationSourceDesc);
+    const translationTargetDesc = translationDesc.product.translations.find((t) => t.languageCode === targetLanguage);
+    assert(translationTargetDesc);
+
+    expect(translationDesc.sourceLanguage).toStrictEqual(sourceLanguage);
+    expect(translationDesc.targetLanguage).toStrictEqual(targetLanguage);
+    expect(translationDesc.translationKind).toStrictEqual(TKindProduct.DESCRIPTION);
+
+    expect(translationDesc.sourceText).toStrictEqual(translationSourceDesc.description);
+    expect(translationDesc.targetText).toStrictEqual(translationTargetDesc.description);
+    expect(translationDesc.targetText).toStrictEqual(
+      testTranslator(translationSourceDesc.description, sourceLanguage, targetLanguage),
     );
+
+    expect(translationDesc.adminId).toStrictEqual(resAdmin.activeAdministrator.id);
+    expect(translationDesc.admin.id).toStrictEqual(resAdmin.activeAdministrator.id);
+
+    expect(translationDesc.productId).toStrictEqual(productId);
+    expect(translationDesc.product.id).toStrictEqual(productId);
 
     // TODO slug?
   });
