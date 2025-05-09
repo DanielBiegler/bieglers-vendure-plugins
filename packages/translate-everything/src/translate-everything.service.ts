@@ -6,8 +6,6 @@ import {
   EntityNotFoundError,
   FacetService,
   FacetValueService,
-  ID,
-  LanguageCode,
   ListQueryBuilder,
   Product,
   ProductService,
@@ -20,7 +18,7 @@ import {
   UserInputError,
 } from "@vendure/core";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
-import { TranslateEverythingEntryKindProduct } from "./generated-admin-types";
+import { TranslateEverythingEntryKindProduct, TranslateProductInput } from "./generated-admin-types";
 import { TranslateEverythingEntryProduct } from "./translate-everything-entry.entity";
 import { PluginTranslateEverythingOptions } from "./types";
 
@@ -56,11 +54,7 @@ export class TranslateEverythingService {
 
   async translateProduct(
     ctx: RequestContext,
-    input: {
-      productId: ID;
-      sourceLanguage: LanguageCode;
-      targetLanguage: LanguageCode;
-    },
+    input: TranslateProductInput,
     relations?: RelationPaths<TranslateEverythingEntryProduct>,
   ): Promise<TranslateEverythingEntryProduct[]> {
     // ProductService.findOne is ChannelAware, not manually needed here
@@ -85,11 +79,13 @@ export class TranslateEverythingService {
       });
 
     // Which fields need translating: Name, description, slug?
-    const isMissingName = sourceTranslation.name !== "";
-    const isMissingDesc = sourceTranslation.description !== "";
-    const isMissingSlug = sourceTranslation.slug !== "";
+    // Only translate if the source has text and theres no translation or overwrite is true
+    const shouldTranslateName = sourceTranslation.name && (!targetTranslation.name || input.overwrite?.name);
+    const shouldTranslateDescription =
+      sourceTranslation.description && (!targetTranslation.description || input.overwrite?.description);
+    const shouldTranslateSlug = sourceTranslation.slug && (!targetTranslation.slug || input.overwrite?.slug);
 
-    if (isMissingName) {
+    if (shouldTranslateName) {
       targetTranslation.name = await this.options.translationStrategy.translateString(
         sourceTranslation.name,
         sourceTranslation.languageCode,
@@ -97,7 +93,7 @@ export class TranslateEverythingService {
       );
     }
 
-    if (isMissingDesc) {
+    if (shouldTranslateDescription) {
       targetTranslation.description = await this.options.translationStrategy.translateString(
         sourceTranslation.description,
         sourceTranslation.languageCode,
@@ -105,7 +101,7 @@ export class TranslateEverythingService {
       );
     }
 
-    if (isMissingSlug) {
+    if (shouldTranslateSlug) {
       // Slug is subjective - Might be better to trim, normalize and slugify the name
       // Use SlugValidator after?
       // TODO skip for now
@@ -122,7 +118,7 @@ export class TranslateEverythingService {
 
     const output: TranslateEverythingEntryProduct[] = [];
 
-    if (targetTranslation.name)
+    if (shouldTranslateName)
       output.push(
         await this.createEntry(
           ctx,
@@ -140,7 +136,7 @@ export class TranslateEverythingService {
         ),
       );
 
-    if (targetTranslation.description)
+    if (shouldTranslateDescription)
       output.push(
         await this.createEntry(
           ctx,

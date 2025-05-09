@@ -6464,9 +6464,21 @@ export type TranslateEverythingEntryProductSortParameter = {
 };
 
 export type TranslateProductInput = {
+  /** By default prior existing translations will not get overwritten by a new translation. */
+  overwrite?: InputMaybe<TranslateProductOverwriteInput>;
   productId: Scalars['ID']['input'];
   sourceLanguage: LanguageCode;
   targetLanguage: LanguageCode;
+};
+
+/** Granular options for overwriting properties */
+export type TranslateProductOverwriteInput = {
+  /** @default false */
+  description?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @default false */
+  name?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @default false */
+  slug?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type UpdateActiveAdministratorInput = {

@@ -66,10 +66,32 @@ export const adminSchema = gql`
     ): TranslateEverythingEntryProductList!
   }
 
+  """
+  Granular options for overwriting properties
+  """
+  input TranslateProductOverwriteInput {
+    """
+    @default false
+    """
+    name: Boolean
+    """
+    @default false
+    """
+    description: Boolean
+    """
+    @default false
+    """
+    slug: Boolean
+  }
+
   input TranslateProductInput {
     productId: ID!
     sourceLanguage: LanguageCode!
     targetLanguage: LanguageCode!
+    """
+    By default prior existing translations will not get overwritten by a new translation.
+    """
+    overwrite: TranslateProductOverwriteInput
   }
 
   extend type Mutation {

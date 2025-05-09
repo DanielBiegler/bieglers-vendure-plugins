@@ -72,6 +72,8 @@ describe("Plugin Translate Everything", { concurrent: true }, async () => {
       { input: { productId, sourceLanguage, targetLanguage } },
     );
 
+    expect(res.pluginTranslateProduct.length).toStrictEqual(2); // Name, Description
+
     const resAdmin = await adminClient.query<GetActiveAdminIdQuery, GetActiveAdminIdQueryVariables>(GET_CURRENT_ADMIN);
     assert(resAdmin.activeAdministrator);
 
@@ -134,5 +136,76 @@ describe("Plugin Translate Everything", { concurrent: true }, async () => {
     expect(translationDesc.product.id).toStrictEqual(productId);
 
     // TODO slug?
+  });
+
+  test("Successfully stop translations for already translated product fields", async ({ expect }) => {
+    const productId = "T_2";
+    const sourceLanguage = LanguageCode.en;
+    const targetLanguage = LanguageCode.de;
+
+    const res01 = await adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(
+      TRANSLATE_PRODUCT,
+      { input: { productId, sourceLanguage, targetLanguage } },
+    );
+
+    expect(res01.pluginTranslateProduct.length).toStrictEqual(2); // Name, Description
+
+    const translationName = res01.pluginTranslateProduct.find((tp) => tp.translationKind === TKindProduct.NAME);
+    assert(translationName, `Failed to find translation entry with kind: ${TKindProduct.NAME}`);
+
+    const translationDesc = res01.pluginTranslateProduct.find((tp) => tp.translationKind === TKindProduct.DESCRIPTION);
+    assert(translationDesc, `Failed to find translation entry with kind: ${TKindProduct.DESCRIPTION}`);
+
+    const res02 = await adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(
+      TRANSLATE_PRODUCT,
+      { input: { productId, sourceLanguage, targetLanguage } },
+    );
+
+    // We already translated this product and have no overwrite-input
+    expect(res02.pluginTranslateProduct.length).toStrictEqual(0);
+  });
+
+  test("Successfully overwrite translations for already translated product fields", async ({ expect }) => {
+    const productId = "T_3";
+    const sourceLanguage = LanguageCode.en;
+    const targetLanguage = LanguageCode.de;
+
+    const res01 = await adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(
+      TRANSLATE_PRODUCT,
+      { input: { productId, sourceLanguage, targetLanguage } },
+    );
+
+    expect(res01.pluginTranslateProduct.length).toStrictEqual(2); // Name, Description
+
+    const translationName = res01.pluginTranslateProduct.find((tp) => tp.translationKind === TKindProduct.NAME);
+    assert(translationName, `Failed to find translation entry with kind: ${TKindProduct.NAME}`);
+
+    const translationDesc = res01.pluginTranslateProduct.find((tp) => tp.translationKind === TKindProduct.DESCRIPTION);
+    assert(translationDesc, `Failed to find translation entry with kind: ${TKindProduct.DESCRIPTION}`);
+
+    const res02 = await adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(
+      TRANSLATE_PRODUCT,
+      { input: { productId, sourceLanguage, targetLanguage, overwrite: { name: true } } },
+    );
+
+    expect(res02.pluginTranslateProduct.length).toStrictEqual(1); // Name
+    expect(res02.pluginTranslateProduct[0].translationKind).toStrictEqual(TKindProduct.NAME);
+
+    const res03 = await adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(
+      TRANSLATE_PRODUCT,
+      { input: { productId, sourceLanguage, targetLanguage, overwrite: { name: false, description: true } } },
+    );
+
+    expect(res03.pluginTranslateProduct.length).toStrictEqual(1); // Description
+    expect(res03.pluginTranslateProduct[0].translationKind).toStrictEqual(TKindProduct.DESCRIPTION);
+
+    const res04 = await adminClient.query<TranslateProductMutation, TranslateProductMutationVariables>(
+      TRANSLATE_PRODUCT,
+      { input: { productId, sourceLanguage, targetLanguage, overwrite: { name: true, description: true } } },
+    );
+
+    expect(res04.pluginTranslateProduct.length).toStrictEqual(2); // Name, Description
+    expect(res04.pluginTranslateProduct[0].translationKind).toStrictEqual(TKindProduct.NAME);
+    expect(res04.pluginTranslateProduct[1].translationKind).toStrictEqual(TKindProduct.DESCRIPTION);
   });
 });
