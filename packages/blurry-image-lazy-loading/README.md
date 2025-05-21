@@ -115,7 +115,11 @@ PreviewImageHashPlugin.init({
 
 Please refer to the specific [docs](./src/types.ts) for how and what you can customize.
 
-### 2. Generate hashes
+### 2. Generate a database migration
+
+This plugin adds a custom field to the `Asset` entity called `previewImageHash`, which requires you to generate a database migration. See Vendure's [migration documentation](https://docs.vendure.io/guides/developer-guide/migrations/) for further guidance.
+
+### 3. Generate hashes
 
 By default the option `enqueueHashingAfterAssetCreation` automatically adds hashing tasks to the dedicated job queue for newly added assets.
 
@@ -150,7 +154,7 @@ mutation {
 }
 ```
 
-### 3. Consume the hashes in your frontend
+### 4. Consume the hashes in your frontend
 
 Now that your assets have hashes you may consume them on your frontend. How and where you consume them exactly is dependent on your setup, but in general it involves the following steps.
 
