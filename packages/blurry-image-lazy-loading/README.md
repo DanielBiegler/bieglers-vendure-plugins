@@ -117,7 +117,7 @@ Please refer to the specific [docs](./src/types.ts) for how and what you can cus
 
 ### 2. Generate a database migration
 
-Because the plugin adds a custom field to the `Asset` entity, you must generate a migration before using it. See the [Vendure migration documentation](https://docs.vendure.io/guides/developer-guide/migrations/) if you're unfamiliar with the process.
+This plugin adds a custom field to the `Asset` entity called `previewImageHash`, which requires you to generate a database migration. See Vendure's [migration documentation](https://docs.vendure.io/guides/developer-guide/migrations/) for further guidance.
 
 ### 3. Generate hashes
 
