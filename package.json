@@ -22,6 +22,7 @@
     "@vendure/cli": "3.3.0",
     "@vendure/core": "3.3.0",
     "@vendure/dashboard": "3.3.0",
+    "@vendure/graphiql-plugin": "3.3.0",
     "@vendure/testing": "3.3.0",
     "@vendure/ui-devkit": "3.3.0",
     "better-sqlite3": "^9.6.0",
