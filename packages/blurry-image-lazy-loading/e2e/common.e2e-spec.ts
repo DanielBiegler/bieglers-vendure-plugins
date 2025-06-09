@@ -53,7 +53,6 @@ describe("General API", () => {
   });
 
   test("Successfully enqueue hashing for collection with default arguments", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
       { input: { idCollection: "1" } },
@@ -66,7 +65,6 @@ describe("General API", () => {
   });
 
   test("Successfully enqueue hashing for collection with batch size zero", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
       { input: { idCollection: "1", batchSize: 0 } },
@@ -79,7 +77,6 @@ describe("General API", () => {
   });
 
   test("Successfully enqueue hashing for collection with negative batch size", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
       { input: { idCollection: "1", batchSize: -1 } },
@@ -92,7 +89,6 @@ describe("General API", () => {
   });
 
   test("Successfully add task to job queue", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -110,7 +106,6 @@ describe("General API", () => {
   });
 
   test("Successfully enqueue job for product", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreateForProductMutation, CreateForProductMutationVariables>(
       CREATE_FOR_PRODUCT,
       {
@@ -126,7 +121,6 @@ describe("General API", () => {
   });
 
   test("Fail to enqueue job for non-existent product", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreateForProductMutation, CreateForProductMutationVariables>(
       CREATE_FOR_PRODUCT,
       {
@@ -141,7 +135,6 @@ describe("General API", () => {
   });
 
   test("Fail to enqueue hashing for collection due to non-existing collection id", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
       { input: { idCollection: "non-existent-collection-id" } },
@@ -153,7 +146,6 @@ describe("General API", () => {
   });
 
   test("Fail to generate hash due to non-existent asset via api", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {

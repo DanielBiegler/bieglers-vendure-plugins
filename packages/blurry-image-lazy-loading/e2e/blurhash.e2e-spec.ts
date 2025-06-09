@@ -11,7 +11,7 @@ import { PreviewImageHashPlugin } from "../src/preview-image-hash.plugin";
 import { CREATE_PREVIEW_IMG_HASH } from "./graphql/admin-e2e-definitions";
 import { CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables } from "./types/generated-admin-types";
 
-describe("BlurHashStrategy", () => {
+describe("BlurHashStrategy", { concurrent: true }, () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
     importExportOptions: {
@@ -52,7 +52,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -71,7 +70,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with size: 12 x 34 px", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -92,7 +90,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with size: 12 x Auto px", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -112,7 +109,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with size: Auto x 34 px", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -132,7 +128,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for webp image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -151,7 +146,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for avif image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -170,7 +164,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for jpeg image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
@@ -189,7 +182,6 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Fail to generate blurhash for svg image", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
