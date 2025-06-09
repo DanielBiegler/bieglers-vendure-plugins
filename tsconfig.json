@@ -11,6 +11,7 @@
     "strict": true,
     "sourceMap": false,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "types": ["node"],
     "declaration": true,
     "strictPropertyInitialization": false
