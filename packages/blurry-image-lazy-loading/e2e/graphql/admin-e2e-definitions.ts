@@ -45,3 +45,15 @@ export const CREATE_FOR_PRODUCT = gql`
     }
   }
 `;
+
+export const CREATE_FOR_ALL_ASSETS = gql`
+  mutation createForAllAssets($input: PluginPreviewImageHashForAllAssetsInput) {
+    pluginPreviewImageHashCreateImageHashesForAllAssets(input: $input) {
+      __typename
+      code
+      jobsAddedToQueue
+      assetsSkipped
+      message
+    }
+  }
+`;

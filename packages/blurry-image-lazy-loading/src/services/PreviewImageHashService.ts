@@ -37,6 +37,7 @@ import {
   PluginPreviewImageHashResultCode as CODE,
   PluginPreviewImageHashCreateInput,
   PluginPreviewImageHashCreateResult,
+  PluginPreviewImageHashForAllAssetsInput,
   PluginPreviewImageHashForCollectionInput,
   PluginPreviewImageHashForProductInput,
   PluginPreviewImageHashResult,
@@ -61,7 +62,7 @@ export class PreviewImageHashService implements OnModuleInit {
     private jobQueueService: JobQueueService,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: PluginPreviewImageHashOptions,
-  ) {}
+  ) { }
 
   private jobQueue: JobQueue<{
     ctx: SerializedRequestContext;
@@ -419,4 +420,56 @@ export class PreviewImageHashService implements OnModuleInit {
       "Successfully added all eligible hashing-tasks of collection-/, product-/ and its variant-assets to job queue",
     );
   }
+
+  /**
+   * Create preview image hashes for all assets.
+   * 
+   * This mutation should be handled with extra care since an installation may hold hundreds of thousands of images.
+   * This is mainly useful as a one-time-use utility to initialize all of the assets with hashes after installing the plugin.
+   */
+  async createForAllAssets(
+    ctx: RequestContext,
+    input?: PluginPreviewImageHashForAllAssetsInput,
+  ): Promise<PluginPreviewImageHashResult> {
+    let jobsAddedToQueue = 0;
+    let assetsSkipped = 0;
+    const regenerateExistingHashes = input?.regenerateExistingHashes ?? DEFAULT_REGENERATE_HASHES;
+
+    const take = input?.batchSize && input.batchSize > 0 ? input.batchSize : DEFAULT_COLLECTION_PAGINATION;
+    let skip = 0;
+    let hasMoreAssets = true;
+
+    do {
+      let assets: PaginatedList<Asset> | null = null;
+      try {
+        assets = await this.assetService.findAll(ctx, { take, skip });
+      } catch (error) {
+        const errorMsg = "Something unexpected happened when querying assets";
+        Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
+        return this.result(jobsAddedToQueue, assetsSkipped, CODE.UNEXPECTED_ERROR, errorMsg);
+      }
+      hasMoreAssets = assets.items.length > 0;
+
+      if (!hasMoreAssets) break; // Early exit, as theres no work needed
+      skip += take;
+
+      for (const asset of assets.items) {
+        if (this.shouldSkipGeneratingHash(regenerateExistingHashes, asset)) {
+          assetsSkipped += 1;
+          continue;
+        }
+
+        await this.addToJobQueue(ctx, { idAsset: asset.id });
+        jobsAddedToQueue += 1;
+      }
+    } while (hasMoreAssets);
+
+    return this.result(
+      jobsAddedToQueue,
+      assetsSkipped,
+      CODE.OK,
+      "Successfully added all eligible asset-hashing-tasks to job queue",
+    )
+  }
+
 }

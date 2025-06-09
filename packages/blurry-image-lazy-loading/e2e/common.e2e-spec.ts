@@ -8,8 +8,10 @@ import { testConfig } from "../../../utils/e2e/test-config";
 import { ThumbHashStrategy } from "../src/config/ThumbHashStrategy";
 import { PluginPreviewImageHashResultCode as CODE } from "../src/generated-admin-types";
 import { PreviewImageHashPlugin } from "../src/preview-image-hash.plugin";
-import { CREATE_FOR_COLLECTION, CREATE_FOR_PRODUCT, CREATE_PREVIEW_IMG_HASH } from "./graphql/admin-e2e-definitions";
+import { CREATE_FOR_ALL_ASSETS, CREATE_FOR_COLLECTION, CREATE_FOR_PRODUCT, CREATE_PREVIEW_IMG_HASH } from "./graphql/admin-e2e-definitions";
 import {
+  CreateForAllAssetsMutation,
+  CreateForAllAssetsMutationVariables,
   CreateForCollectionMutation,
   CreateForCollectionMutationVariables,
   CreateForProductMutation,
@@ -43,7 +45,10 @@ describe("General API", () => {
     });
     await adminClient.asSuperAdmin();
 
-    const fixturesAssets = [/* T_1 */ "vendure-brand-icon-2024-primary.jpeg"];
+    const fixturesAssets = [
+      /* T_1 */ "vendure-brand-icon-2024-primary.jpeg",
+      /* T_2 */ "vendure-brand-icon-2024-primary.png",
+    ];
 
     await server.app.get(AssetImporter).getAssets(fixturesAssets);
   }, 60000);
@@ -119,6 +124,30 @@ describe("General API", () => {
     expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(0);
     expect(result.pluginPreviewImageHashCreateImageHashesForProduct.assetsSkipped).toStrictEqual(0);
   });
+
+  test("Successfully enqueue jobs for hashing all assets", async ({ expect }) => {
+    const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
+      CREATE_FOR_ALL_ASSETS,
+    );
+
+    assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(2);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
+  });
+
+  test("Successfully enqueue hashing for all assets with negative batch size", async ({ expect }) => {
+    const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
+      CREATE_FOR_ALL_ASSETS,
+      { input: { batchSize: -1 } },
+    );
+
+    assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(2);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
+  });
+
 
   test("Fail to enqueue job for non-existent product", async ({ expect }) => {
     const result = await adminClient.query<CreateForProductMutation, CreateForProductMutationVariables>(
