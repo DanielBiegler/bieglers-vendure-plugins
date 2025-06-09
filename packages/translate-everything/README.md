@@ -15,7 +15,16 @@ TODO
 ### End-To-End Tests
 
 ```
-TODO
+✓ Plugin Translate Everything (6)
+✓ Fail due to non-existing product
+✓ Fail due to missing source translation
+✓ Successfully translate product
+✓ Successfully stop translations for already translated product fields
+✓ Successfully overwrite translations for already translated product fields
+✓ Successfully translate product variants
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
 ```
 
 ## How To: Usage
@@ -31,11 +40,13 @@ npm i @danielbiegler/vendure-plugin-translate-everything
 ```
 
 ```ts
-import { //TODO } from "@danielbiegler/vendure-plugin-translate-everything";
+import { TranslateEverythingPlugin } from "@danielbiegler/vendure-plugin-translate-everything";
 export const config: VendureConfig = {
   // ...
   plugins: [
-    // TODO
+    TranslateEverythingPlugin.init({
+      translationStrategy: new ExampleTranslationStrategy(),
+    }),
   ],
 }
 ```
