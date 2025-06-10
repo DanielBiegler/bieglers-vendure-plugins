@@ -4,6 +4,7 @@ import {
   Asset,
   AssetEvent,
   AssetService,
+  AssetType,
   Collection,
   CollectionService,
   ConfigService,
@@ -437,7 +438,10 @@ export class PreviewImageHashService implements OnModuleInit {
     let jobsAddedToQueue = 0;
     const regenerateExistingHashes = input?.regenerateExistingHashes ?? DEFAULT_REGENERATE_HASHES;
     // Either all assets or the ones with no custom field
-    const optionsWhere: FindOptionsWhere<Asset> = { customFields: { previewImageHash: regenerateExistingHashes ? undefined : IsNull() } };
+    const optionsWhere: FindOptionsWhere<Asset> = {
+      type: AssetType.IMAGE,
+      customFields: { previewImageHash: regenerateExistingHashes ? undefined : IsNull() }
+    };
     const countTotal = await this.connection.getRepository(ctx, Asset).count();
     const countNeeded = await this.connection.getRepository(ctx, Asset).count({ where: optionsWhere });
     let assetsSkipped = countTotal - countNeeded;

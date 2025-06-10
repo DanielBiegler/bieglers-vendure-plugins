@@ -42,12 +42,14 @@ describe("General API", () => {
       productsCsvPath: path.join(__dirname, "../../../utils/e2e/e2e-products-full.csv"),
       initialData: initialData,
       customerCount: 2,
+      logging: true,
     });
     await adminClient.asSuperAdmin();
 
     const fixturesAssets = [
       /* T_1 */ "vendure-brand-icon-2024-primary.jpeg",
       /* T_2 */ "vendure-brand-icon-2024-primary.png",
+      /* T_3 */ "vendure-brand-icon-2024-primary.svg",
     ];
 
     await server.app.get(AssetImporter).getAssets(fixturesAssets);
@@ -132,7 +134,7 @@ describe("General API", () => {
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(2);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(3);
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
   });
 
@@ -144,7 +146,19 @@ describe("General API", () => {
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(2);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(3);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
+  });
+
+  test("Successfully enqueue hashing for all assets with regenerating existing hashes", async ({ expect }) => {
+    const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
+      CREATE_FOR_ALL_ASSETS,
+      { input: { regenerateExistingHashes: true } },
+    );
+
+    assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(3);
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
   });
 
