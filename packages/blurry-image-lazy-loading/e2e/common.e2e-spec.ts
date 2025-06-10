@@ -1,5 +1,4 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
-import { AssetImporter } from "@vendure/core";
 import { createTestEnvironment } from "@vendure/testing";
 import path from "path";
 import { afterAll, assert, beforeAll, describe, test } from "vitest";
@@ -45,14 +44,6 @@ describe("General API", () => {
       logging: true,
     });
     await adminClient.asSuperAdmin();
-
-    const fixturesAssets = [
-      /* T_1 */ "vendure-brand-icon-2024-primary.jpeg",
-      /* T_2 */ "vendure-brand-icon-2024-primary.png",
-      /* T_3 */ "vendure-brand-icon-2024-primary.svg",
-    ];
-
-    await server.app.get(AssetImporter).getAssets(fixturesAssets);
   }, 60000);
 
   afterAll(async () => {
@@ -122,8 +113,7 @@ describe("General API", () => {
 
     assert(result.pluginPreviewImageHashCreateImageHashesForProduct.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForProduct.code).toBe(CODE.OK);
-    // TODO would be good to seed a more practical env
-    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForProduct.jobsAddedToQueue).toStrictEqual(1);
     expect(result.pluginPreviewImageHashCreateImageHashesForProduct.assetsSkipped).toStrictEqual(0);
   });
 
@@ -134,7 +124,7 @@ describe("General API", () => {
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(3);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(5);
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
   });
 
@@ -146,7 +136,7 @@ describe("General API", () => {
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(3);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(5);
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
   });
 
@@ -158,7 +148,7 @@ describe("General API", () => {
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(3);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(5);
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
   });
 
