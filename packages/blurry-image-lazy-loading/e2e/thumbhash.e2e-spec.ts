@@ -1,5 +1,4 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
-import { AssetImporter } from "@vendure/core";
 import { createTestEnvironment } from "@vendure/testing";
 import path from "path";
 import { afterAll, assert, beforeAll, describe, test } from "vitest";
@@ -33,18 +32,9 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       productsCsvPath: path.join(__dirname, "../../../utils/e2e/e2e-products-full.csv"),
       initialData: initialData,
       customerCount: 2,
+      logging: true,
     });
     await adminClient.asSuperAdmin();
-
-    const fixturesAssets = [
-      /* T_1 */ "vendure-brand-icon-2024-primary.jpeg",
-      /* T_2 */ "vendure-brand-icon-2024-primary.png",
-      /* T_3 */ "vendure-brand-icon-2024-primary.svg",
-      /* T_4 */ "vendure-brand-icon-2024-primary.webp",
-      /* T_5 */ "vendure-brand-icon-2024-primary.avif",
-    ];
-
-    await server.app.get(AssetImporter).getAssets(fixturesAssets);
   }, 60000);
 
   afterAll(async () => {
@@ -56,7 +46,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
         },
       },
@@ -74,7 +64,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
           width: 12,
           height: 34,
@@ -94,7 +84,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
           width: 12,
         },
@@ -113,7 +103,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
           height: 34,
         },
@@ -132,7 +122,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_4",
+          idAsset: "T_2",
           runSynchronously: true,
         },
       },
@@ -150,7 +140,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_5",
+          idAsset: "T_1",
           runSynchronously: true,
         },
       },
@@ -168,7 +158,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_1",
+          idAsset: "T_4",
           runSynchronously: true,
         },
       },
@@ -186,7 +176,7 @@ describe("ThumbHashStrategy", { concurrent: true }, () => {
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_3",
+          idAsset: "T_5",
           runSynchronously: true,
         },
       },
