@@ -20,9 +20,11 @@ import {
   RelationPaths,
   RequestContext,
   SerializedRequestContext,
+  TransactionalConnection,
   Translated,
 } from "@vendure/core";
 import sharp from "sharp";
+import { FindOptionsWhere, IsNull } from "typeorm";
 import { MIMEType } from "util";
 import {
   DEFAULT_COLLECTION_PAGINATION,
@@ -60,6 +62,7 @@ export class PreviewImageHashService implements OnModuleInit {
     private configService: ConfigService,
     private eventBus: EventBus,
     private jobQueueService: JobQueueService,
+    private connection: TransactionalConnection,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: PluginPreviewImageHashOptions,
   ) { }
@@ -432,33 +435,39 @@ export class PreviewImageHashService implements OnModuleInit {
     input?: PluginPreviewImageHashForAllAssetsInput,
   ): Promise<PluginPreviewImageHashResult> {
     let jobsAddedToQueue = 0;
-    let assetsSkipped = 0;
     const regenerateExistingHashes = input?.regenerateExistingHashes ?? DEFAULT_REGENERATE_HASHES;
+    // Either all assets or the ones with no custom field
+    const optionsWhere: FindOptionsWhere<Asset> = { customFields: { previewImageHash: regenerateExistingHashes ? undefined : IsNull() } };
+    const countTotal = await this.connection.getRepository(ctx, Asset).count();
+    const countNeeded = await this.connection.getRepository(ctx, Asset).count({ where: optionsWhere });
+    let assetsSkipped = countTotal - countNeeded;
 
     const take = input?.batchSize && input.batchSize > 0 ? input.batchSize : DEFAULT_COLLECTION_PAGINATION;
     let skip = 0;
     let hasMoreAssets = true;
 
     do {
-      let assets: PaginatedList<Asset> | null = null;
+      let assets: Asset[] | null = null;
       try {
-        assets = await this.assetService.findAll(ctx, { take, skip });
+        assets = await this.connection.getRepository(ctx, Asset).find({
+          select: { id: true, customFields: { previewImageHash: true } },
+          where: optionsWhere,
+          take,
+          skip,
+          loadEagerRelations: false,
+        });
+
+        // There arent more pages needed if the count is smaller than the `take`
+        hasMoreAssets = assets.length >= take;
       } catch (error) {
         const errorMsg = "Something unexpected happened when querying assets";
         Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
         return this.result(jobsAddedToQueue, assetsSkipped, CODE.UNEXPECTED_ERROR, errorMsg);
       }
-      hasMoreAssets = assets.items.length > 0;
 
-      if (!hasMoreAssets) break; // Early exit, as theres no work needed
       skip += take;
 
-      for (const asset of assets.items) {
-        if (this.shouldSkipGeneratingHash(regenerateExistingHashes, asset)) {
-          assetsSkipped += 1;
-          continue;
-        }
-
+      for (const asset of assets) {
         await this.addToJobQueue(ctx, { idAsset: asset.id });
         jobsAddedToQueue += 1;
       }
