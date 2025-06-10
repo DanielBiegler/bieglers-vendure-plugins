@@ -1,25 +1,3 @@
-import { BlurHashStrategy } from "./config/BlurHashStrategy";
-import {
-  PreviewImageHashBase,
-  PreviewImageHashBaseArgs,
-  PreviewImageHashStrategy,
-} from "./config/PreviewImageHashStrategy";
-import { ThumbHashStrategy } from "./config/ThumbHashStrategy";
-import {
-  MutationPluginPreviewImageHashCreateImageHashArgs,
-  MutationPluginPreviewImageHashCreateImageHashesForCollectionArgs,
-  MutationPluginPreviewImageHashCreateImageHashesForProductArgs,
-  PluginPreviewImageHashCreateInput,
-  PluginPreviewImageHashCreateResult,
-  PluginPreviewImageHashForCollectionInput,
-  PluginPreviewImageHashForProductInput,
-  PluginPreviewImageHashResult,
-  PluginPreviewImageHashResultCode,
-} from "./generated-admin-types";
-import { PreviewImageHashService } from "./services/PreviewImageHashService";
-import * as blurhash from "./vendors/blurhash";
-import * as thumbhash from "./vendors/thumbhash";
-
 /**
  * This file should export the public API of the plugin.
  * This typically includes the Plugin class itself, as well as:
@@ -29,24 +7,37 @@ import * as thumbhash from "./vendors/thumbhash";
  * - events
  * - custom strategies that can be configured by the user of the plugin
  */
-export * from "./preview-image-hash.plugin";
+export { PreviewImageHashPlugin } from "./preview-image-hash.plugin";
 export { PluginPreviewImageHashOptions } from "./types";
+
+export { PreviewImageHashService } from "./services/PreviewImageHashService";
 export {
-  blurhash,
-  BlurHashStrategy,
-  MutationPluginPreviewImageHashCreateImageHashArgs,
-  MutationPluginPreviewImageHashCreateImageHashesForCollectionArgs,
-  MutationPluginPreviewImageHashCreateImageHashesForProductArgs,
-  PluginPreviewImageHashCreateInput,
-  PluginPreviewImageHashCreateResult,
-  PluginPreviewImageHashForCollectionInput,
-  PluginPreviewImageHashForProductInput,
-  PluginPreviewImageHashResult,
-  PluginPreviewImageHashResultCode,
   PreviewImageHashBase,
   PreviewImageHashBaseArgs,
-  PreviewImageHashService,
   PreviewImageHashStrategy,
-  thumbhash,
-  ThumbHashStrategy,
-};
+} from "./config/PreviewImageHashStrategy";
+
+export * as thumbhash from "./vendors/thumbhash";
+export { ThumbHashStrategy } from "./config/ThumbHashStrategy";
+
+export * as blurhash from "./vendors/blurhash";
+export { BlurHashStrategy } from "./config/BlurHashStrategy";
+
+export {
+  MutationPluginPreviewImageHashCreateImageHashArgs,
+  PluginPreviewImageHashCreateInput,
+  PluginPreviewImageHashCreateResult,
+
+  MutationPluginPreviewImageHashCreateImageHashesForProductArgs,
+  PluginPreviewImageHashForProductInput,
+
+  MutationPluginPreviewImageHashCreateImageHashesForCollectionArgs,
+  PluginPreviewImageHashForCollectionInput,
+  
+  MutationPluginPreviewImageHashCreateImageHashesForAllAssetsArgs,
+  PluginPreviewImageHashForAllAssetsInput,
+  
+  PluginPreviewImageHashResult,
+  PluginPreviewImageHashResultCode
+} from "./generated-admin-types";
+
