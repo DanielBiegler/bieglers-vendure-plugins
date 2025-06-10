@@ -19,7 +19,7 @@ import {
   CreatePreviewImageHashMutationVariables,
 } from "./types/generated-admin-types";
 
-describe("General API", () => {
+describe("General API", { concurrent: true }, () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8002),
     importExportOptions: {
@@ -35,6 +35,9 @@ describe("General API", () => {
       }),
     ],
   });
+
+  // This collection holds 3 "plant"-products via facets, see last items in import csv
+  const idCollection = "2";
 
   beforeAll(async () => {
     await server.init({
@@ -53,36 +56,33 @@ describe("General API", () => {
   test("Successfully enqueue hashing for collection with default arguments", async ({ expect }) => {
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
-      { input: { idCollection: "1" } },
+      { input: { idCollection, regenerateExistingHashes: true } },
     );
 
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
-    // TODO would be good to seed a more practical env
-    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(3);
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
   test("Successfully enqueue hashing for collection with batch size zero", async ({ expect }) => {
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
-      { input: { idCollection: "1", batchSize: 0 } },
+      { input: { idCollection, regenerateExistingHashes: true, batchSize: 0 } },
     );
 
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
-    // TODO would be good to seed a more practical env
-    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(3);
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
   test("Successfully enqueue hashing for collection with negative batch size", async ({ expect }) => {
     const result = await adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(
       CREATE_FOR_COLLECTION,
-      { input: { idCollection: "1", batchSize: -1 } },
+      { input: { idCollection, regenerateExistingHashes: true, batchSize: -1 } },
     );
 
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.code).toBe(CODE.OK);
-    // TODO would be good to seed a more practical env
-    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForCollection.jobsAddedToQueue).toStrictEqual(3);
     expect(result.pluginPreviewImageHashCreateImageHashesForCollection.assetsSkipped).toStrictEqual(0);
   });
 
@@ -214,7 +214,7 @@ describe("General API", () => {
     await adminClient.asAnonymousUser();
     await expect(
       adminClient.query<CreateForCollectionMutation, CreateForCollectionMutationVariables>(CREATE_FOR_COLLECTION, {
-        input: { idCollection: "1" },
+        input: { idCollection },
       }),
     ).rejects.toThrowError("You are not currently authorized to perform this action");
   });
