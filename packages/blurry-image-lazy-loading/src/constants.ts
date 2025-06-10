@@ -5,6 +5,12 @@ export const PLUGIN_INIT_OPTIONS = Symbol("PLUGIN_INIT_OPTIONS");
 
 /** Officially supported Vendure AssetServerPlugin formats */
 export const SUPPORTED_IMG_TYPES = ["png", "jpg", "jpeg", "webp", "avif"];
+export const SUPPORTED_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/avif",
+];
 
 export const CUSTOMFIELD_NAME = "previewImageHash";
 

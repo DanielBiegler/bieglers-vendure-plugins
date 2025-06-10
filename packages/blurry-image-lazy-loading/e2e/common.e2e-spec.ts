@@ -120,36 +120,46 @@ describe("General API", { concurrent: true }, () => {
   test("Successfully enqueue jobs for hashing all assets", async ({ expect }) => {
     const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
       CREATE_FOR_ALL_ASSETS,
+      { input: { regenerateExistingHashes: true } }
     );
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(5);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(4);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(1); // Skipped SVG
   });
 
   test("Successfully enqueue hashing for all assets with negative batch size", async ({ expect }) => {
     const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
       CREATE_FOR_ALL_ASSETS,
-      { input: { batchSize: -1 } },
+      { input: { batchSize: -1, regenerateExistingHashes: true } },
     );
 
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(5);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(4);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(1); // Skipped SVG
   });
 
-  test("Successfully enqueue hashing for all assets with regenerating existing hashes", async ({ expect }) => {
-    const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
+  test("Successfully skip hashing for all assets due to existing hashes", async ({ expect }) => {
+    await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
       CREATE_FOR_ALL_ASSETS,
       { input: { regenerateExistingHashes: true } },
     );
 
+    // Wait a little so that the server can hash the images
+    await new Promise((res, rej) => setTimeout(res, 1000));
+    await adminClient.asSuperAdmin();
+
+    const result = await adminClient.query<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>(
+      CREATE_FOR_ALL_ASSETS,
+      { input: { regenerateExistingHashes: false } },
+    );
+
     assert(result.pluginPreviewImageHashCreateImageHashesForAllAssets.__typename === "PluginPreviewImageHashResult");
     expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.code).toBe(CODE.OK);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(5);
-    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.jobsAddedToQueue).toStrictEqual(0);
+    expect(result.pluginPreviewImageHashCreateImageHashesForAllAssets.assetsSkipped).toStrictEqual(5);
   });
 
 

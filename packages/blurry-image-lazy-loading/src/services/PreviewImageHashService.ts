@@ -4,7 +4,6 @@ import {
   Asset,
   AssetEvent,
   AssetService,
-  AssetType,
   Collection,
   CollectionService,
   ConfigService,
@@ -22,10 +21,10 @@ import {
   RequestContext,
   SerializedRequestContext,
   TransactionalConnection,
-  Translated,
+  Translated
 } from "@vendure/core";
 import sharp from "sharp";
-import { FindOptionsWhere, IsNull } from "typeorm";
+import { FindOptionsWhere, In, IsNull } from "typeorm";
 import { MIMEType } from "util";
 import {
   DEFAULT_COLLECTION_PAGINATION,
@@ -35,6 +34,7 @@ import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
   SUPPORTED_IMG_TYPES,
+  SUPPORTED_MIME_TYPES,
 } from "../constants";
 import {
   PluginPreviewImageHashResultCode as CODE,
@@ -439,7 +439,7 @@ export class PreviewImageHashService implements OnModuleInit {
     const regenerateExistingHashes = input?.regenerateExistingHashes ?? DEFAULT_REGENERATE_HASHES;
     // Either all assets or the ones with no custom field
     const optionsWhere: FindOptionsWhere<Asset> = {
-      type: AssetType.IMAGE,
+      mimeType: In(SUPPORTED_MIME_TYPES),
       customFields: { previewImageHash: regenerateExistingHashes ? undefined : IsNull() }
     };
     const countTotal = await this.connection.getRepository(ctx, Asset).count();
