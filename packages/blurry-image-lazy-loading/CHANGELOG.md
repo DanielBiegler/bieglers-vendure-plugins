@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.1.0 (2025-06-10)
+## 1.1.0 (2025-06-11)
 
-- Add new mutation for hashing all assets
+- Add new mutation for hashing all assets called `pluginPreviewImageHashCreateImageHashesForAllAssets`
 - Update README
 - Internal: add & improve test suite
 
