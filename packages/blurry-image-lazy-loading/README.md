@@ -22,12 +22,12 @@ Generates image hashes for displaying blurry previews when loading images on the
 ### End-To-End Tests
 
 ```
- ✓ blurry-image-lazy-loading/e2e/blurhash.e2e-spec.ts (8)
- ✓ blurry-image-lazy-loading/e2e/common.e2e-spec.ts (11)
- ✓ blurry-image-lazy-loading/e2e/thumbhash.e2e-spec.ts (8)
+ ✓ blurry-image-lazy-loading/e2e/thumbhash.e2e-spec.ts (8 tests)
+ ✓ blurry-image-lazy-loading/e2e/blurhash.e2e-spec.ts (8 tests)
+ ✓ blurry-image-lazy-loading/e2e/common.e2e-spec.ts (14 tests)
 
  Test Files  3 passed (3)
-      Tests  27 passed (27)
+      Tests  30 passed (30)
 ```
 
 ## Example comparisons
@@ -57,19 +57,36 @@ extend type Mutation {
   ): PluginPreviewImageHashCreateResult!
 
   """
+  Create preview image hashes for a product.
+  This includes both the product itself and all of its ProductVariant assets.
+  """
+  pluginPreviewImageHashCreateImageHashesForProduct(
+    input: PluginPreviewImageHashForProductInput!
+  ): PluginPreviewImageHashResult!
+
+  """
   Create preview image hashes for an entire collection.
   This includes the collection, the contained Product-assets and related ProductVariant-assets.
+
+  Due to how large collections can become, you may want to disable the deduplication of asset ids.
+  If deduplication is enabled, jobs will be created only after gathering all assets first.
+  If disabled, jobs will be created as the assets are being read.
+
+  No deduplication may result in assets being hashed multiple times, but the tradeoff is not having
+  to hold potentially millions of records in memory and just letting the worker take care of them eventually.
   """
   pluginPreviewImageHashCreateImageHashesForCollection(
     input: PluginPreviewImageHashForCollectionInput!
   ): PluginPreviewImageHashResult!
 
   """
-  Create preview image hashes for a product.
-  This includes both the product itself and all of its ProductVariant assets.
+  Create preview image hashes for all assets.
+  
+  This mutation should be handled with extra care since an installation may hold hundreds of thousands of images.
+  This is mainly useful as a one-time-use utility to initialize all of the assets with hashes after installing the plugin.
   """
-  pluginPreviewImageHashCreateImageHashesForProduct(
-    input: PluginPreviewImageHashForProductInput!
+  pluginPreviewImageHashCreateImageHashesForAllAssets(
+    input: PluginPreviewImageHashForAllAssetsInput
   ): PluginPreviewImageHashResult!
 }
 ```

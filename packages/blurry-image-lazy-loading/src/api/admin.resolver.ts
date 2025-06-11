@@ -2,6 +2,7 @@ import { Args, Mutation, ResolveField, Resolver } from "@nestjs/graphql";
 import { Allow, Asset, Ctx, RelationPaths, Relations, RequestContext, Transaction } from "@vendure/core";
 import {
   MutationPluginPreviewImageHashCreateImageHashArgs,
+  MutationPluginPreviewImageHashCreateImageHashesForAllAssetsArgs,
   MutationPluginPreviewImageHashCreateImageHashesForCollectionArgs,
   MutationPluginPreviewImageHashCreateImageHashesForProductArgs,
   Permission,
@@ -12,7 +13,7 @@ import { PreviewImageHashService } from "../services/PreviewImageHashService";
 
 @Resolver()
 export class AdminResolver {
-  constructor(private previewImageHashService: PreviewImageHashService) {}
+  constructor(private previewImageHashService: PreviewImageHashService) { }
 
   @Mutation()
   @Transaction()
@@ -43,6 +44,16 @@ export class AdminResolver {
     @Args() args: MutationPluginPreviewImageHashCreateImageHashesForProductArgs,
   ): Promise<PluginPreviewImageHashResult> {
     return this.previewImageHashService.createForProduct(ctx, args.input);
+  }
+
+  @Mutation()
+  @Transaction()
+  @Allow(Permission.CreateAsset)
+  async pluginPreviewImageHashCreateImageHashesForAllAssets(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationPluginPreviewImageHashCreateImageHashesForAllAssetsArgs,
+  ): Promise<PluginPreviewImageHashResult> {
+    return this.previewImageHashService.createForAllAssets(ctx, args.input);
   }
 }
 

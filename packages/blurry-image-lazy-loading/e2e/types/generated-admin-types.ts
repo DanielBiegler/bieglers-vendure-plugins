@@ -2920,6 +2920,13 @@ export type Mutation = {
   /** Create a preview image hash for one image. */
   pluginPreviewImageHashCreateImageHash: PluginPreviewImageHashCreateResult;
   /**
+   * Create preview image hashes for all assets.
+   *
+   * This mutation should be handled with extra care since an installation may hold hundreds of thousands of images.
+   * This is mainly useful as a one-time-use utility to initialize all of the assets with hashes after installing the plugin.
+   */
+  pluginPreviewImageHashCreateImageHashesForAllAssets: PluginPreviewImageHashResult;
+  /**
    * Create preview image hashes for an entire collection.
    * This includes the collection, the contained Product-assets and related ProductVariant-assets.
    *
@@ -3577,6 +3584,11 @@ export type MutationMoveCollectionArgs = {
 
 export type MutationPluginPreviewImageHashCreateImageHashArgs = {
   input: PluginPreviewImageHashCreateInput;
+};
+
+
+export type MutationPluginPreviewImageHashCreateImageHashesForAllAssetsArgs = {
+  input?: InputMaybe<PluginPreviewImageHashForAllAssetsInput>;
 };
 
 
@@ -4658,6 +4670,24 @@ export type PluginPreviewImageHashCreateInput = {
 };
 
 export type PluginPreviewImageHashCreateResult = Asset | PluginPreviewImageHashResult;
+
+export type PluginPreviewImageHashForAllAssetsInput = {
+  /**
+   * How large a page is when paginating through all of the assets. Increasing this number will minimize
+   * needed roundtrips between Vendure and the database. Be careful though, this increases load on the database.
+   *
+   * @default 50
+   */
+  batchSize?: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Assets can be quite numerous, so by default this mutation skips over assets that already have a hash set, in order to minimize the needed compute.
+   * This can be undesirable, for example after you change the strategy, the encoding or resize options.
+   * Setting this option to `true` will overwrite the existing hashes, letting you update your existing assets.
+   *
+   * @default false
+   */
+  regenerateExistingHashes?: InputMaybe<Scalars['Boolean']['input']>;
+};
 
 export type PluginPreviewImageHashForCollectionInput = {
   /**
@@ -6867,7 +6897,15 @@ export type CreateForProductMutationVariables = Exact<{
 
 export type CreateForProductMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHashesForProduct: { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, assetsSkipped: number, message: string } };
 
+export type CreateForAllAssetsMutationVariables = Exact<{
+  input?: InputMaybe<PluginPreviewImageHashForAllAssetsInput>;
+}>;
+
+
+export type CreateForAllAssetsMutation = { __typename?: 'Mutation', pluginPreviewImageHashCreateImageHashesForAllAssets: { __typename: 'PluginPreviewImageHashResult', code: PluginPreviewImageHashResultCode, jobsAddedToQueue: number, assetsSkipped: number, message: string } };
+
 
 export const CreatePreviewImageHashDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createPreviewImageHash"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashCreateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHash"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashResult"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"mimeType"}},{"kind":"Field","name":{"kind":"Name","value":"customFields"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"previewImageHash"}}]}}]}}]}}]}}]} as unknown as DocumentNode<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>;
 export const CreateForCollectionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForCollection"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForCollectionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForCollection"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForCollectionMutation, CreateForCollectionMutationVariables>;
 export const CreateForProductDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForProduct"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForProductInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForProduct"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForProductMutation, CreateForProductMutationVariables>;
+export const CreateForAllAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createForAllAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PluginPreviewImageHashForAllAssetsInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pluginPreviewImageHashCreateImageHashesForAllAssets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"jobsAddedToQueue"}},{"kind":"Field","name":{"kind":"Name","value":"assetsSkipped"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<CreateForAllAssetsMutation, CreateForAllAssetsMutationVariables>;

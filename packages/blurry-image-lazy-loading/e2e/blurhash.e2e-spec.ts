@@ -1,5 +1,4 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
-import { AssetImporter } from "@vendure/core";
 import { createTestEnvironment } from "@vendure/testing";
 import path from "path";
 import { afterAll, assert, beforeAll, describe, test } from "vitest";
@@ -11,7 +10,7 @@ import { PreviewImageHashPlugin } from "../src/preview-image-hash.plugin";
 import { CREATE_PREVIEW_IMG_HASH } from "./graphql/admin-e2e-definitions";
 import { CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables } from "./types/generated-admin-types";
 
-describe("BlurHashStrategy", () => {
+describe("BlurHashStrategy", { concurrent: true }, () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
     importExportOptions: {
@@ -33,18 +32,9 @@ describe("BlurHashStrategy", () => {
       productsCsvPath: path.join(__dirname, "../../../utils/e2e/e2e-products-full.csv"),
       initialData: initialData,
       customerCount: 2,
+      logging: true,
     });
     await adminClient.asSuperAdmin();
-
-    const fixturesAssets = [
-      /* T_1 */ "vendure-brand-icon-2024-primary.jpeg",
-      /* T_2 */ "vendure-brand-icon-2024-primary.png",
-      /* T_3 */ "vendure-brand-icon-2024-primary.svg",
-      /* T_4 */ "vendure-brand-icon-2024-primary.webp",
-      /* T_5 */ "vendure-brand-icon-2024-primary.avif",
-    ];
-
-    await server.app.get(AssetImporter).getAssets(fixturesAssets);
   }, 60000);
 
   afterAll(async () => {
@@ -52,12 +42,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
         },
       },
@@ -71,12 +60,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with size: 12 x 34 px", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
           width: 12,
           height: 34,
@@ -92,12 +80,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with size: 12 x Auto px", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
           width: 12,
         },
@@ -112,12 +99,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for png image with size: Auto x 34 px", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_2",
+          idAsset: "T_3",
           runSynchronously: true,
           height: 34,
         },
@@ -132,12 +118,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for webp image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_4",
+          idAsset: "T_2",
           runSynchronously: true,
         },
       },
@@ -151,12 +136,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for avif image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_5",
+          idAsset: "T_1",
           runSynchronously: true,
         },
       },
@@ -170,12 +154,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Successfully generate blurhash for jpeg image with default dimensions", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_1",
+          idAsset: "T_4",
           runSynchronously: true,
         },
       },
@@ -189,12 +172,11 @@ describe("BlurHashStrategy", () => {
   });
 
   test("Fail to generate blurhash for svg image", async ({ expect }) => {
-    await adminClient.asSuperAdmin();
     const result = await adminClient.query<CreatePreviewImageHashMutation, CreatePreviewImageHashMutationVariables>(
       CREATE_PREVIEW_IMG_HASH,
       {
         input: {
-          idAsset: "T_3",
+          idAsset: "T_5",
           runSynchronously: true,
         },
       },

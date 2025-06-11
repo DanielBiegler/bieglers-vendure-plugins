@@ -20,9 +20,11 @@ import {
   RelationPaths,
   RequestContext,
   SerializedRequestContext,
-  Translated,
+  TransactionalConnection,
+  Translated
 } from "@vendure/core";
 import sharp from "sharp";
+import { FindOptionsWhere, In, IsNull } from "typeorm";
 import { MIMEType } from "util";
 import {
   DEFAULT_COLLECTION_PAGINATION,
@@ -32,11 +34,13 @@ import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
   SUPPORTED_IMG_TYPES,
+  SUPPORTED_MIME_TYPES,
 } from "../constants";
 import {
   PluginPreviewImageHashResultCode as CODE,
   PluginPreviewImageHashCreateInput,
   PluginPreviewImageHashCreateResult,
+  PluginPreviewImageHashForAllAssetsInput,
   PluginPreviewImageHashForCollectionInput,
   PluginPreviewImageHashForProductInput,
   PluginPreviewImageHashResult,
@@ -59,9 +63,10 @@ export class PreviewImageHashService implements OnModuleInit {
     private configService: ConfigService,
     private eventBus: EventBus,
     private jobQueueService: JobQueueService,
+    private connection: TransactionalConnection,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: PluginPreviewImageHashOptions,
-  ) {}
+  ) { }
 
   private jobQueue: JobQueue<{
     ctx: SerializedRequestContext;
@@ -419,4 +424,65 @@ export class PreviewImageHashService implements OnModuleInit {
       "Successfully added all eligible hashing-tasks of collection-/, product-/ and its variant-assets to job queue",
     );
   }
+
+  /**
+   * Create preview image hashes for all assets.
+   * 
+   * This mutation should be handled with extra care since an installation may hold hundreds of thousands of images.
+   * This is mainly useful as a one-time-use utility to initialize all of the assets with hashes after installing the plugin.
+   */
+  async createForAllAssets(
+    ctx: RequestContext,
+    input?: PluginPreviewImageHashForAllAssetsInput,
+  ): Promise<PluginPreviewImageHashResult> {
+    let jobsAddedToQueue = 0;
+    const regenerateExistingHashes = input?.regenerateExistingHashes ?? DEFAULT_REGENERATE_HASHES;
+    // Either all assets or the ones with no custom field
+    const optionsWhere: FindOptionsWhere<Asset> = {
+      mimeType: In(SUPPORTED_MIME_TYPES),
+      customFields: { previewImageHash: regenerateExistingHashes ? undefined : IsNull() }
+    };
+    const countTotal = await this.connection.getRepository(ctx, Asset).count();
+    const countNeeded = await this.connection.getRepository(ctx, Asset).count({ where: optionsWhere });
+    let assetsSkipped = countTotal - countNeeded;
+
+    const take = input?.batchSize && input.batchSize > 0 ? input.batchSize : DEFAULT_COLLECTION_PAGINATION;
+    let skip = 0;
+    let hasMoreAssets = true;
+
+    do {
+      let assets: Asset[] | null = null;
+      try {
+        assets = await this.connection.getRepository(ctx, Asset).find({
+          select: { id: true, customFields: { previewImageHash: true } },
+          where: optionsWhere,
+          take,
+          skip,
+          loadEagerRelations: false,
+        });
+
+        // There arent more pages needed if the count is smaller than the `take`
+        hasMoreAssets = assets.length >= take;
+      } catch (error) {
+        const errorMsg = "Something unexpected happened when querying assets";
+        Logger.error(errorMsg, loggerCtx, error instanceof Error ? error.stack : undefined);
+        return this.result(jobsAddedToQueue, assetsSkipped, CODE.UNEXPECTED_ERROR, errorMsg);
+      }
+
+      skip += take;
+
+      for (const asset of assets) {
+        await this.addToJobQueue(ctx, { idAsset: asset.id });
+        jobsAddedToQueue += 1;
+      }
+    } while (hasMoreAssets);
+
+    return this.result(
+      jobsAddedToQueue,
+      assetsSkipped,
+      CODE.OK,
+      "Successfully added all eligible asset-hashing-tasks to job queue",
+    )
+  }
+
 }

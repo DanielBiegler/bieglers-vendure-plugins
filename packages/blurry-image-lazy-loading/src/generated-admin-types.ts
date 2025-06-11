@@ -2919,6 +2919,13 @@ export type Mutation = {
   /** Create a preview image hash for one image. */
   pluginPreviewImageHashCreateImageHash: PluginPreviewImageHashCreateResult;
   /**
+   * Create preview image hashes for all assets.
+   *
+   * This mutation should be handled with extra care since an installation may hold hundreds of thousands of images.
+   * This is mainly useful as a one-time-use utility to initialize all of the assets with hashes after installing the plugin.
+   */
+  pluginPreviewImageHashCreateImageHashesForAllAssets: PluginPreviewImageHashResult;
+  /**
    * Create preview image hashes for an entire collection.
    * This includes the collection, the contained Product-assets and related ProductVariant-assets.
    *
@@ -3576,6 +3583,11 @@ export type MutationMoveCollectionArgs = {
 
 export type MutationPluginPreviewImageHashCreateImageHashArgs = {
   input: PluginPreviewImageHashCreateInput;
+};
+
+
+export type MutationPluginPreviewImageHashCreateImageHashesForAllAssetsArgs = {
+  input?: InputMaybe<PluginPreviewImageHashForAllAssetsInput>;
 };
 
 
@@ -4657,6 +4669,24 @@ export type PluginPreviewImageHashCreateInput = {
 };
 
 export type PluginPreviewImageHashCreateResult = Asset | PluginPreviewImageHashResult;
+
+export type PluginPreviewImageHashForAllAssetsInput = {
+  /**
+   * How large a page is when paginating through all of the assets. Increasing this number will minimize
+   * needed roundtrips between Vendure and the database. Be careful though, this increases load on the database.
+   *
+   * @default 50
+   */
+  batchSize?: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Assets can be quite numerous, so by default this mutation skips over assets that already have a hash set, in order to minimize the needed compute.
+   * This can be undesirable, for example after you change the strategy, the encoding or resize options.
+   * Setting this option to `true` will overwrite the existing hashes, letting you update your existing assets.
+   *
+   * @default false
+   */
+  regenerateExistingHashes?: InputMaybe<Scalars['Boolean']['input']>;
+};
 
 export type PluginPreviewImageHashForCollectionInput = {
   /**
