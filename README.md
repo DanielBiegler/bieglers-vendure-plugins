@@ -61,8 +61,13 @@ npm run e2e
 ## Publishing to NPM
 
 1. Go to the directory of the plugin you want to publish, e.g. `cd packages/example-plugin`
-2. `npm run build`
-3. `npm publish`
+2. Check the package version
+3. Finalize `CHANGELOG.md`
+4. `npm run codegen` and see if types are all up to date
+5. `npm run e2e`
+6. `npm run build`
+7. `npm pack --dry-run` to double check
+8. `npm publish`
 
 For an in-depth guide on publishing to NPM and the Vendure Hub,
 see our [Publishing a Plugin guide](https://docs.vendure.io/guides/how-to/publish-plugin/).
