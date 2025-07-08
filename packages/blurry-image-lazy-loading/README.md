@@ -223,6 +223,16 @@ const dataUrl = thumbHashToDataURL(buffer);
 />
 ```
 
+## Practical Guides and Resources
+
+### Guides
+
+- [Implementing Low-Quality Image Placeholders (LQIP) in Astro](https://pinelab.studio/blog/implementing-low-quality-image-placeholders-lqip-in-astro/), by Martijn from Pinelab Studio
+
+### Resources
+
+- [React Lazy Load Image Component](https://github.com/Aljullu/react-lazy-load-image-component/), a popular solution for lazy loading comfortably in React projects
+
 ---
 
 #### Credits
