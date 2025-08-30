@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 (2025-08-30)
+
+- Update README with guides and resources section
+- Update links in README so that they work on the Vendure Hub and NPM
+
 ## 1.1.0 (2025-06-11)
 
 - Add new mutation for hashing all assets called `pluginPreviewImageHashCreateImageHashesForAllAssets`

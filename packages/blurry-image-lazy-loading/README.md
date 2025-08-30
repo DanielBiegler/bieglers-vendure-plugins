@@ -45,7 +45,7 @@ The [ThumbHash Website](https://evanw.github.io/thumbhash/) has an interactive o
 ## How To: Usage
 
 The plugin adds a couple ways to generate hashes for you to the admin api endpoint.
-Your admin-client needs the `CreateAsset` Vendure permission in order to call the following mutations. See [resolver](./src/api/admin.resolver.ts).
+Your admin-client needs the `CreateAsset` Vendure permission in order to call the following mutations. See [resolver](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/blurry-image-lazy-loading/src/api/admin.resolver.ts).
 
 ```gql
 extend type Mutation {
@@ -91,7 +91,7 @@ extend type Mutation {
 }
 ```
 
-See [api-extensions.ts](./src/api/api-extensions.ts) for a complete overview of the graphql extensions and types.
+See [api-extensions.ts](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/blurry-image-lazy-loading/src/api/api-extensions.ts) for a complete overview of the graphql extensions and types.
 
 ### 1. Add the plugin to your Vendure Config
 
@@ -130,7 +130,7 @@ PreviewImageHashPlugin.init({
 })
 ```
 
-Please refer to the specific [docs](./src/types.ts) for how and what you can customize.
+Please refer to the specific [docs](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/blurry-image-lazy-loading/src/types.ts) for how and what you can customize.
 
 ### 2. Generate a database migration
 
@@ -197,8 +197,8 @@ query {
 }
 ```
 
-2. For example with the `ThumbHashStrategy` and its `BufferEncoding` set to the default `"base64"` you can now decode the hashes with the [provided helper](https://github.com/evanw/thumbhash/blob/a652ce6ed691242f459f468f0a8756cda3b90a82/js/thumbhash.js#L278-L288) like so:
-    
+2. For example with the `ThumbHashStrategy` and its `BufferEncoding` set to the default `"base64"` you can now decode the hashes with the [provided helper](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/blurry-image-lazy-loading/src/vendors/thumbhash.ts#L374-L384) like so:
+
 ```ts
 // Node
 const buffer = Buffer.from(previewImagehash, "base64");
