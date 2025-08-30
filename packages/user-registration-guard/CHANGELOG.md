@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 (2025-08-30)
+
+- Update links in README so that they work on the Vendure Hub and NPM
+
 ## 1.0.0 (2025-05-02)
 
 - Allow injection of providers into assertions 

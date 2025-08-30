@@ -14,7 +14,7 @@ For example, reduce fraud by blocking disposable email providers or IP ranges fr
 
 - Let's you create arbitrarily complex assertions for Customer registrations and Administrator creations
 - Logical operators (`AND`, `OR`) for when you have multiple checks
-- Publishes a [`BlockedCustomerRegistrationEvent`](./src/events/user-registration-blocked.event.ts) or [`BlockedCreateAdministratorEvent`](./src/events/user-registration-blocked.event.ts) on the [EventBus](https://docs.vendure.io/guides/developer-guide/events/) for your consumption, for example if you'd like to monitor failed attempts
+- Publishes a [`BlockedCustomerRegistrationEvent`](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/user-registration-guard/src/events/user-registration-blocked.event.ts) or [`BlockedCreateAdministratorEvent`](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/user-registration-guard/src/events/user-registration-blocked.event.ts) on the [EventBus](https://docs.vendure.io/guides/developer-guide/events/) for your consumption, for example if you'd like to monitor failed attempts
 - Works via [Nestjs Interceptor](https://docs.nestjs.com/interceptors) and does not(!) override the existing mutation APIs ([`registerCustomerAccount`](https://docs.vendure.io/reference/graphql-api/shop/mutations#registercustomeraccount), [`createAdministrator`](https://docs.vendure.io/reference/graphql-api/admin/mutations#createadministrator)), which makes this plugin integrate seamlessly with your own [resolver overrides](https://docs.vendure.io/guides/developer-guide/extend-graphql-api/#override-built-in-resolvers)
   - Also supports TypeScript Generics so you can use your own extended types!
   - Also let's you inject providers into your assertions i.e. use Vendure's or your own custom services
@@ -77,7 +77,7 @@ export const config: VendureConfig = {
 }
 ```
 
-Please refer to the specific [docs](./src/types.ts) for how and what you can customize.
+Please refer to the specific [docs](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/user-registration-guard/src/types.ts) for how and what you can customize.
 
 ### 2. Create an assertion
 
@@ -93,9 +93,9 @@ const blockExampleDotCom: AssertFunctionShopApi = async (ctx, args, injector) =>
 };
 ```
 
-The `reason` field is helpful for when you're subscribing to the published [events](./src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
+The `reason` field is helpful for when you're subscribing to the published [events](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/user-registration-guard/src/events/user-registration-blocked.event.ts) and want to log or understand why somebody got blocked.
 
-In your assertions, see the [types](./src/types.ts), you'll receive these arguments:
+In your assertions, see the [types](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/user-registration-guard/src/types.ts), you'll receive these arguments:
 
 - [`RequestContext`](https://docs.vendure.io/reference/typescript-api/request/request-context)
 - GraphQL arguments of the mutation, which by default are either [`RegisterCustomerInput`](https://docs.vendure.io/reference/graphql-api/shop/input-types#registercustomerinput) or [`CreateAdministratorInput`](https://docs.vendure.io/reference/graphql-api/admin/input-types#createadministratorinput) depending on the API type.

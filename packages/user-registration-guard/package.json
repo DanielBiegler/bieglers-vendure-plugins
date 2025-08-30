@@ -1,7 +1,7 @@
 {
   "name": "@danielbiegler/vendure-plugin-user-registration-guard",
   "description": "Let's you flexibly customize if and how you prevent users from registering with your Vendure instance.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
