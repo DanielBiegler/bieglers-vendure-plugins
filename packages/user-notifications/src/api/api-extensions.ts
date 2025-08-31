@@ -23,7 +23,7 @@ export const adminApiExtensions = gql`
     totalItems: Int!
   }
   
-  input UserNotificationListOptions;
+  input UserNotificationListOptions
 
   extend type Query {
     userNotification(id: ID!): UserNotification!
