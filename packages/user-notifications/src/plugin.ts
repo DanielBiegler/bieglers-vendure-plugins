@@ -2,7 +2,7 @@ import { PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { permission, PLUGIN_INIT_OPTIONS } from "./constants";
-import { UserNotification } from "./entities/user-notification.entity";
+import { UserNotification, UserNotificationTranslation } from "./entities/user-notification.entity";
 import { UserNotificationsService } from "./services/main.service";
 import { UserNotificationsOptions } from "./types";
 
@@ -24,7 +24,7 @@ import { UserNotificationsOptions } from "./types";
     resolvers: [AdminResolver],
     schema: adminApiExtensions,
   },
-  entities: [UserNotification],
+  entities: [UserNotification, UserNotificationTranslation],
   configuration(config) {
     config.authOptions.customPermissions.push(permission);
     return config;

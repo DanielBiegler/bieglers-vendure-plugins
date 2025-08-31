@@ -1,5 +1,8 @@
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, Permission, RequestContext, Transaction } from "@vendure/core";
+import { Allow, Ctx, RequestContext, Transaction } from "@vendure/core";
+import { permission } from "../constants";
+import { UserNotification } from "../entities/user-notification.entity";
+import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs } from "../generated-admin-types";
 import { UserNotificationsService } from "../services/main.service";
 
 @Resolver()
@@ -8,12 +11,22 @@ export class AdminResolver {
 
   @Mutation()
   @Transaction()
-  @Allow(Permission.SuperAdmin)
-  async pluginUserNotificationsExample(
+  @Allow(permission.Create)
+  async userNotificationCreate(
     @Ctx() ctx: RequestContext,
-    @Args() args: any, // TODO replace with your new types
-  ): Promise<any> { // TODO replace with your new types
-    return null;
+    @Args() args: MutationUserNotificationCreateArgs,
+  ): Promise<UserNotification> {
+    return this.service.create(ctx, args.input);
+  }
+
+  @Mutation()
+  @Transaction()
+  @Allow(permission.Delete)
+  async userNotificationDelete(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationUserNotificationDeleteArgs,
+  ): Promise<DeletionResponse> {
+    return this.service.delete(ctx, args.ids);
   }
 }
 

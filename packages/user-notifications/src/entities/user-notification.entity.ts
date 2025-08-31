@@ -1,26 +1,57 @@
-import { Asset, DeepPartial, VendureEntity } from '@vendure/core';
-import { Column, Entity, ManyToOne } from 'typeorm';
+import { Asset, Channel, ChannelAware, DeepPartial, HasCustomFields, LanguageCode, LocaleString, Translatable, Translation, VendureEntity } from '@vendure/core';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
+
+export class CustomUserNotificationFields { }
+export class CustomUserNotificationFieldsTranslation { }
 
 @Entity()
-export class UserNotification extends VendureEntity {
+export class UserNotification extends VendureEntity implements HasCustomFields, ChannelAware, Translatable {
   constructor(input?: DeepPartial<UserNotification>) {
     super(input);
   }
 
-  @ManyToOne(() => Asset, { nullable: true })
-  asset: Asset | null; // TODO check if stuff is undefined or null when constructing
+  @ManyToMany(() => Channel)
+  @JoinTable()
+  channels: Channel[];
 
-  @Column({ nullable: true })
+  @OneToMany(() => UserNotificationTranslation, t => t.base, { eager: true })
+  translations: Array<Translation<UserNotification>>;
+
+  @Column(() => CustomUserNotificationFields)
+  customFields: CustomUserNotificationFields;
+
+  @Column({ type: "datetime", nullable: true })
   dateTime: Date | null;
+
+  @Column({ type: "datetime", nullable: true })
+  readAt: Date | null;
+
+  title: LocaleString;
+  content: LocaleString | null;
+  asset: Asset | null;
+}
+
+@Entity()
+export class UserNotificationTranslation extends VendureEntity implements Translation<UserNotification>, HasCustomFields {
+  constructor(input?: DeepPartial<Translation<UserNotificationTranslation>>) {
+    super(input);
+  }
+
+  @Column("varchar")
+  languageCode: LanguageCode;
+
+  @ManyToOne(() => UserNotification, (base) => base.translations, { onDelete: 'CASCADE' })
+  base: UserNotification;
+
+  @Column(() => CustomUserNotificationFieldsTranslation)
+  customFields: CustomUserNotificationFieldsTranslation;
+
+  @ManyToOne(() => Asset, { nullable: true })
+  asset: Asset | null;
 
   @Column()
   title: string;
 
   @Column({ type: 'text', nullable: true })
   content: string | null;
-
-  @Column({ nullable: true })
-  readAt: Date | null;
 }
-
-

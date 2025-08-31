@@ -16,6 +16,29 @@ export const adminApiExtensions = gql`
     content: String
     "This gets resolved for the active user"
     readAt: DateTime
+
+    translations: [UserNotificationTranslation!]!
+  }
+
+  type UserNotificationTranslation implements Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    languageCode: LanguageCode!
+
+    asset: Asset
+    title: String!
+    content: String
+  }
+
+  input UserNotificationTranslationInput {
+    # TODO check making distinct types?
+    # Only defined for update mutations
+    id: ID
+    languageCode: LanguageCode!
+    title: String!
+    content: String
+    idAsset: ID
   }
 
   type UserNotificationList implements PaginatedList {
@@ -31,29 +54,27 @@ export const adminApiExtensions = gql`
     userNotificationList(options: UserNotificationListOptions): UserNotificationList!
   }
 
-  input PluginUserNotificationCreateInput {
-    title: String!
+  input UserNotificationCreateInput {
     dateTime: DateTime
-    content: String
-    imageId: ID
+    translations: [UserNotificationTranslationInput!]!
   }
 
-  input PluginUserNotificationUpdateInput {
+  input UserNotificationUpdateInput {
     id: ID!
     title: String
     dateTime: DateTime
     content: String
-    imageId: ID
+    idAsset: ID
   }
 
   input UserNotificationMarkAsReadInput {
     ids: [ID!]!
-    userId: ID
+    idUser: ID
   }
 
   extend type Mutation {
-    userNotificationCreate(input: PluginUserNotificationCreateInput!): UserNotification!
-    userNotificationUpdate(input: PluginUserNotificationUpdateInput!): UserNotification!
+    userNotificationCreate(input: UserNotificationCreateInput!): UserNotification!
+    userNotificationUpdate(input: UserNotificationUpdateInput!): UserNotification!
     userNotificationDelete(ids: [ID!]!): DeletionResponse!
     userNotificationMarkAsRead(input: UserNotificationMarkAsReadInput!): [UserNotification!]!
   }
