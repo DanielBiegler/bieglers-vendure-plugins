@@ -45,7 +45,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
   test("Create", async ({ expect }) => {
     const response = await globalAdminClient.query(gql`
       mutation {
-        userNotificationCreate(input: {
+        channelNotificationCreate(input: {
           dateTime: "2025-01-01T12:00:00Z",
           idAsset: "T_1",
           translations: [
@@ -74,17 +74,17 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
       }
     `);
 
-    expect(response.userNotificationCreate).toBeDefined();
-    expect(response.userNotificationCreate.title).toBe("Test Notification");
-    expect(response.userNotificationCreate.content).toBe("This is a test notification.");
-    expect(response.userNotificationCreate.dateTime).toBe("2025-01-01T12:00:00.000Z");
-    expect(response.userNotificationCreate.readAt).toBeNull();
-    expect(response.userNotificationCreate.asset?.id).toBe("T_1");
-    expect(response.userNotificationCreate.assetId).toBe("T_1");
-    expect(response.userNotificationCreate.translations).toHaveLength(2);
-    expect(response.userNotificationCreate.translations.map((t: any) => t.languageCode).sort()).toEqual(["de", "en"]);
-    expect(response.userNotificationCreate.translations.find((t: any) => t.languageCode === "de").title).toBe("Testbenachrichtigung");
-    expect(response.userNotificationCreate.translations.find((t: any) => t.languageCode === "de").content).toBeNull();
+    expect(response.channelNotificationCreate).toBeDefined();
+    expect(response.channelNotificationCreate.title).toBe("Test Notification");
+    expect(response.channelNotificationCreate.content).toBe("This is a test notification.");
+    expect(response.channelNotificationCreate.dateTime).toBe("2025-01-01T12:00:00.000Z");
+    expect(response.channelNotificationCreate.readAt).toBeNull();
+    expect(response.channelNotificationCreate.asset?.id).toBe("T_1");
+    expect(response.channelNotificationCreate.assetId).toBe("T_1");
+    expect(response.channelNotificationCreate.translations).toHaveLength(2);
+    expect(response.channelNotificationCreate.translations.map((t: any) => t.languageCode).sort()).toEqual(["de", "en"]);
+    expect(response.channelNotificationCreate.translations.find((t: any) => t.languageCode === "de").title).toBe("Testbenachrichtigung");
+    expect(response.channelNotificationCreate.translations.find((t: any) => t.languageCode === "de").content).toBeNull();
   });
 
   test("Successfully delete multiple on channel", async ({ expect, task }) => {
@@ -98,7 +98,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
 
     const responseDelete = await adminClient.query(gql`
       mutation {
-        userNotificationDelete(ids: [
+        channelNotificationDelete(ids: [
           "${responseCreate01.channelNotificationCreate.id}",
           "${responseCreate02.channelNotificationCreate.id}"
         ]) {
@@ -108,9 +108,9 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
       }
     `);
 
-    expect(responseDelete.userNotificationDelete).toBeDefined();
-    expect(responseDelete.userNotificationDelete.result).toBe("DELETED");
-    expect(responseDelete.userNotificationDelete.message).toBe("2 of 2 UserNotifications deleted");
+    expect(responseDelete.channelNotificationDelete).toBeDefined();
+    expect(responseDelete.channelNotificationDelete.result).toBe("DELETED");
+    expect(responseDelete.channelNotificationDelete.message).toBe("2 of 2 ChannelNotifications deleted");
   });
 
   test("Successfully update notification", async ({ expect }) => {
