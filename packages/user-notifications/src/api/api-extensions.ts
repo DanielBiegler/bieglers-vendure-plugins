@@ -8,6 +8,8 @@ export const adminApiExtensions = gql`
     
     "For potentially displaying a thumbnail/banner in the notification or attaching a file"
     asset: Asset
+    "See if there is a connected asset without needing to resolve the full asset"
+    assetId: ID
     "Used for ordering, would also be the time for a changelog"
     dateTime: DateTime
     "Headline or title of the notification"
@@ -26,7 +28,6 @@ export const adminApiExtensions = gql`
     updatedAt: DateTime!
     languageCode: LanguageCode!
 
-    asset: Asset
     title: String!
     content: String
   }
@@ -38,7 +39,6 @@ export const adminApiExtensions = gql`
     languageCode: LanguageCode!
     title: String!
     content: String
-    idAsset: ID
   }
 
   type UserNotificationList implements PaginatedList {
@@ -56,6 +56,7 @@ export const adminApiExtensions = gql`
 
   input UserNotificationCreateInput {
     dateTime: DateTime
+    idAsset: ID
     translations: [UserNotificationTranslationInput!]!
   }
 

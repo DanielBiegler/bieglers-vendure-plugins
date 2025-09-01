@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  assertFound,
   Asset,
   ChannelService,
   CustomFieldRelationService,
@@ -13,8 +14,10 @@ import {
   RequestContext,
   TransactionalConnection,
   TranslatableSaver,
+  Translated,
   TranslatorService
 } from "@vendure/core";
+import { In } from "typeorm";
 import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS
@@ -43,25 +46,32 @@ export class UserNotificationsService {
     private options: UserNotificationsOptions,
   ) { }
 
-  async findOne(ctx: RequestContext, id: ID, relations?: RelationPaths<UserNotification>): Promise<UserNotification | null> {
-    // TODO CHANNELAWARE
-
-    return this.connection.getRepository(ctx, UserNotification)
-      .findOne({ where: { id }, relations })
-      .then(entity => entity && this.translator.translate(entity, ctx));
+  async findOne(
+    ctx: RequestContext,
+    id: ID,
+    relations?: RelationPaths<UserNotification>
+  ): Promise<Translated<UserNotification> | null> {
+    const entity = await this.connection.findOneInChannel(ctx, UserNotification, id, ctx.channelId, { relations });
+    if (!entity) return null;
+    return this.translator.translate(entity, ctx);
   }
 
   async findAll(
     ctx: RequestContext,
     options?: ListQueryOptions<UserNotification>,
-    relations?: RelationPaths<UserNotification>): Promise<PaginatedList<UserNotification>> {
+    relations?: RelationPaths<UserNotification>
+  ): Promise<PaginatedList<Translated<UserNotification>>> {
     return this.listQueryBuilder
-      .build(UserNotification, options, {
-        relations,
-        channelId: ctx.channelId,
-        orderBy: { dateTime: "DESC" },
-        ctx,
-      })
+      .build(
+        UserNotification,
+        options,
+        {
+          relations,
+          channelId: ctx.channelId,
+          orderBy: { dateTime: options?.sort?.dateTime ?? 'DESC' },
+          ctx,
+        }
+      )
       .getManyAndCount()
       .then(async ([notifications, totalItems]) => {
         const items = notifications.map(n => this.translator.translate(n, ctx));
@@ -69,7 +79,14 @@ export class UserNotificationsService {
       });
   }
 
-  async create(ctx: RequestContext, input: UserNotificationCreateInput): Promise<UserNotification> {
+  async create(
+    ctx: RequestContext,
+    input: UserNotificationCreateInput,
+    relations?: RelationPaths<UserNotification>
+  ): Promise<UserNotification> {
+    const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset) : null;
+    const assetId = asset?.id || null;
+
     const entity = await this.translatableSaver.create({
       ctx,
       input,
@@ -77,30 +94,26 @@ export class UserNotificationsService {
       translationType: UserNotificationTranslation,
       beforeSave: async entity => {
         await this.channelService.assignToCurrentChannel(entity, ctx);
-        for (const tInput of input.translations) {
-          const asset = tInput.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, tInput.idAsset) : null;
-          const translation = entity.translations.find(t => t.languageCode === tInput.languageCode);
-          if (translation) (translation as UserNotificationTranslation).asset = asset;
-        }
+        entity.asset = asset;
+        entity.assetId = assetId;
       },
     });
     Logger.verbose(`Created UserNotification (${entity.id})`, loggerCtx);
 
     // TODO eventbus event
-    // TODO customfields await this.customFieldRelationService.updateRelations(ctx, UserNotification, input, entity);
+    // TODO customfields
+    // await this.customFieldRelationService.updateRelations(ctx, UserNotification, input, entity);
 
-    const translated = this.translator.translate(entity, ctx);
-    // @ts-expect-error
-    if (!translated.asset) translated.asset = null;
-
-    console.log("Translated UserNotification entity:", JSON.stringify(translated, null, 2));
-    return translated;
+    return assertFound(this.findOne(ctx, entity.id, relations));
   }
 
   async delete(ctx: RequestContext, ids: ID[]): Promise<DeletionResponse> {
-    // TODO CHANNELAWARE
     const castedIds = ids.map(id => String(id));
-    const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete(castedIds);
+    const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete({
+      id: In(castedIds),
+      channels: { id: ctx.channelId }
+    });
+
     const result = deleteResult.affected === ids.length ? DeletionResult.DELETED : DeletionResult.NOT_DELETED;
     const message = `${deleteResult.affected} of ${ids.length} UserNotifications deleted`;
     return { result, message };

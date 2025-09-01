@@ -1,4 +1,4 @@
-import { Asset, Channel, ChannelAware, DeepPartial, HasCustomFields, LanguageCode, LocaleString, Translatable, Translation, VendureEntity } from '@vendure/core';
+import { Asset, Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, LanguageCode, LocaleString, Translatable, Translation, VendureEntity } from '@vendure/core';
 import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
 
 export class CustomUserNotificationFields { }
@@ -26,9 +26,14 @@ export class UserNotification extends VendureEntity implements HasCustomFields, 
   @Column({ type: "datetime", nullable: true })
   readAt: Date | null;
 
+  @ManyToOne(() => Asset, { nullable: true })
+  asset: Asset | null;
+
+  @EntityId({ nullable: true })
+  assetId: ID | null;
+
   title: LocaleString;
   content: LocaleString | null;
-  asset: Asset | null;
 }
 
 @Entity()
@@ -45,9 +50,6 @@ export class UserNotificationTranslation extends VendureEntity implements Transl
 
   @Column(() => CustomUserNotificationFieldsTranslation)
   customFields: CustomUserNotificationFieldsTranslation;
-
-  @ManyToOne(() => Asset, { nullable: true })
-  asset: Asset | null;
 
   @Column()
   title: string;

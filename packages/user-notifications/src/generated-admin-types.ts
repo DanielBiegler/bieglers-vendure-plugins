@@ -6756,6 +6756,7 @@ export type UserNotification = Node & {
 
 export type UserNotificationCreateInput = {
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
+  idAsset?: InputMaybe<Scalars['ID']['input']>;
   translations: Array<UserNotificationTranslationInput>;
 };
 
@@ -6807,7 +6808,6 @@ export type UserNotificationSortParameter = {
 
 export type UserNotificationTranslation = Node & {
   __typename?: 'UserNotificationTranslation';
-  asset?: Maybe<Asset>;
   content?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
@@ -6820,7 +6820,6 @@ export type UserNotificationTranslationInput = {
   content?: InputMaybe<Scalars['String']['input']>;
   customFields?: InputMaybe<Scalars['JSON']['input']>;
   id?: InputMaybe<Scalars['ID']['input']>;
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
   languageCode: LanguageCode;
   title: Scalars['String']['input'];
 };

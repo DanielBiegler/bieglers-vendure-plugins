@@ -41,17 +41,16 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
       mutation {
         userNotificationCreate(input: {
           dateTime: "2025-01-01T12:00:00Z",
+          idAsset: "T_1",
           translations: [
             {
               languageCode: en,
               title: "Test Notification",
               content: "This is a test notification.",
-              # idAsset: "T_1"
             },
             {
               languageCode: de,
               title: "Testbenachrichtigung",
-              idAsset: "T_2"
             }
           ]
         }) {
@@ -59,11 +58,12 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
           createdAt
           updatedAt
           asset { id }
+          assetId
           title
           dateTime
           content
           readAt
-          translations { languageCode title content asset { id } }
+          translations { languageCode title content }
         }
       }
     `);
@@ -75,10 +75,9 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
     expect(response.userNotificationCreate.content).toBe("This is a test notification.");
     expect(response.userNotificationCreate.dateTime).toBe("2025-01-01T12:00:00.000Z");
     expect(response.userNotificationCreate.readAt).toBeNull();
-    expect(response.userNotificationCreate.asset).toBeNull();
+    expect(response.userNotificationCreate.asset?.id).toBe("T_1");
+    expect(response.userNotificationCreate.assetId).toBe("T_1");
     expect(response.userNotificationCreate.translations).toHaveLength(2);
-    expect(response.userNotificationCreate.translations[0].asset).toBeNull();
-    expect(response.userNotificationCreate.translations[1].asset.id).toBe("T_2");
     expect(response.userNotificationCreate.translations.map((t: any) => t.languageCode).sort()).toEqual(["de", "en"]);
     expect(response.userNotificationCreate.translations.find((t: any) => t.languageCode === "de").title).toBe("Testbenachrichtigung");
     expect(response.userNotificationCreate.translations.find((t: any) => t.languageCode === "de").content).toBeNull();
