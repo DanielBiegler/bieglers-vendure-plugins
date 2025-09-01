@@ -1,5 +1,7 @@
 ![Banner Image](https://raw.githubusercontent.com/DanielBiegler/bieglers-vendure-plugins/master/packages/user-notifications/assets/thumbnail_16x9.jpeg)
 
+# TODO MAYBE RENAME THIS THING TO "Channel Notifications", makes more sense!
+
 # Vendure Plugin: User Notifications
 
 Foundation for building notification inboxes and or changelogs for your users
