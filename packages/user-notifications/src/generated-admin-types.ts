@@ -5164,7 +5164,7 @@ export type Query = {
   taxRates: TaxRateList;
   testEligibleShippingMethods: Array<ShippingMethodQuote>;
   testShippingMethod: TestShippingMethodResult;
-  userNotification: UserNotification;
+  userNotification?: Maybe<UserNotification>;
   /** List all notifications for the active user, by default orders by dateTime descending */
   userNotificationList: UserNotificationList;
   zone?: Maybe<Zone>;

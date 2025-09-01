@@ -49,7 +49,7 @@ export const adminApiExtensions = gql`
   input UserNotificationListOptions
 
   extend type Query {
-    userNotification(id: ID!): UserNotification!
+    userNotification(id: ID!): UserNotification
     "List all notifications for the active user, by default orders by dateTime descending"
     userNotificationList(options: UserNotificationListOptions): UserNotificationList!
   }

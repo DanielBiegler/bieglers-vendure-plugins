@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { UserNotificationsPlugin } from "../src/plugin";
-import { CreateMinimalNotificationDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
+import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
 // Sequential to test different channel tokens
 // Running concurrently easily breaks because `.setChannelToken` mutates the client
@@ -26,11 +26,6 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
     ],
   });
 
-  let testChannelFooId: string;
-  let testChannelFooToken: string;
-  let testChannelBarId: string;
-  let testChannelBarToken: string;
-
   beforeAll(async () => {
     await server.init({
       productsCsvPath: path.join(__dirname, "../../../utils/e2e/e2e-products-full.csv"),
@@ -39,46 +34,6 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
       logging: true,
     });
     await adminClient.asSuperAdmin();
-    const channelCreateFooResponse = await adminClient.query(gql`
-      mutation {
-        createChannel(input: {
-          code: "test-channel-foo",
-          token: "test-token-foo",
-          defaultLanguageCode: en,
-          pricesIncludeTax: true,
-          currencyCode: USD,
-          defaultShippingZoneId: "T_1",
-          defaultTaxZoneId: "T_1"
-        }) {
-          ... on Channel {
-            id
-            token
-          }
-        }
-      }
-    `);
-    testChannelFooId = channelCreateFooResponse.createChannel.id;
-    testChannelFooToken = channelCreateFooResponse.createChannel.token;
-    const channelCreateBarResponse = await adminClient.query(gql`
-      mutation {
-        createChannel(input: {
-          code: "test-channel-bar",
-          token: "test-token-bar",
-          defaultLanguageCode: en,
-          pricesIncludeTax: true,
-          currencyCode: USD,
-          defaultShippingZoneId: "T_1",
-          defaultTaxZoneId: "T_1"
-        }) {
-          ... on Channel {
-            id
-            token
-          }
-        }
-      }
-    `);
-    testChannelBarId = channelCreateBarResponse.createChannel.id;
-    testChannelBarToken = channelCreateBarResponse.createChannel.token;
   }, 60000);
 
   afterAll(async () => {
@@ -134,8 +89,10 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
     expect(response.userNotificationCreate.translations.find((t: any) => t.languageCode === "de").content).toBeNull();
   });
 
-  test("Successfully delete multiple on channel", async ({ expect }) => {
-    adminClient.setChannelToken(testChannelFooToken);
+  test("Successfully delete multiple on channel", async ({ expect, task }) => {
+    const responseChannel = await adminClient.query(CreateMinimalChannelDocument, { code: task.id, token: task.id });
+    adminClient.setChannelToken((responseChannel.createChannel as { token: string }).token);
+
     const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
     const responseCreate02 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #2" });
 
@@ -201,4 +158,47 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
     expect(responseUpdate02.userNotificationUpdate.assetId).toBeNull();
     expect(responseUpdate02.userNotificationUpdate.asset?.id).toBeUndefined();
   });
+
+  test("Successfully read notification", async ({ expect }) => {
+    const title = "Test Notification #1";
+    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title });
+    const responseRead = await adminClient.query(ReadNotificationDocument, { id: responseCreate01.userNotificationCreate.id });
+
+    expect(responseRead.userNotification?.id).toBeDefined();
+    expect(responseRead.userNotification?.title).toBe(title);
+    expect(responseRead.userNotification?.translations.length).toBe(1);
+  });
+
+  test("Fail to read notification due non-existent ID", async ({ expect }) => {
+    const responseRead = await adminClient.query(ReadNotificationDocument, { id: 1337 });
+    expect(responseRead.userNotification).toBeNull();
+  });
+
+  test("Successfully read paginated notifications, default order DESC", async ({ expect, task }) => {
+    const responseChannel = await adminClient.query(CreateMinimalChannelDocument, { code: task.id, token: task.id });
+    adminClient.setChannelToken((responseChannel.createChannel as { token: string }).token);
+
+    const title01 = "#1";
+    const dateTime01 = "1999-01-01T12:00:00.000Z";
+    const title02 = "#2";
+    const dateTime02 = "2000-01-01T12:00:00.000Z";
+
+    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title: title01, dateTime: dateTime01 });
+    const responseCreate02 = await adminClient.query(CreateMinimalNotificationDocument, { title: title02, dateTime: dateTime02 });
+    const responseRead = await adminClient.query(ReadNotificationListDocument);
+
+    expect(responseRead.userNotificationList.totalItems).toBe(2);
+    expect(responseRead.userNotificationList.items.length).toBe(2);
+
+    expect(responseRead.userNotificationList.items[0].id).toBe(responseCreate02.userNotificationCreate.id);
+    expect(responseRead.userNotificationList.items[0].title).toBe(title02);
+    expect(responseRead.userNotificationList.items[0].dateTime).toBe(dateTime02);
+
+    expect(responseRead.userNotificationList.items[1].id).toBe(responseCreate01.userNotificationCreate.id);
+    expect(responseRead.userNotificationList.items[1].title).toBe(title01);
+    expect(responseRead.userNotificationList.items[1].dateTime).toBe(dateTime01);
+  });
+
+  // TODO findAll
+  // TODO mark as read
 });
