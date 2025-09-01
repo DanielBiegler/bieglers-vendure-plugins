@@ -1,7 +1,7 @@
 import gql from "graphql-tag";
 
 export const fragmentNotification = gql`
-  fragment all on UserNotification {
+  fragment all on ChannelNotification {
     id
     asset { id }
     assetId
@@ -22,7 +22,7 @@ export const fragmentNotification = gql`
 export const createMinimalNotification = gql`
   ${fragmentNotification}
   mutation createMinimalNotification($title: String!, $dateTime: DateTime) {
-    userNotificationCreate(input: {
+    channelNotificationCreate(input: {
       dateTime: $dateTime,
       translations: [{
         languageCode: en,
@@ -36,8 +36,8 @@ export const createMinimalNotification = gql`
 
 export const updateNotification = gql`
   ${fragmentNotification}
-  mutation updateNotification($input: UserNotificationUpdateInput!) {
-    userNotificationUpdate(input: $input) {
+  mutation updateNotification($input: ChannelNotificationUpdateInput!) {
+    channelNotificationUpdate(input: $input) {
       ...all
     }
   }
@@ -46,7 +46,7 @@ export const updateNotification = gql`
 export const readNotification = gql`
   ${fragmentNotification}
   query readNotification($id: ID!) {
-    userNotification(id: $id) {
+    channelNotification(id: $id) {
       ...all
     }
   }
@@ -54,8 +54,8 @@ export const readNotification = gql`
 
 export const readNotificationList = gql`
   ${fragmentNotification}
-  query readNotificationList($options: UserNotificationListOptions) {
-    userNotificationList(options: $options) {
+  query readNotificationList($options: ChannelNotificationListOptions) {
+    channelNotificationList(options: $options) {
       totalItems
       items {
         ...all
@@ -85,8 +85,8 @@ export const createMinimalChannel = gql`
 
 export const markAsRead = gql`
   ${fragmentNotification}
-  mutation markAsRead($input: UserNotificationMarkAsReadInput!) {
-    userNotificationMarkAsRead(input: $input) {
+  mutation markAsRead($input: ChannelNotificationMarkAsReadInput!) {
+    channelNotificationMarkAsRead(input: $input) {
       success
     }
   }

@@ -2448,6 +2448,8 @@ export enum Permission {
   CreateCatalog = 'CreateCatalog',
   /** Grants permission to create Channel */
   CreateChannel = 'CreateChannel',
+  /** Grants permission to create ChannelNotification */
+  CreateChannelNotification = 'CreateChannelNotification',
   /** Grants permission to create Collection */
   CreateCollection = 'CreateCollection',
   /** Grants permission to create Country */
@@ -2482,8 +2484,6 @@ export enum Permission {
   CreateTaxCategory = 'CreateTaxCategory',
   /** Grants permission to create TaxRate */
   CreateTaxRate = 'CreateTaxRate',
-  /** Grants permission to create UserNotification */
-  CreateUserNotification = 'CreateUserNotification',
   /** Grants permission to create Zone */
   CreateZone = 'CreateZone',
   /** Grants permission to delete Administrator */
@@ -2494,6 +2494,8 @@ export enum Permission {
   DeleteCatalog = 'DeleteCatalog',
   /** Grants permission to delete Channel */
   DeleteChannel = 'DeleteChannel',
+  /** Grants permission to delete ChannelNotification */
+  DeleteChannelNotification = 'DeleteChannelNotification',
   /** Grants permission to delete Collection */
   DeleteCollection = 'DeleteCollection',
   /** Grants permission to delete Country */
@@ -2528,8 +2530,6 @@ export enum Permission {
   DeleteTaxCategory = 'DeleteTaxCategory',
   /** Grants permission to delete TaxRate */
   DeleteTaxRate = 'DeleteTaxRate',
-  /** Grants permission to delete UserNotification */
-  DeleteUserNotification = 'DeleteUserNotification',
   /** Grants permission to delete Zone */
   DeleteZone = 'DeleteZone',
   /** Owner means the user owns this entity, e.g. a Customer's own Order */
@@ -2544,6 +2544,8 @@ export enum Permission {
   ReadCatalog = 'ReadCatalog',
   /** Grants permission to read Channel */
   ReadChannel = 'ReadChannel',
+  /** Grants permission to read ChannelNotification */
+  ReadChannelNotification = 'ReadChannelNotification',
   /** Grants permission to read Collection */
   ReadCollection = 'ReadCollection',
   /** Grants permission to read Country */
@@ -2578,8 +2580,6 @@ export enum Permission {
   ReadTaxCategory = 'ReadTaxCategory',
   /** Grants permission to read TaxRate */
   ReadTaxRate = 'ReadTaxRate',
-  /** Grants permission to read UserNotification */
-  ReadUserNotification = 'ReadUserNotification',
   /** Grants permission to read Zone */
   ReadZone = 'ReadZone',
   /** SuperAdmin has unrestricted access to all operations */
@@ -2592,6 +2592,8 @@ export enum Permission {
   UpdateCatalog = 'UpdateCatalog',
   /** Grants permission to update Channel */
   UpdateChannel = 'UpdateChannel',
+  /** Grants permission to update ChannelNotification */
+  UpdateChannelNotification = 'UpdateChannelNotification',
   /** Grants permission to update Collection */
   UpdateCollection = 'UpdateCollection',
   /** Grants permission to update Country */
@@ -2628,8 +2630,6 @@ export enum Permission {
   UpdateTaxCategory = 'UpdateTaxCategory',
   /** Grants permission to update TaxRate */
   UpdateTaxRate = 'UpdateTaxRate',
-  /** Grants permission to update UserNotification */
-  UpdateUserNotification = 'UpdateUserNotification',
   /** Grants permission to update Zone */
   UpdateZone = 'UpdateZone'
 }

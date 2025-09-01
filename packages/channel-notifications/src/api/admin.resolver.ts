@@ -2,7 +2,7 @@ import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/g
 import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, TransactionalConnection, Translated } from "@vendure/core";
 import { permission } from "../constants";
 import { ChannelNotification, ChannelNotificationReadEntry } from "../entities/channel-notification.entity";
-import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs, MutationUserNotificationMarkAsReadArgs, MutationUserNotificationUpdateArgs, QueryUserNotificationListArgs, Success } from "../generated-admin-types";
+import { DeletionResponse, MutationChannelNotificationCreateArgs, MutationChannelNotificationDeleteArgs, MutationChannelNotificationMarkAsReadArgs, MutationChannelNotificationUpdateArgs, QueryChannelNotificationListArgs, Success } from "../generated-admin-types";
 import { ChannelNotificationsService } from "../services/main.service";
 
 @Resolver()
@@ -11,7 +11,7 @@ export class AdminResolver {
 
   @Query()
   @Allow(permission.Read)
-  async userNotification(
+  async channelNotification(
     @Ctx() ctx: RequestContext,
     @Args() args: { id: ID },
     @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
@@ -21,9 +21,9 @@ export class AdminResolver {
 
   @Query()
   @Allow(permission.Read)
-  async userNotificationList(
+  async channelNotificationList(
     @Ctx() ctx: RequestContext,
-    @Args() args: QueryUserNotificationListArgs,
+    @Args() args: QueryChannelNotificationListArgs,
     @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
   ): Promise<PaginatedList<Translated<ChannelNotification>>> {
     return this.service.findAll(ctx, args.options, relations);
@@ -32,9 +32,9 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Create)
-  async userNotificationCreate(
+  async channelNotificationCreate(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationUserNotificationCreateArgs,
+    @Args() args: MutationChannelNotificationCreateArgs,
     @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
   ): Promise<Translated<ChannelNotification>> {
     return this.service.create(ctx, args.input, relations);
@@ -43,9 +43,9 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Update)
-  async userNotificationUpdate(
+  async channelNotificationUpdate(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationUserNotificationUpdateArgs,
+    @Args() args: MutationChannelNotificationUpdateArgs,
     @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
   ): Promise<Translated<ChannelNotification>> {
     return this.service.update(ctx, args.input, relations);
@@ -54,9 +54,9 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Delete)
-  async userNotificationDelete(
+  async channelNotificationDelete(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationUserNotificationDeleteArgs,
+    @Args() args: MutationChannelNotificationDeleteArgs,
   ): Promise<DeletionResponse> {
     return this.service.delete(ctx, args.ids);
   }
@@ -64,15 +64,15 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Update)
-  async userNotificationMarkAsRead(
+  async channelNotificationMarkAsRead(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationUserNotificationMarkAsReadArgs,
+    @Args() args: MutationChannelNotificationMarkAsReadArgs,
   ): Promise<Success> {
     return this.service.markAsRead(ctx, args.input.ids);
   }
 }
 
-@Resolver("UserNotification")
+@Resolver("ChannelNotification")
 export class FieldResolver {
 
   constructor(private connection: TransactionalConnection) { }

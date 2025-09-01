@@ -99,8 +99,8 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     const responseDelete = await adminClient.query(gql`
       mutation {
         userNotificationDelete(ids: [
-          "${responseCreate01.userNotificationCreate.id}",
-          "${responseCreate02.userNotificationCreate.id}"
+          "${responseCreate01.channelNotificationCreate.id}",
+          "${responseCreate02.channelNotificationCreate.id}"
         ]) {
           result
           message
@@ -123,7 +123,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
 
     const responseUpdate01 = await globalAdminClient.query(UpdateNotificationDocument, {
       input: {
-        id: responseCreate01.userNotificationCreate.id,
+        id: responseCreate01.channelNotificationCreate.id,
         dateTime: updatedDateTime,
         idAsset: updatedAssetId,
         translations: [{
@@ -134,44 +134,44 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
       }
     });
 
-    expect(responseUpdate01.userNotificationUpdate).toBeDefined();
-    expect(responseUpdate01.userNotificationUpdate.dateTime).toBe(updatedDateTime);
-    expect(responseUpdate01.userNotificationUpdate.title).toBe(updatedTitle);
-    expect(responseUpdate01.userNotificationUpdate.content).toBe(updatedContent);
-    expect(responseUpdate01.userNotificationUpdate.assetId).toBe(updatedAssetId);
-    expect(responseUpdate01.userNotificationUpdate.asset?.id).toBe(updatedAssetId);
+    expect(responseUpdate01.channelNotificationUpdate).toBeDefined();
+    expect(responseUpdate01.channelNotificationUpdate.dateTime).toBe(updatedDateTime);
+    expect(responseUpdate01.channelNotificationUpdate.title).toBe(updatedTitle);
+    expect(responseUpdate01.channelNotificationUpdate.content).toBe(updatedContent);
+    expect(responseUpdate01.channelNotificationUpdate.assetId).toBe(updatedAssetId);
+    expect(responseUpdate01.channelNotificationUpdate.asset?.id).toBe(updatedAssetId);
 
     // Unassign Asset
 
     const responseUpdate02 = await globalAdminClient.query(UpdateNotificationDocument, {
       input: {
-        id: responseCreate01.userNotificationCreate.id,
+        id: responseCreate01.channelNotificationCreate.id,
         idAsset: null!, // TODO Why does TS need the non null assert here? 
         // I confirmed the resolver does pass it correctly and the service gets the null.
       }
     });
 
-    expect(responseUpdate02.userNotificationUpdate).toBeDefined();
-    expect(responseUpdate02.userNotificationUpdate.dateTime).toBe(updatedDateTime);
-    expect(responseUpdate02.userNotificationUpdate.title).toBe(updatedTitle);
-    expect(responseUpdate02.userNotificationUpdate.content).toBe(updatedContent);
-    expect(responseUpdate02.userNotificationUpdate.assetId).toBeNull();
-    expect(responseUpdate02.userNotificationUpdate.asset?.id).toBeUndefined();
+    expect(responseUpdate02.channelNotificationUpdate).toBeDefined();
+    expect(responseUpdate02.channelNotificationUpdate.dateTime).toBe(updatedDateTime);
+    expect(responseUpdate02.channelNotificationUpdate.title).toBe(updatedTitle);
+    expect(responseUpdate02.channelNotificationUpdate.content).toBe(updatedContent);
+    expect(responseUpdate02.channelNotificationUpdate.assetId).toBeNull();
+    expect(responseUpdate02.channelNotificationUpdate.asset?.id).toBeUndefined();
   });
 
   test("Successfully read notification", async ({ expect }) => {
     const title = "Test Notification #1";
     const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title });
-    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.userNotificationCreate.id });
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.channelNotificationCreate.id });
 
-    expect(responseRead.userNotification?.id).toBeDefined();
-    expect(responseRead.userNotification?.title).toBe(title);
-    expect(responseRead.userNotification?.translations.length).toBe(1);
+    expect(responseRead.channelNotification?.id).toBeDefined();
+    expect(responseRead.channelNotification?.title).toBe(title);
+    expect(responseRead.channelNotification?.translations.length).toBe(1);
   });
 
   test("Fail to read notification due non-existent ID", async ({ expect }) => {
     const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: 1337 });
-    expect(responseRead.userNotification).toBeNull();
+    expect(responseRead.channelNotification).toBeNull();
   });
 
   test("Successfully read paginated notifications, default order DESC", async ({ expect, task }) => {
@@ -189,16 +189,16 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     const responseCreate02 = await adminClient.query(CreateMinimalNotificationDocument, { title: title02, dateTime: dateTime02 });
     const responseRead = await adminClient.query(ReadNotificationListDocument);
 
-    expect(responseRead.userNotificationList.totalItems).toBe(2);
-    expect(responseRead.userNotificationList.items.length).toBe(2);
+    expect(responseRead.channelNotificationList.totalItems).toBe(2);
+    expect(responseRead.channelNotificationList.items.length).toBe(2);
 
-    expect(responseRead.userNotificationList.items[0].id).toBe(responseCreate02.userNotificationCreate.id);
-    expect(responseRead.userNotificationList.items[0].title).toBe(title02);
-    expect(responseRead.userNotificationList.items[0].dateTime).toBe(dateTime02);
+    expect(responseRead.channelNotificationList.items[0].id).toBe(responseCreate02.channelNotificationCreate.id);
+    expect(responseRead.channelNotificationList.items[0].title).toBe(title02);
+    expect(responseRead.channelNotificationList.items[0].dateTime).toBe(dateTime02);
 
-    expect(responseRead.userNotificationList.items[1].id).toBe(responseCreate01.userNotificationCreate.id);
-    expect(responseRead.userNotificationList.items[1].title).toBe(title01);
-    expect(responseRead.userNotificationList.items[1].dateTime).toBe(dateTime01);
+    expect(responseRead.channelNotificationList.items[1].id).toBe(responseCreate01.channelNotificationCreate.id);
+    expect(responseRead.channelNotificationList.items[1].title).toBe(title01);
+    expect(responseRead.channelNotificationList.items[1].dateTime).toBe(dateTime01);
   });
 
   test("Successfully mark notifications as read", async ({ expect }) => {
@@ -208,18 +208,18 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
       input: {
         ids: [
-          responseCreate01.userNotificationCreate.id,
-          responseCreate02.userNotificationCreate.id
+          responseCreate01.channelNotificationCreate.id,
+          responseCreate02.channelNotificationCreate.id
         ]
       }
     });
 
-    const responseRead01 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.userNotificationCreate.id });
-    const responseRead02 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate02.userNotificationCreate.id });
+    const responseRead01 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.channelNotificationCreate.id });
+    const responseRead02 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate02.channelNotificationCreate.id });
 
-    expect(responseMark.userNotificationMarkAsRead.success).toBe(true);
-    expect(responseRead01.userNotification?.readAt).toBeDefined();
-    expect(responseRead02.userNotification?.readAt).toBeDefined();
+    expect(responseMark.channelNotificationMarkAsRead.success).toBe(true);
+    expect(responseRead01.channelNotification?.readAt).toBeDefined();
+    expect(responseRead02.channelNotification?.readAt).toBeDefined();
   });
 
   test("Successfully mark notifications as read twice", async ({ expect }) => {
@@ -228,13 +228,13 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
       input: {
         ids: [
-          responseCreate01.userNotificationCreate.id,
-          responseCreate01.userNotificationCreate.id,
+          responseCreate01.channelNotificationCreate.id,
+          responseCreate01.channelNotificationCreate.id,
         ]
       }
     });
 
-    expect(responseMark.userNotificationMarkAsRead.success).toBe(true);
+    expect(responseMark.channelNotificationMarkAsRead.success).toBe(true);
   });
 
   test("Fails marking notifications as read due to non-existent ID", async ({ expect }) => {

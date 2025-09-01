@@ -23,7 +23,7 @@ import {
   PLUGIN_INIT_OPTIONS
 } from "../constants";
 import { ChannelNotification, ChannelNotificationReadEntry, ChannelNotificationTranslation } from "../entities/channel-notification.entity";
-import { DeletionResponse, DeletionResult, Success, UserNotificationCreateInput, UserNotificationUpdateInput } from "../generated-admin-types";
+import { ChannelNotificationCreateInput, ChannelNotificationUpdateInput, DeletionResponse, DeletionResult, Success } from "../generated-admin-types";
 import { ChannelNotificationsOptions } from "../types";
 
 /**
@@ -81,7 +81,7 @@ export class ChannelNotificationsService {
 
   async create(
     ctx: RequestContext,
-    input: UserNotificationCreateInput,
+    input: ChannelNotificationCreateInput,
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
     const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
@@ -102,14 +102,14 @@ export class ChannelNotificationsService {
 
     // TODO eventbus event
     // TODO customfields
-    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
+    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotifications, input, entity);
 
     return assertFound(this.findOne(ctx, entity.id, relations));
   }
 
   async update(
     ctx: RequestContext,
-    input: UserNotificationUpdateInput,
+    input: ChannelNotificationUpdateInput,
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
     const entity = await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
@@ -145,9 +145,9 @@ export class ChannelNotificationsService {
     // Lets say channel VendorA and VendorB share the same notification
     // The junction table looks like this:
     // [
-    //   { userNotificationId: 1, channelId: DEFAULT },
-    //   { userNotificationId: 1, channelId: VendorA },
-    //   { userNotificationId: 1, channelId: VendorB },
+    //   { channelNotificationId: 1, channelId: DEFAULT },
+    //   { channelNotificationId: 1, channelId: VendorA },
+    //   { channelNotificationId: 1, channelId: VendorB },
     // ]
     // If we now delete the notification in channel VendorA, it should still exist in VendorB
     // Due to delete cascades by default it would be removed in all channels
@@ -179,7 +179,7 @@ export class ChannelNotificationsService {
     }
 
     const result = countDeleted === ids.length ? DeletionResult.DELETED : DeletionResult.NOT_DELETED;
-    const message = `${countDeleted} of ${ids.length} UserNotifications deleted`; // TODO i18n?
+    const message = `${countDeleted} of ${ids.length} ChannelNotifications deleted`; // TODO i18n?
 
     // TODO logging ?
     // TODO eventbus events

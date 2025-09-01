@@ -1,7 +1,7 @@
 import { gql } from "graphql-tag";
 
 export const adminApiExtensions = gql`
-  type UserNotification implements Node {
+  type ChannelNotification implements Node {
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
@@ -19,10 +19,10 @@ export const adminApiExtensions = gql`
     "This gets resolved for the active user"
     readAt: DateTime
 
-    translations: [UserNotificationTranslation!]!
+    translations: [ChannelNotificationTranslation!]!
   }
 
-  type UserNotificationTranslation implements Node {
+  type ChannelNotificationTranslation implements Node {
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
@@ -32,7 +32,7 @@ export const adminApiExtensions = gql`
     content: String
   }
 
-  input UserNotificationTranslationInput {
+  input ChannelNotificationTranslationInput {
     # TODO check making distinct types?
     # Only defined for update mutations
     id: ID
@@ -41,40 +41,40 @@ export const adminApiExtensions = gql`
     content: String
   }
 
-  type UserNotificationList implements PaginatedList {
-    items: [UserNotification!]!
+  type ChannelNotificationList implements PaginatedList {
+    items: [ChannelNotification!]!
     totalItems: Int!
   }
   
-  input UserNotificationListOptions
+  input ChannelNotificationListOptions
 
   extend type Query {
-    userNotification(id: ID!): UserNotification
+    channelNotification(id: ID!): ChannelNotification
     "List all notifications for the active user, by default orders by dateTime descending"
-    userNotificationList(options: UserNotificationListOptions): UserNotificationList!
+    channelNotificationList(options: ChannelNotificationListOptions): ChannelNotificationList!
   }
 
-  input UserNotificationCreateInput {
+  input ChannelNotificationCreateInput {
     dateTime: DateTime
     idAsset: ID
-    translations: [UserNotificationTranslationInput!]!
+    translations: [ChannelNotificationTranslationInput!]!
   }
 
-  input UserNotificationUpdateInput {
+  input ChannelNotificationUpdateInput {
     id: ID!
     dateTime: DateTime
     idAsset: ID
-    translations: [UserNotificationTranslationInput!]
+    translations: [ChannelNotificationTranslationInput!]
   }
 
-  input UserNotificationMarkAsReadInput {
+  input ChannelNotificationMarkAsReadInput {
     ids: [ID!]!
   }
 
   extend type Mutation {
-    userNotificationCreate(input: UserNotificationCreateInput!): UserNotification!
-    userNotificationUpdate(input: UserNotificationUpdateInput!): UserNotification!
-    userNotificationDelete(ids: [ID!]!): DeletionResponse!
-    userNotificationMarkAsRead(input: UserNotificationMarkAsReadInput!): Success!
+    channelNotificationCreate(input: ChannelNotificationCreateInput!): ChannelNotification!
+    channelNotificationUpdate(input: ChannelNotificationUpdateInput!): ChannelNotification!
+    channelNotificationDelete(ids: [ID!]!): DeletionResponse!
+    channelNotificationMarkAsRead(input: ChannelNotificationMarkAsReadInput!): Success!
   }
 `;
