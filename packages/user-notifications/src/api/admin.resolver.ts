@@ -1,8 +1,8 @@
-import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, Translated } from "@vendure/core";
+import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
+import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, TransactionalConnection, Translated } from "@vendure/core";
 import { permission } from "../constants";
-import { UserNotification } from "../entities/user-notification.entity";
-import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs, MutationUserNotificationUpdateArgs, QueryUserNotificationListArgs } from "../generated-admin-types";
+import { UserNotification, UserNotificationReadEntry } from "../entities/user-notification.entity";
+import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs, MutationUserNotificationMarkAsReadArgs, MutationUserNotificationUpdateArgs, QueryUserNotificationListArgs, Success } from "../generated-admin-types";
 import { UserNotificationsService } from "../services/main.service";
 
 @Resolver()
@@ -59,6 +59,40 @@ export class AdminResolver {
     @Args() args: MutationUserNotificationDeleteArgs,
   ): Promise<DeletionResponse> {
     return this.service.delete(ctx, args.ids);
+  }
+
+  @Mutation()
+  @Transaction()
+  @Allow(permission.Update)
+  async userNotificationMarkAsRead(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationUserNotificationMarkAsReadArgs,
+  ): Promise<Success> {
+    return this.service.markAsRead(ctx, args.input.ids);
+  }
+}
+
+@Resolver("UserNotification")
+export class FieldResolver {
+
+  constructor(private connection: TransactionalConnection) { }
+
+  @ResolveField()
+  async readAt(
+    @Ctx() ctx: RequestContext,
+    @Parent() notification: UserNotification,
+  ): Promise<Date | null> {
+    const { activeUserId: userId } = ctx;
+    if (!userId) return null;
+
+    const entry = await this.connection.getRepository(ctx, UserNotificationReadEntry).findOneBy({
+      userId,
+      notificationId: notification.id,
+      channels: { id: ctx.channelId }
+    });
+    if (!entry) return null;
+
+    return entry.dateTime;
   }
 }
 

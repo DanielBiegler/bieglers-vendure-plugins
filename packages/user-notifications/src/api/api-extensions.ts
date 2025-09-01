@@ -69,13 +69,12 @@ export const adminApiExtensions = gql`
 
   input UserNotificationMarkAsReadInput {
     ids: [ID!]!
-    idUser: ID
   }
 
   extend type Mutation {
     userNotificationCreate(input: UserNotificationCreateInput!): UserNotification!
     userNotificationUpdate(input: UserNotificationUpdateInput!): UserNotification!
     userNotificationDelete(ids: [ID!]!): DeletionResponse!
-    userNotificationMarkAsRead(input: UserNotificationMarkAsReadInput!): [UserNotification!]!
+    userNotificationMarkAsRead(input: UserNotificationMarkAsReadInput!): Success!
   }
 `;

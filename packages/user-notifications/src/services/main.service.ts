@@ -22,8 +22,8 @@ import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS
 } from "../constants";
-import { UserNotification, UserNotificationTranslation } from "../entities/user-notification.entity";
-import { DeletionResponse, DeletionResult, UserNotificationCreateInput, UserNotificationUpdateInput } from "../generated-admin-types";
+import { UserNotification, UserNotificationReadEntry, UserNotificationTranslation } from "../entities/user-notification.entity";
+import { DeletionResponse, DeletionResult, Success, UserNotificationCreateInput, UserNotificationUpdateInput } from "../generated-admin-types";
 import { UserNotificationsOptions } from "../types";
 
 /**
@@ -185,5 +185,32 @@ export class UserNotificationsService {
     // TODO eventbus events
 
     return { result, message };
+  }
+
+  async markAsRead(ctx: RequestContext, ids: ID[]): Promise<Success> {
+    const { activeUserId } = ctx;
+    if (!activeUserId) return { success: false };
+
+    for (const id of ids) {
+      await this.connection.getEntityOrThrow(ctx, UserNotification, id, { channelId: ctx.channelId });
+
+      const readEntryExists = await this.connection.getRepository(ctx, UserNotificationReadEntry).existsBy({
+        channels: { id: ctx.channelId },
+        notificationId: id,
+        userId: ctx.activeUserId,
+      });
+
+      if (readEntryExists) continue;
+
+      const entry = new UserNotificationReadEntry({ dateTime: new Date(), notificationId: id, userId: ctx.activeUserId });
+      await this.channelService.assignToCurrentChannel(entry, ctx);
+
+      await this.connection.getRepository(ctx, UserNotificationReadEntry).save(entry);
+
+      // TODO eventbus?
+      // TODO customfields?
+    }
+
+    return { success: true };
   }
 }

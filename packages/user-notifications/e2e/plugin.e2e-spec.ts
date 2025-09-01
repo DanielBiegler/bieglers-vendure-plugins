@@ -1,18 +1,16 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { LanguageCode } from "@vendure/core";
-import { createTestEnvironment, E2E_DEFAULT_CHANNEL_TOKEN } from "@vendure/testing";
+import { createTestEnvironment, SimpleGraphQLClient } from "@vendure/testing";
 import gql from "graphql-tag";
 import path from "path";
-import { afterAll, beforeAll, beforeEach, describe, test } from "vitest";
+import { afterAll, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { UserNotificationsPlugin } from "../src/plugin";
-import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
+import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
-// Sequential to test different channel tokens
-// Running concurrently easily breaks because `.setChannelToken` mutates the client
-describe("UserNotificationsPlugin", { sequential: true }, () => {
-  const { server, adminClient, shopClient } = createTestEnvironment({
+describe("UserNotificationsPlugin", { concurrent: true }, () => {
+  const config = {
     ...testConfig(8001),
     importExportOptions: {
       importAssetsDir: path.join(__dirname, "fixtures"),
@@ -24,7 +22,11 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
       }),
       UserNotificationsPlugin.init({}),
     ],
-  });
+  };
+
+  const newAdminClient = () => new SimpleGraphQLClient(config, `http://localhost:${config.apiOptions.port}/${config.apiOptions.adminApiPath!}`);
+
+  const { server, adminClient: globalAdminClient } = createTestEnvironment(config);
 
   beforeAll(async () => {
     await server.init({
@@ -33,19 +35,15 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
       customerCount: 2,
       logging: true,
     });
-    await adminClient.asSuperAdmin();
+    await globalAdminClient.asSuperAdmin();
   }, 60000);
 
   afterAll(async () => {
     await server.destroy();
   });
 
-  beforeEach(() => {
-    adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
-  });
-
   test("Create", async ({ expect }) => {
-    const response = await adminClient.query(gql`
+    const response = await globalAdminClient.query(gql`
       mutation {
         userNotificationCreate(input: {
           dateTime: "2025-01-01T12:00:00Z",
@@ -90,6 +88,8 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
   });
 
   test("Successfully delete multiple on channel", async ({ expect, task }) => {
+    const adminClient = newAdminClient();
+    await adminClient.asSuperAdmin();
     const responseChannel = await adminClient.query(CreateMinimalChannelDocument, { code: task.id, token: task.id });
     adminClient.setChannelToken((responseChannel.createChannel as { token: string }).token);
 
@@ -114,14 +114,14 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
   });
 
   test("Successfully update notification", async ({ expect }) => {
-    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
+    const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
 
     const updatedTitle = "Updated Title";
     const updatedContent = "Updated Content";
     const updatedDateTime = "1969-01-01T12:00:00.000Z";
     const updatedAssetId = "T_1";
 
-    const responseUpdate01 = await adminClient.query(UpdateNotificationDocument, {
+    const responseUpdate01 = await globalAdminClient.query(UpdateNotificationDocument, {
       input: {
         id: responseCreate01.userNotificationCreate.id,
         dateTime: updatedDateTime,
@@ -143,7 +143,7 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
 
     // Unassign Asset
 
-    const responseUpdate02 = await adminClient.query(UpdateNotificationDocument, {
+    const responseUpdate02 = await globalAdminClient.query(UpdateNotificationDocument, {
       input: {
         id: responseCreate01.userNotificationCreate.id,
         idAsset: null!, // TODO Why does TS need the non null assert here? 
@@ -161,8 +161,8 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
 
   test("Successfully read notification", async ({ expect }) => {
     const title = "Test Notification #1";
-    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title });
-    const responseRead = await adminClient.query(ReadNotificationDocument, { id: responseCreate01.userNotificationCreate.id });
+    const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title });
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.userNotificationCreate.id });
 
     expect(responseRead.userNotification?.id).toBeDefined();
     expect(responseRead.userNotification?.title).toBe(title);
@@ -170,11 +170,13 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
   });
 
   test("Fail to read notification due non-existent ID", async ({ expect }) => {
-    const responseRead = await adminClient.query(ReadNotificationDocument, { id: 1337 });
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: 1337 });
     expect(responseRead.userNotification).toBeNull();
   });
 
   test("Successfully read paginated notifications, default order DESC", async ({ expect, task }) => {
+    const adminClient = newAdminClient();
+    await adminClient.asSuperAdmin();
     const responseChannel = await adminClient.query(CreateMinimalChannelDocument, { code: task.id, token: task.id });
     adminClient.setChannelToken((responseChannel.createChannel as { token: string }).token);
 
@@ -199,6 +201,43 @@ describe("UserNotificationsPlugin", { sequential: true }, () => {
     expect(responseRead.userNotificationList.items[1].dateTime).toBe(dateTime01);
   });
 
-  // TODO findAll
-  // TODO mark as read
+  test("Successfully mark notifications as read", async ({ expect }) => {
+    const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
+    const responseCreate02 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#2" });
+
+    const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
+      input: {
+        ids: [
+          responseCreate01.userNotificationCreate.id,
+          responseCreate02.userNotificationCreate.id
+        ]
+      }
+    });
+
+    const responseRead01 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.userNotificationCreate.id });
+    const responseRead02 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate02.userNotificationCreate.id });
+
+    expect(responseMark.userNotificationMarkAsRead.success).toBe(true);
+    expect(responseRead01.userNotification?.readAt).toBeDefined();
+    expect(responseRead02.userNotification?.readAt).toBeDefined();
+  });
+
+  test("Successfully mark notifications as read twice", async ({ expect }) => {
+    const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
+
+    const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
+      input: {
+        ids: [
+          responseCreate01.userNotificationCreate.id,
+          responseCreate01.userNotificationCreate.id,
+        ]
+      }
+    });
+
+    expect(responseMark.userNotificationMarkAsRead.success).toBe(true);
+  });
+
+  test("Fails marking notifications as read due to non-existent ID", async ({ expect }) => {
+    await expect(globalAdminClient.query(MarkAsReadDocument, { input: { ids: [1337] } })).rejects.toThrow();
+  });
 });

@@ -1386,6 +1386,7 @@ export type CustomFields = {
   TaxRate: Array<CustomFieldConfig>;
   User: Array<CustomFieldConfig>;
   UserNotification: Array<CustomFieldConfig>;
+  UserNotificationReadEntry: Array<CustomFieldConfig>;
   Zone: Array<CustomFieldConfig>;
 };
 
@@ -3026,7 +3027,7 @@ export type Mutation = {
   updateZone: Zone;
   userNotificationCreate: UserNotification;
   userNotificationDelete: DeletionResponse;
-  userNotificationMarkAsRead: Array<UserNotification>;
+  userNotificationMarkAsRead: Success;
   userNotificationUpdate: UserNotification;
 };
 
@@ -6795,7 +6796,6 @@ export type UserNotificationListOptions = {
 };
 
 export type UserNotificationMarkAsReadInput = {
-  idUser?: InputMaybe<Scalars['ID']['input']>;
   ids: Array<Scalars['ID']['input']>;
 };
 

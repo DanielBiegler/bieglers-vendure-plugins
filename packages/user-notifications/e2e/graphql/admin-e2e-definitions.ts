@@ -6,6 +6,7 @@ export const fragmentNotification = gql`
     asset { id }
     assetId
     dateTime
+    readAt
     
     title
     content
@@ -78,6 +79,15 @@ export const createMinimalChannel = gql`
         id
         token
       }
+    }
+  }
+`;
+
+export const markAsRead = gql`
+  ${fragmentNotification}
+  mutation markAsRead($input: UserNotificationMarkAsReadInput!) {
+    userNotificationMarkAsRead(input: $input) {
+      success
     }
   }
 `;

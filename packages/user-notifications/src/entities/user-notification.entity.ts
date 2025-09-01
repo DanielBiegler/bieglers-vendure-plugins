@@ -1,7 +1,8 @@
-import { Asset, Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, LanguageCode, LocaleString, Translatable, Translation, VendureEntity } from '@vendure/core';
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from 'typeorm';
+import { Asset, Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, LanguageCode, LocaleString, Translatable, Translation, User, VendureEntity } from '@vendure/core';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
 
 export class CustomUserNotificationFields { }
+export class CustomUserNotificationReadEntryFields { }
 export class CustomUserNotificationFieldsTranslation { }
 
 @Entity()
@@ -23,8 +24,10 @@ export class UserNotification extends VendureEntity implements HasCustomFields, 
   @Column({ type: "datetime", nullable: true })
   dateTime: Date | null;
 
-  @Column({ type: "datetime", nullable: true })
-  readAt: Date | null;
+  @OneToMany(() => UserNotificationReadEntry, e => e.notification)
+  readEntries: UserNotificationReadEntry[];
+
+  // `readAt` gets resolved via field-resolver
 
   @ManyToOne(() => Asset, { nullable: true })
   asset: Asset | null;
@@ -34,6 +37,36 @@ export class UserNotification extends VendureEntity implements HasCustomFields, 
 
   title: LocaleString;
   content: LocaleString | null;
+}
+
+@Entity()
+@Unique(["user", "notification"])
+export class UserNotificationReadEntry extends VendureEntity implements HasCustomFields, ChannelAware {
+  constructor(input?: DeepPartial<UserNotificationReadEntry>) {
+    super(input);
+  }
+
+  @ManyToMany(() => Channel)
+  @JoinTable()
+  channels: Channel[];
+
+  @Column(() => CustomUserNotificationReadEntryFields)
+  customFields: CustomUserNotificationReadEntryFields;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  user: User;
+
+  @EntityId()
+  userId: ID;
+
+  @ManyToOne(() => UserNotification, { onDelete: "CASCADE" })
+  notification: UserNotification
+
+  @EntityId()
+  notificationId: ID;
+
+  @Column("datetime")
+  dateTime: Date;
 }
 
 @Entity()
