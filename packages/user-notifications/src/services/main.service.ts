@@ -108,14 +108,48 @@ export class UserNotificationsService {
   }
 
   async delete(ctx: RequestContext, ids: ID[]): Promise<DeletionResponse> {
-    const castedIds = ids.map(id => String(id));
-    const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete({
-      id: In(castedIds),
-      channels: { id: ctx.channelId }
-    });
+    // Let there be three channels: DEFAULT, VendorA, VendorB
+    // Lets say channel VendorA and VendorB share the same notification
+    // The junction table looks like this:
+    // [
+    //   { userNotificationId: 1, channelId: DEFAULT },
+    //   { userNotificationId: 1, channelId: VendorA },
+    //   { userNotificationId: 1, channelId: VendorB },
+    // ]
+    // If we now delete the notification in channel VendorA, it should still exist in VendorB
+    // Due to delete cascades by default it would be removed in all channels
+    // So we have to make sure to only delete the notification in the current channel
 
-    const result = deleteResult.affected === ids.length ? DeletionResult.DELETED : DeletionResult.NOT_DELETED;
-    const message = `${deleteResult.affected} of ${ids.length} UserNotifications deleted`;
+    const castedIds = ids.map(id => String(id));
+    let countDeleted = 0;
+
+    const defaultChannelId = (await this.channelService.getDefaultChannel()).id;
+    if (defaultChannelId === ctx.channelId) {
+      // We are in the default channel, so we can delete the notifications completely
+      const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete({ id: In(castedIds) });
+      countDeleted += deleteResult.affected ?? 0;
+    } else {
+      // Check if there are any channels left for the notification, if not, delete it completely
+      const notifications = await this.connection.findByIdsInChannel(ctx, UserNotification, castedIds, ctx.channelId, { relations: ['channels'] });
+      const idsToDeleteFromChannel = notifications.filter(n => n.channels.length > 2).map(n => n.id); // 2 because default-channel plus the active channel
+      const idsToDeleteCompletely = notifications.filter(n => n.channels.length <= 2).map(n => n.id); // 2 because default-channel plus the active channel
+
+      if (idsToDeleteFromChannel.length > 0) {
+        await Promise.all(idsToDeleteFromChannel.map(id => this.channelService.removeFromChannels(ctx, UserNotification, id, [ctx.channelId])));
+        countDeleted += idsToDeleteFromChannel.length;
+      }
+
+      if (idsToDeleteCompletely.length > 0) {
+        const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete({ id: In(idsToDeleteCompletely) });
+        countDeleted += deleteResult.affected ?? 0;
+      }
+    }
+
+    const result = countDeleted === ids.length ? DeletionResult.DELETED : DeletionResult.NOT_DELETED;
+    const message = `${countDeleted} of ${ids.length} UserNotifications deleted`; // TODO i18n?
+
+    // TODO eventbus events
+
     return { result, message };
   }
 }

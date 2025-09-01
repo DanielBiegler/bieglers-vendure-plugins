@@ -1,3 +1,4 @@
+import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T;
 export type InputMaybe<T> = T;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -6880,3 +6881,13 @@ export type ZoneSortParameter = {
   name?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
 };
+
+export type CreateMinimalNotificationMutationVariables = Exact<{
+  title: Scalars['String']['input'];
+}>;
+
+
+export type CreateMinimalNotificationMutation = { __typename?: 'Mutation', userNotificationCreate: { __typename?: 'UserNotification', id: string | number } };
+
+
+export const CreateMinimalNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createMinimalNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"title"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userNotificationCreate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"translations"},"value":{"kind":"ListValue","values":[{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"languageCode"},"value":{"kind":"EnumValue","value":"en"}},{"kind":"ObjectField","name":{"kind":"Name","value":"title"},"value":{"kind":"Variable","name":{"kind":"Name","value":"title"}}}]}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables>;

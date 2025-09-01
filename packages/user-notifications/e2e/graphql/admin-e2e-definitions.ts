@@ -1,5 +1,14 @@
 import gql from "graphql-tag";
 
-export const EXAMPLE = gql`
-  # TODO
+export const createMinimalNotification = gql`
+  mutation createMinimalNotification($title: String!) {
+    userNotificationCreate(input: {
+      translations: [{
+        languageCode: en,
+        title: $title,
+      }]
+    }) {
+      id
+    }
+  }
 `;
