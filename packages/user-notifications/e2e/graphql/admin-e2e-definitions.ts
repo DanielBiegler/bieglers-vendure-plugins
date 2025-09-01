@@ -12,3 +12,23 @@ export const createMinimalNotification = gql`
     }
   }
 `;
+
+export const updateNotification = gql`
+  mutation updateNotification($input: UserNotificationUpdateInput!) {
+    userNotificationUpdate(input: $input) {
+      id
+      asset { id }
+      assetId
+      dateTime
+      
+      title
+      content
+
+      translations {
+        languageCode
+        title
+        content
+      }
+    }
+  }
+`;

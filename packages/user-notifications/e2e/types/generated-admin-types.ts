@@ -6830,11 +6830,10 @@ export type UserNotificationTranslationInput = {
 };
 
 export type UserNotificationUpdateInput = {
-  content?: InputMaybe<Scalars['String']['input']>;
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
   id: Scalars['ID']['input'];
   idAsset?: InputMaybe<Scalars['ID']['input']>;
-  title?: InputMaybe<Scalars['String']['input']>;
+  translations?: InputMaybe<Array<UserNotificationTranslationInput>>;
 };
 
 export type Zone = Node & {
@@ -6889,5 +6888,13 @@ export type CreateMinimalNotificationMutationVariables = Exact<{
 
 export type CreateMinimalNotificationMutation = { __typename?: 'Mutation', userNotificationCreate: { __typename?: 'UserNotification', id: string | number } };
 
+export type UpdateNotificationMutationVariables = Exact<{
+  input: UserNotificationUpdateInput;
+}>;
+
+
+export type UpdateNotificationMutation = { __typename?: 'Mutation', userNotificationUpdate: { __typename?: 'UserNotification', id: string | number, assetId?: string | number, dateTime?: any, title: string, content?: string, asset?: { __typename?: 'Asset', id: string | number }, translations: Array<{ __typename?: 'UserNotificationTranslation', languageCode: LanguageCode, title: string, content?: string }> } };
+
 
 export const CreateMinimalNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createMinimalNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"title"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userNotificationCreate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"translations"},"value":{"kind":"ListValue","values":[{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"languageCode"},"value":{"kind":"EnumValue","value":"en"}},{"kind":"ObjectField","name":{"kind":"Name","value":"title"},"value":{"kind":"Variable","name":{"kind":"Name","value":"title"}}}]}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables>;
+export const UpdateNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UserNotificationUpdateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userNotificationUpdate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationMutation, UpdateNotificationMutationVariables>;

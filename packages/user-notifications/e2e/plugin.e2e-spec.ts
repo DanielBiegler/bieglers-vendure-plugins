@@ -1,4 +1,5 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
+import { LanguageCode } from "@vendure/core";
 import { createTestEnvironment, E2E_DEFAULT_CHANNEL_TOKEN } from "@vendure/testing";
 import gql from "graphql-tag";
 import path from "path";
@@ -6,10 +7,11 @@ import { afterAll, beforeAll, beforeEach, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { UserNotificationsPlugin } from "../src/plugin";
-import { createMinimalNotification } from "./graphql/admin-e2e-definitions";
-import { CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables } from "./types/generated-admin-types";
+import { CreateMinimalNotificationDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
-describe("UserNotificationsPlugin", { concurrent: true }, () => {
+// Sequential to test different channel tokens
+// Running concurrently easily breaks because `.setChannelToken` mutates the client
+describe("UserNotificationsPlugin", { sequential: true }, () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
     importExportOptions: {
@@ -83,7 +85,7 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
     await server.destroy();
   });
 
-  beforeEach(async () => {
+  beforeEach(() => {
     adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
   });
 
@@ -134,8 +136,8 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
 
   test("Successfully delete multiple on channel", async ({ expect }) => {
     adminClient.setChannelToken(testChannelFooToken);
-    const responseCreate01 = await adminClient.query<CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables>(createMinimalNotification, { title: "Test Notification #1" });
-    const responseCreate02 = await adminClient.query<CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables>(createMinimalNotification, { title: "Test Notification #2" });
+    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
+    const responseCreate02 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #2" });
 
     const responseDelete = await adminClient.query(gql`
       mutation {
@@ -152,5 +154,51 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
     expect(responseDelete.userNotificationDelete).toBeDefined();
     expect(responseDelete.userNotificationDelete.result).toBe("DELETED");
     expect(responseDelete.userNotificationDelete.message).toBe("2 of 2 UserNotifications deleted");
+  });
+
+  test("Successfully update notification", async ({ expect }) => {
+    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
+
+    const updatedTitle = "Updated Title";
+    const updatedContent = "Updated Content";
+    const updatedDateTime = "1969-01-01T12:00:00.000Z";
+    const updatedAssetId = "T_1";
+
+    const responseUpdate01 = await adminClient.query(UpdateNotificationDocument, {
+      input: {
+        id: responseCreate01.userNotificationCreate.id,
+        dateTime: updatedDateTime,
+        idAsset: updatedAssetId,
+        translations: [{
+          languageCode: LanguageCode.en,
+          title: updatedTitle,
+          content: updatedContent,
+        }]
+      }
+    });
+
+    expect(responseUpdate01.userNotificationUpdate).toBeDefined();
+    expect(responseUpdate01.userNotificationUpdate.dateTime).toBe(updatedDateTime);
+    expect(responseUpdate01.userNotificationUpdate.title).toBe(updatedTitle);
+    expect(responseUpdate01.userNotificationUpdate.content).toBe(updatedContent);
+    expect(responseUpdate01.userNotificationUpdate.assetId).toBe(updatedAssetId);
+    expect(responseUpdate01.userNotificationUpdate.asset?.id).toBe(updatedAssetId);
+
+    // Unassign Asset
+
+    const responseUpdate02 = await adminClient.query(UpdateNotificationDocument, {
+      input: {
+        id: responseCreate01.userNotificationCreate.id,
+        idAsset: null!, // TODO Why does TS need the non null assert here? 
+        // I confirmed the resolver does pass it correctly and the service gets the null.
+      }
+    });
+
+    expect(responseUpdate02.userNotificationUpdate).toBeDefined();
+    expect(responseUpdate02.userNotificationUpdate.dateTime).toBe(updatedDateTime);
+    expect(responseUpdate02.userNotificationUpdate.title).toBe(updatedTitle);
+    expect(responseUpdate02.userNotificationUpdate.content).toBe(updatedContent);
+    expect(responseUpdate02.userNotificationUpdate.assetId).toBeNull();
+    expect(responseUpdate02.userNotificationUpdate.asset?.id).toBeUndefined();
   });
 });

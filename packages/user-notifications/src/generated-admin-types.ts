@@ -6829,11 +6829,10 @@ export type UserNotificationTranslationInput = {
 };
 
 export type UserNotificationUpdateInput = {
-  content?: InputMaybe<Scalars['String']['input']>;
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
   id: Scalars['ID']['input'];
   idAsset?: InputMaybe<Scalars['ID']['input']>;
-  title?: InputMaybe<Scalars['String']['input']>;
+  translations?: InputMaybe<Array<UserNotificationTranslationInput>>;
 };
 
 export type Zone = Node & {

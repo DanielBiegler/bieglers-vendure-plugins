@@ -1,8 +1,8 @@
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, RelationPaths, Relations, RequestContext, Transaction } from "@vendure/core";
+import { Allow, Ctx, RelationPaths, Relations, RequestContext, Transaction, Translated } from "@vendure/core";
 import { permission } from "../constants";
 import { UserNotification } from "../entities/user-notification.entity";
-import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs } from "../generated-admin-types";
+import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs, MutationUserNotificationUpdateArgs } from "../generated-admin-types";
 import { UserNotificationsService } from "../services/main.service";
 
 @Resolver()
@@ -16,8 +16,19 @@ export class AdminResolver {
     @Ctx() ctx: RequestContext,
     @Args() args: MutationUserNotificationCreateArgs,
     @Relations({ entity: UserNotification }) relations: RelationPaths<UserNotification>,
-  ): Promise<UserNotification> {
+  ): Promise<Translated<UserNotification>> {
     return this.service.create(ctx, args.input, relations);
+  }
+
+  @Mutation()
+  @Transaction()
+  @Allow(permission.Update)
+  async userNotificationUpdate(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationUserNotificationUpdateArgs,
+    @Relations({ entity: UserNotification }) relations: RelationPaths<UserNotification>,
+  ): Promise<Translated<UserNotification>> {
+    return this.service.update(ctx, args.input, relations);
   }
 
   @Mutation()

@@ -62,10 +62,9 @@ export const adminApiExtensions = gql`
 
   input UserNotificationUpdateInput {
     id: ID!
-    title: String
     dateTime: DateTime
-    content: String
     idAsset: ID
+    translations: [UserNotificationTranslationInput!]
   }
 
   input UserNotificationMarkAsReadInput {

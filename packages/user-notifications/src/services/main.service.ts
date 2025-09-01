@@ -23,7 +23,7 @@ import {
   PLUGIN_INIT_OPTIONS
 } from "../constants";
 import { UserNotification, UserNotificationTranslation } from "../entities/user-notification.entity";
-import { DeletionResponse, DeletionResult, UserNotificationCreateInput } from "../generated-admin-types";
+import { DeletionResponse, DeletionResult, UserNotificationCreateInput, UserNotificationUpdateInput } from "../generated-admin-types";
 import { UserNotificationsOptions } from "../types";
 
 /**
@@ -83,8 +83,8 @@ export class UserNotificationsService {
     ctx: RequestContext,
     input: UserNotificationCreateInput,
     relations?: RelationPaths<UserNotification>
-  ): Promise<UserNotification> {
-    const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset) : null;
+  ): Promise<Translated<UserNotification>> {
+    const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
     const assetId = asset?.id || null;
 
     const entity = await this.translatableSaver.create({
@@ -107,6 +107,39 @@ export class UserNotificationsService {
     return assertFound(this.findOne(ctx, entity.id, relations));
   }
 
+  async update(
+    ctx: RequestContext,
+    input: UserNotificationUpdateInput,
+    relations?: RelationPaths<UserNotification>
+  ): Promise<Translated<UserNotification>> {
+    const entity = await this.connection.getEntityOrThrow(ctx, UserNotification, input.id, { channelId: ctx.channelId });
+    const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
+    const assetId = asset?.id ?? null;
+
+    await this.translatableSaver.update({
+      ctx,
+      input,
+      entityType: UserNotification,
+      translationType: UserNotificationTranslation,
+      beforeSave: async entity => {
+        // Only update asset if actually present, null to delete
+        if (input.idAsset !== undefined) {
+          // TODO how does this play with multiple channels where the other channels cant see this asset?
+          // If we decide to restrict sharing you should revisit the delete function
+          entity.asset = asset;
+          entity.assetId = assetId;
+        }
+      }
+    });
+    Logger.verbose(`Updated UserNotification (${entity.id})`, loggerCtx);
+
+    // TODO customfields
+    // TODO eventbus
+
+    return assertFound(this.findOne(ctx, entity.id, relations));
+  }
+
+  // TODO determine if we even wanna allow cross-channel notification sharing
   async delete(ctx: RequestContext, ids: ID[]): Promise<DeletionResponse> {
     // Let there be three channels: DEFAULT, VendorA, VendorB
     // Lets say channel VendorA and VendorB share the same notification
@@ -148,6 +181,7 @@ export class UserNotificationsService {
     const result = countDeleted === ids.length ? DeletionResult.DELETED : DeletionResult.NOT_DELETED;
     const message = `${countDeleted} of ${ids.length} UserNotifications deleted`; // TODO i18n?
 
+    // TODO logging ?
     // TODO eventbus events
 
     return { result, message };
