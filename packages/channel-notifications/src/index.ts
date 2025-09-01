@@ -7,7 +7,7 @@
  * - events
  * - custom strategies that can be configured by the user of the plugin
  */
-export { UserNotificationsPlugin } from "./plugin";
-export { UserNotificationsOptions } from "./types";
+export { ChannelNotificationsPlugin } from "./plugin";
+export { ChannelNotificationsOptions } from "./types";
 
-export { UserNotificationsService } from "./services/main.service";
+export { ChannelNotificationsService } from "./services/main.service";

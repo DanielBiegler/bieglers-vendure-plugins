@@ -2,9 +2,9 @@ import { PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver, FieldResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { permission, PLUGIN_INIT_OPTIONS } from "./constants";
-import { UserNotification, UserNotificationReadEntry, UserNotificationTranslation } from "./entities/user-notification.entity";
-import { UserNotificationsService } from "./services/main.service";
-import { UserNotificationsOptions } from "./types";
+import { ChannelNotification, ChannelNotificationReadEntry, ChannelNotificationTranslation } from "./entities/channel-notification.entity";
+import { ChannelNotificationsService } from "./services/main.service";
+import { ChannelNotificationsOptions } from "./types";
 
 /**
  * // TODO
@@ -16,35 +16,35 @@ import { UserNotificationsOptions } from "./types";
   providers: [
     {
       provide: PLUGIN_INIT_OPTIONS,
-      useFactory: () => UserNotificationsPlugin.options,
+      useFactory: () => ChannelNotificationsPlugin.options,
     },
-    UserNotificationsService,
+    ChannelNotificationsService,
   ],
   adminApiExtensions: {
     resolvers: [FieldResolver, AdminResolver],
     schema: adminApiExtensions,
   },
-  entities: [UserNotification, UserNotificationTranslation, UserNotificationReadEntry],
+  entities: [ChannelNotification, ChannelNotificationTranslation, ChannelNotificationReadEntry],
   configuration(config) {
     config.authOptions.customPermissions.push(permission);
     return config;
   },
   compatibility: ">=3.0.0",
 })
-export class UserNotificationsPlugin {
+export class ChannelNotificationsPlugin {
   /** @internal */
-  static options: UserNotificationsOptions;
+  static options: ChannelNotificationsOptions;
 
   /**
    * The static `init()` method is called with the options to configure the plugin.
    *
    * @example
    * ```ts
-   * UserNotificationsPlugin.init({}),
+   * ChannelNotificationsPlugin.init({}),
    * ```
    */
-  static init(options: UserNotificationsOptions) {
+  static init(options: ChannelNotificationsOptions) {
     this.options = options;
-    return UserNotificationsPlugin;
+    return ChannelNotificationsPlugin;
   }
 }

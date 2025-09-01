@@ -4,7 +4,7 @@
  *
  * @category Plugin
  */
-export interface UserNotificationsOptions {
+export interface ChannelNotificationsOptions {
   // TODO
 }
 

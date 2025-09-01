@@ -1,13 +1,13 @@
 import path from "path";
 import { generateTypes } from "../../utils/generate-types";
-import { UserNotificationsPlugin } from "./src/plugin";
+import { ChannelNotificationsPlugin } from "./src/plugin";
 
 require("dotenv").config({ path: path.join(__dirname, "../dev-server/.env") });
 
 generateTypes(
   {
     plugins: [
-      UserNotificationsPlugin.init({}),
+      ChannelNotificationsPlugin.init({}),
     ],
   },
   {

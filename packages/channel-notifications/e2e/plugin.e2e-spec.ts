@@ -6,10 +6,10 @@ import path from "path";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { UserNotificationsPlugin } from "../src/plugin";
+import { ChannelNotificationsPlugin } from "../src/plugin";
 import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
-describe("UserNotificationsPlugin", { concurrent: true }, () => {
+describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
   const config = {
     ...testConfig(8001),
     importExportOptions: {
@@ -20,7 +20,7 @@ describe("UserNotificationsPlugin", { concurrent: true }, () => {
         route: "assets",
         assetUploadDir: path.join(__dirname, "fixtures"),
       }),
-      UserNotificationsPlugin.init({}),
+      ChannelNotificationsPlugin.init({}),
     ],
   };
 

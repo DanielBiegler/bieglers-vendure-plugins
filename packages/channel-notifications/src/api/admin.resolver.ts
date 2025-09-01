@@ -1,21 +1,21 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, TransactionalConnection, Translated } from "@vendure/core";
 import { permission } from "../constants";
-import { UserNotification, UserNotificationReadEntry } from "../entities/user-notification.entity";
+import { ChannelNotification, ChannelNotificationReadEntry } from "../entities/channel-notification.entity";
 import { DeletionResponse, MutationUserNotificationCreateArgs, MutationUserNotificationDeleteArgs, MutationUserNotificationMarkAsReadArgs, MutationUserNotificationUpdateArgs, QueryUserNotificationListArgs, Success } from "../generated-admin-types";
-import { UserNotificationsService } from "../services/main.service";
+import { ChannelNotificationsService } from "../services/main.service";
 
 @Resolver()
 export class AdminResolver {
-  constructor(private service: UserNotificationsService) { }
+  constructor(private service: ChannelNotificationsService) { }
 
   @Query()
   @Allow(permission.Read)
   async userNotification(
     @Ctx() ctx: RequestContext,
     @Args() args: { id: ID },
-    @Relations({ entity: UserNotification }) relations: RelationPaths<UserNotification>,
-  ): Promise<Translated<UserNotification> | null> {
+    @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
+  ): Promise<Translated<ChannelNotification> | null> {
     return this.service.findOne(ctx, args.id, relations);
   }
 
@@ -24,8 +24,8 @@ export class AdminResolver {
   async userNotificationList(
     @Ctx() ctx: RequestContext,
     @Args() args: QueryUserNotificationListArgs,
-    @Relations({ entity: UserNotification }) relations: RelationPaths<UserNotification>,
-  ): Promise<PaginatedList<Translated<UserNotification>>> {
+    @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
+  ): Promise<PaginatedList<Translated<ChannelNotification>>> {
     return this.service.findAll(ctx, args.options, relations);
   }
 
@@ -35,8 +35,8 @@ export class AdminResolver {
   async userNotificationCreate(
     @Ctx() ctx: RequestContext,
     @Args() args: MutationUserNotificationCreateArgs,
-    @Relations({ entity: UserNotification }) relations: RelationPaths<UserNotification>,
-  ): Promise<Translated<UserNotification>> {
+    @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
+  ): Promise<Translated<ChannelNotification>> {
     return this.service.create(ctx, args.input, relations);
   }
 
@@ -46,8 +46,8 @@ export class AdminResolver {
   async userNotificationUpdate(
     @Ctx() ctx: RequestContext,
     @Args() args: MutationUserNotificationUpdateArgs,
-    @Relations({ entity: UserNotification }) relations: RelationPaths<UserNotification>,
-  ): Promise<Translated<UserNotification>> {
+    @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
+  ): Promise<Translated<ChannelNotification>> {
     return this.service.update(ctx, args.input, relations);
   }
 
@@ -80,12 +80,12 @@ export class FieldResolver {
   @ResolveField()
   async readAt(
     @Ctx() ctx: RequestContext,
-    @Parent() notification: UserNotification,
+    @Parent() notification: ChannelNotification,
   ): Promise<Date | null> {
     const { activeUserId: userId } = ctx;
     if (!userId) return null;
 
-    const entry = await this.connection.getRepository(ctx, UserNotificationReadEntry).findOneBy({
+    const entry = await this.connection.getRepository(ctx, ChannelNotificationReadEntry).findOneBy({
       userId,
       notificationId: notification.id,
       channels: { id: ctx.channelId }

@@ -1,8 +1,8 @@
 import { CrudPermissionDefinition } from "@vendure/core";
 
 /** @internal */
-export const loggerCtx = "PluginUserNotifications";
+export const loggerCtx = "PluginChannelNotifications";
 /** @internal */
 export const PLUGIN_INIT_OPTIONS = Symbol("PLUGIN_INIT_OPTIONS");
 
-export const permission = new CrudPermissionDefinition("UserNotification");
+export const permission = new CrudPermissionDefinition("ChannelNotification");

@@ -3,7 +3,7 @@ import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { DefaultLogger, DefaultSearchPlugin, LogLevel, VendureConfig } from "@vendure/core";
 import "dotenv/config";
 import path from "path";
-import { UserNotificationsPlugin } from "../src";
+import { ChannelNotificationsPlugin } from "../src";
 
 const apiPort = process.env.API_PORT || 3000;
 
@@ -38,7 +38,7 @@ export const config: VendureConfig = {
       route: "assets",
       assetUploadDir: path.join(__dirname, "assets"),
     }),
-    UserNotificationsPlugin.init({}),
+    ChannelNotificationsPlugin.init({}),
     DefaultSearchPlugin.init({}),
     AdminUiPlugin.init({
       port: 3002,

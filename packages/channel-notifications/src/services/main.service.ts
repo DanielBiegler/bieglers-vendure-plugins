@@ -22,9 +22,9 @@ import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS
 } from "../constants";
-import { UserNotification, UserNotificationReadEntry, UserNotificationTranslation } from "../entities/user-notification.entity";
+import { ChannelNotification, ChannelNotificationReadEntry, ChannelNotificationTranslation } from "../entities/channel-notification.entity";
 import { DeletionResponse, DeletionResult, Success, UserNotificationCreateInput, UserNotificationUpdateInput } from "../generated-admin-types";
-import { UserNotificationsOptions } from "../types";
+import { ChannelNotificationsOptions } from "../types";
 
 /**
  * // TODO
@@ -32,7 +32,7 @@ import { UserNotificationsOptions } from "../types";
  * @category Services
  */
 @Injectable()
-export class UserNotificationsService {
+export class ChannelNotificationsService {
   /** @internal */
   constructor(
     private channelService: ChannelService,
@@ -43,27 +43,27 @@ export class UserNotificationsService {
     private translatableSaver: TranslatableSaver,
     private translator: TranslatorService,
     @Inject(PLUGIN_INIT_OPTIONS)
-    private options: UserNotificationsOptions,
+    private options: ChannelNotificationsOptions,
   ) { }
 
   async findOne(
     ctx: RequestContext,
     id: ID,
-    relations?: RelationPaths<UserNotification>
-  ): Promise<Translated<UserNotification> | null> {
-    const entity = await this.connection.findOneInChannel(ctx, UserNotification, id, ctx.channelId, { relations });
+    relations?: RelationPaths<ChannelNotification>
+  ): Promise<Translated<ChannelNotification> | null> {
+    const entity = await this.connection.findOneInChannel(ctx, ChannelNotification, id, ctx.channelId, { relations });
     if (!entity) return null;
     return this.translator.translate(entity, ctx);
   }
 
   async findAll(
     ctx: RequestContext,
-    options?: ListQueryOptions<UserNotification>,
-    relations?: RelationPaths<UserNotification>
-  ): Promise<PaginatedList<Translated<UserNotification>>> {
+    options?: ListQueryOptions<ChannelNotification>,
+    relations?: RelationPaths<ChannelNotification>
+  ): Promise<PaginatedList<Translated<ChannelNotification>>> {
     return this.listQueryBuilder
       .build(
-        UserNotification,
+        ChannelNotification,
         options,
         {
           relations,
@@ -82,27 +82,27 @@ export class UserNotificationsService {
   async create(
     ctx: RequestContext,
     input: UserNotificationCreateInput,
-    relations?: RelationPaths<UserNotification>
-  ): Promise<Translated<UserNotification>> {
+    relations?: RelationPaths<ChannelNotification>
+  ): Promise<Translated<ChannelNotification>> {
     const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
     const assetId = asset?.id || null;
 
     const entity = await this.translatableSaver.create({
       ctx,
       input,
-      entityType: UserNotification,
-      translationType: UserNotificationTranslation,
+      entityType: ChannelNotification,
+      translationType: ChannelNotificationTranslation,
       beforeSave: async entity => {
         await this.channelService.assignToCurrentChannel(entity, ctx);
         entity.asset = asset;
         entity.assetId = assetId;
       },
     });
-    Logger.verbose(`Created UserNotification (${entity.id})`, loggerCtx);
+    Logger.verbose(`Created ChannelNotification (${entity.id})`, loggerCtx);
 
     // TODO eventbus event
     // TODO customfields
-    // await this.customFieldRelationService.updateRelations(ctx, UserNotification, input, entity);
+    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
 
     return assertFound(this.findOne(ctx, entity.id, relations));
   }
@@ -110,17 +110,17 @@ export class UserNotificationsService {
   async update(
     ctx: RequestContext,
     input: UserNotificationUpdateInput,
-    relations?: RelationPaths<UserNotification>
-  ): Promise<Translated<UserNotification>> {
-    const entity = await this.connection.getEntityOrThrow(ctx, UserNotification, input.id, { channelId: ctx.channelId });
+    relations?: RelationPaths<ChannelNotification>
+  ): Promise<Translated<ChannelNotification>> {
+    const entity = await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
     const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
     const assetId = asset?.id ?? null;
 
     await this.translatableSaver.update({
       ctx,
       input,
-      entityType: UserNotification,
-      translationType: UserNotificationTranslation,
+      entityType: ChannelNotification,
+      translationType: ChannelNotificationTranslation,
       beforeSave: async entity => {
         // Only update asset if actually present, null to delete
         if (input.idAsset !== undefined) {
@@ -131,7 +131,7 @@ export class UserNotificationsService {
         }
       }
     });
-    Logger.verbose(`Updated UserNotification (${entity.id})`, loggerCtx);
+    Logger.verbose(`Updated ChannelNotification (${entity.id})`, loggerCtx);
 
     // TODO customfields
     // TODO eventbus
@@ -159,21 +159,21 @@ export class UserNotificationsService {
     const defaultChannelId = (await this.channelService.getDefaultChannel()).id;
     if (defaultChannelId === ctx.channelId) {
       // We are in the default channel, so we can delete the notifications completely
-      const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete({ id: In(castedIds) });
+      const deleteResult = await this.connection.getRepository(ctx, ChannelNotification).delete({ id: In(castedIds) });
       countDeleted += deleteResult.affected ?? 0;
     } else {
       // Check if there are any channels left for the notification, if not, delete it completely
-      const notifications = await this.connection.findByIdsInChannel(ctx, UserNotification, castedIds, ctx.channelId, { relations: ['channels'] });
+      const notifications = await this.connection.findByIdsInChannel(ctx, ChannelNotification, castedIds, ctx.channelId, { relations: ['channels'] });
       const idsToDeleteFromChannel = notifications.filter(n => n.channels.length > 2).map(n => n.id); // 2 because default-channel plus the active channel
       const idsToDeleteCompletely = notifications.filter(n => n.channels.length <= 2).map(n => n.id); // 2 because default-channel plus the active channel
 
       if (idsToDeleteFromChannel.length > 0) {
-        await Promise.all(idsToDeleteFromChannel.map(id => this.channelService.removeFromChannels(ctx, UserNotification, id, [ctx.channelId])));
+        await Promise.all(idsToDeleteFromChannel.map(id => this.channelService.removeFromChannels(ctx, ChannelNotification, id, [ctx.channelId])));
         countDeleted += idsToDeleteFromChannel.length;
       }
 
       if (idsToDeleteCompletely.length > 0) {
-        const deleteResult = await this.connection.getRepository(ctx, UserNotification).delete({ id: In(idsToDeleteCompletely) });
+        const deleteResult = await this.connection.getRepository(ctx, ChannelNotification).delete({ id: In(idsToDeleteCompletely) });
         countDeleted += deleteResult.affected ?? 0;
       }
     }
@@ -192,9 +192,9 @@ export class UserNotificationsService {
     if (!activeUserId) return { success: false };
 
     for (const id of ids) {
-      await this.connection.getEntityOrThrow(ctx, UserNotification, id, { channelId: ctx.channelId });
+      await this.connection.getEntityOrThrow(ctx, ChannelNotification, id, { channelId: ctx.channelId });
 
-      const readEntryExists = await this.connection.getRepository(ctx, UserNotificationReadEntry).existsBy({
+      const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadEntry).existsBy({
         channels: { id: ctx.channelId },
         notificationId: id,
         userId: ctx.activeUserId,
@@ -202,10 +202,10 @@ export class UserNotificationsService {
 
       if (readEntryExists) continue;
 
-      const entry = new UserNotificationReadEntry({ dateTime: new Date(), notificationId: id, userId: ctx.activeUserId });
+      const entry = new ChannelNotificationReadEntry({ dateTime: new Date(), notificationId: id, userId: ctx.activeUserId });
       await this.channelService.assignToCurrentChannel(entry, ctx);
 
-      await this.connection.getRepository(ctx, UserNotificationReadEntry).save(entry);
+      await this.connection.getRepository(ctx, ChannelNotificationReadEntry).save(entry);
 
       // TODO eventbus?
       // TODO customfields?

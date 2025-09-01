@@ -1,5 +1,5 @@
 {
-  "name": "@danielbiegler/vendure-plugin-user-notifications",
+  "name": "@danielbiegler/vendure-plugin-channel-notifications",
   "description": "Foundation for building notification inboxes and or changelogs for your users",
   "version": "0.1.0",
   "license": "MIT",
@@ -7,7 +7,7 @@
     "dev": "ts-node dev-server/index.ts",
     "codegen": "ts-node generate-types.ts",
     "build": "rimraf dist && tsc -p ./tsconfig.build.json",
-    "e2e": "cross-env PACKAGE=user-notifications vitest -c ../../utils/e2e/vitest.config.mts"
+    "e2e": "cross-env PACKAGE=channel-notifications vitest -c ../../utils/e2e/vitest.config.mts"
   },
   "author": {
     "name": "Daniel Biegler",
@@ -24,7 +24,10 @@
     "ecommerce",
     "headless",
     "graphql",
-    "typescript"
+    "typescript",
+    "notification",
+    "notifications",
+    "inbox"
   ],
   "private": false,
   "publishConfig": {
