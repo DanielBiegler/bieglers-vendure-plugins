@@ -22,7 +22,7 @@ import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS
 } from "../constants";
-import { ChannelNotification, ChannelNotificationReadEntry, ChannelNotificationTranslation } from "../entities/channel-notification.entity";
+import { ChannelNotification, ChannelNotificationReadReceipt, ChannelNotificationTranslation } from "../entities/channel-notification.entity";
 import { ChannelNotificationCreateInput, ChannelNotificationUpdateInput, DeletionResponse, DeletionResult, Success } from "../generated-admin-types";
 import { ChannelNotificationsOptions } from "../types";
 
@@ -194,7 +194,7 @@ export class ChannelNotificationsService {
     for (const id of ids) {
       await this.connection.getEntityOrThrow(ctx, ChannelNotification, id, { channelId: ctx.channelId });
 
-      const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadEntry).existsBy({
+      const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).existsBy({
         channels: { id: ctx.channelId },
         notificationId: id,
         userId: ctx.activeUserId,
@@ -202,10 +202,10 @@ export class ChannelNotificationsService {
 
       if (readEntryExists) continue;
 
-      const entry = new ChannelNotificationReadEntry({ dateTime: new Date(), notificationId: id, userId: ctx.activeUserId });
+      const entry = new ChannelNotificationReadReceipt({ dateTime: new Date(), notificationId: id, userId: ctx.activeUserId });
       await this.channelService.assignToCurrentChannel(entry, ctx);
 
-      await this.connection.getRepository(ctx, ChannelNotificationReadEntry).save(entry);
+      await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).save(entry);
 
       // TODO eventbus?
       // TODO customfields?

@@ -1,7 +1,7 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, TransactionalConnection, Translated } from "@vendure/core";
 import { permission } from "../constants";
-import { ChannelNotification, ChannelNotificationReadEntry } from "../entities/channel-notification.entity";
+import { ChannelNotification, ChannelNotificationReadReceipt } from "../entities/channel-notification.entity";
 import { DeletionResponse, MutationChannelNotificationCreateArgs, MutationChannelNotificationDeleteArgs, MutationChannelNotificationMarkAsReadArgs, MutationChannelNotificationUpdateArgs, QueryChannelNotificationListArgs, Success } from "../generated-admin-types";
 import { ChannelNotificationsService } from "../services/main.service";
 
@@ -85,14 +85,14 @@ export class FieldResolver {
     const { activeUserId: userId } = ctx;
     if (!userId) return null;
 
-    const entry = await this.connection.getRepository(ctx, ChannelNotificationReadEntry).findOneBy({
+    const receipt = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).findOneBy({
       userId,
       notificationId: notification.id,
       channels: { id: ctx.channelId }
     });
-    if (!entry) return null;
+    if (!receipt) return null;
 
-    return entry.dateTime;
+    return receipt.dateTime;
   }
 }
 

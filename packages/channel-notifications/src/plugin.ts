@@ -2,7 +2,7 @@ import { PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver, FieldResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { permission, PLUGIN_INIT_OPTIONS } from "./constants";
-import { ChannelNotification, ChannelNotificationReadEntry, ChannelNotificationTranslation } from "./entities/channel-notification.entity";
+import { ChannelNotification, ChannelNotificationReadReceipt, ChannelNotificationTranslation } from "./entities/channel-notification.entity";
 import { ChannelNotificationsService } from "./services/main.service";
 import { ChannelNotificationsOptions } from "./types";
 
@@ -24,7 +24,7 @@ import { ChannelNotificationsOptions } from "./types";
     resolvers: [FieldResolver, AdminResolver],
     schema: adminApiExtensions,
   },
-  entities: [ChannelNotification, ChannelNotificationTranslation, ChannelNotificationReadEntry],
+  entities: [ChannelNotification, ChannelNotificationTranslation, ChannelNotificationReadReceipt],
   configuration(config) {
     config.authOptions.customPermissions.push(permission);
     return config;

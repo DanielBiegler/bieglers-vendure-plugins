@@ -24,8 +24,8 @@ export class ChannelNotification extends VendureEntity implements HasCustomField
   @Column({ type: "datetime", nullable: true })
   dateTime: Date | null;
 
-  @OneToMany(() => ChannelNotificationReadEntry, e => e.notification)
-  readEntries: ChannelNotificationReadEntry[];
+  @OneToMany(() => ChannelNotificationReadReceipt, e => e.notification)
+  readEntries: ChannelNotificationReadReceipt[];
 
   // `readAt` gets resolved via field-resolver
 
@@ -41,8 +41,8 @@ export class ChannelNotification extends VendureEntity implements HasCustomField
 
 @Entity()
 @Unique(["user", "notification"])
-export class ChannelNotificationReadEntry extends VendureEntity implements HasCustomFields, ChannelAware {
-  constructor(input?: DeepPartial<ChannelNotificationReadEntry>) {
+export class ChannelNotificationReadReceipt extends VendureEntity implements HasCustomFields, ChannelAware {
+  constructor(input?: DeepPartial<ChannelNotificationReadReceipt>) {
     super(input);
   }
 
