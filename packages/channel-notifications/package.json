@@ -1,6 +1,6 @@
 {
   "name": "@danielbiegler/vendure-plugin-channel-notifications",
-  "description": "Foundation for building notification inboxes and or changelogs for your users",
+  "description": "Foundation for building notification inboxes and or changelogs for your users. Features channel aware, translatable and customizable notifications with read-receipts per user.",
   "version": "0.1.0",
   "license": "MIT",
   "scripts": {

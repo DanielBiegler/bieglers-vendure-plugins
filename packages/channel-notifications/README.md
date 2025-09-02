@@ -2,7 +2,7 @@
 
 # Vendure Plugin: Channel Notifications
 
-Foundation for building notification inboxes and or changelogs for your users
+Foundation for building notification inboxes and or changelogs for your users. Features channel aware, translatable and customizable notifications with read-receipts per user.
 
 <a href="https://www.npmjs.com/package/@danielbiegler/vendure-plugin-channel-notifications" target="_blank">
   <img src="https://badge.fury.io/js/@danielbiegler%2Fvendure-plugin-channel-notifications.svg" alt="npm version badge" height="18">
@@ -68,4 +68,4 @@ This plugin adds a custom field to the `Asset` entity called `previewImageHash`,
 
 #### Credits
 
-- Original Banner Photo by [// TODO](#), edited by [Daniel Biegler](https://www.danielbiegler.de/)
+- Banner Photo created and edited by [Daniel Biegler](https://www.danielbiegler.de/)
