@@ -4,6 +4,7 @@ import {
   Asset,
   ChannelService,
   CustomFieldRelationService,
+  EntityNotFoundError,
   EventBus,
   ID,
   ListQueryBuilder,
@@ -17,13 +18,13 @@ import {
   Translated,
   TranslatorService
 } from "@vendure/core";
-import { In } from "typeorm";
 import {
   loggerCtx,
   PLUGIN_INIT_OPTIONS
 } from "../constants";
 import { ChannelNotification, ChannelNotificationReadReceipt, ChannelNotificationTranslation } from "../entities/channel-notification.entity";
-import { ChannelNotificationCreateInput, ChannelNotificationUpdateInput, DeletionResponse, DeletionResult, Success } from "../generated-admin-types";
+import { ChannelNotificationEvent, ChannelNotificationEventMarkedAsRead } from "../events";
+import { ChannelNotificationCreateInput, ChannelNotificationDeleteInput, ChannelNotificationUpdateInput, DeletionResponse, DeletionResult, Success } from "../generated-admin-types";
 import { ChannelNotificationsOptions } from "../types";
 
 /**
@@ -46,6 +47,9 @@ export class ChannelNotificationsService {
     private options: ChannelNotificationsOptions,
   ) { }
 
+  /**
+   * Is channel aware and translates the entity as well.
+   */
   async findOne(
     ctx: RequestContext,
     id: ID,
@@ -56,6 +60,10 @@ export class ChannelNotificationsService {
     return this.translator.translate(entity, ctx);
   }
 
+  /**
+   * By default orders via DESC datetime.
+   * Is channel-aware and translates the entity as well.
+   */
   async findAll(
     ctx: RequestContext,
     options?: ListQueryOptions<ChannelNotification>,
@@ -98,11 +106,12 @@ export class ChannelNotificationsService {
         entity.assetId = assetId;
       },
     });
-    Logger.verbose(`Created ChannelNotification (${entity.id})`, loggerCtx);
 
-    // TODO eventbus event
     // TODO customfields
     // await this.customFieldRelationService.updateRelations(ctx, ChannelNotifications, input, entity);
+
+    Logger.verbose(`Created ChannelNotification (${entity.id})`, loggerCtx);
+    await this.eventBus.publish(new ChannelNotificationEvent(ctx, entity, "created", input));
 
     return assertFound(this.findOne(ctx, entity.id, relations));
   }
@@ -112,11 +121,11 @@ export class ChannelNotificationsService {
     input: ChannelNotificationUpdateInput,
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
-    const entity = await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
+    await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
     const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
     const assetId = asset?.id ?? null;
 
-    await this.translatableSaver.update({
+    const entity = await this.translatableSaver.update({
       ctx,
       input,
       entityType: ChannelNotification,
@@ -124,67 +133,31 @@ export class ChannelNotificationsService {
       beforeSave: async entity => {
         // Only update asset if actually present, null to delete
         if (input.idAsset !== undefined) {
-          // TODO how does this play with multiple channels where the other channels cant see this asset?
-          // If we decide to restrict sharing you should revisit the delete function
           entity.asset = asset;
           entity.assetId = assetId;
         }
       }
     });
-    Logger.verbose(`Updated ChannelNotification (${entity.id})`, loggerCtx);
 
     // TODO customfields
-    // TODO eventbus
+
+    Logger.verbose(`Updated ChannelNotification (${entity.id})`, loggerCtx);
+    await this.eventBus.publish(new ChannelNotificationEvent(ctx, entity, "updated", input));
 
     return assertFound(this.findOne(ctx, entity.id, relations));
   }
 
-  // TODO determine if we even wanna allow cross-channel notification sharing
-  async delete(ctx: RequestContext, ids: ID[]): Promise<DeletionResponse> {
-    // Let there be three channels: DEFAULT, VendorA, VendorB
-    // Lets say channel VendorA and VendorB share the same notification
-    // The junction table looks like this:
-    // [
-    //   { channelNotificationId: 1, channelId: DEFAULT },
-    //   { channelNotificationId: 1, channelId: VendorA },
-    //   { channelNotificationId: 1, channelId: VendorB },
-    // ]
-    // If we now delete the notification in channel VendorA, it should still exist in VendorB
-    // Due to delete cascades by default it would be removed in all channels
-    // So we have to make sure to only delete the notification in the current channel
+  async delete(ctx: RequestContext, input: ChannelNotificationDeleteInput): Promise<DeletionResponse> {
+    const entity = await this.findOne(ctx, input.id);
+    if (!entity) throw new EntityNotFoundError("ChannelNotification", input.id);
 
-    const castedIds = ids.map(id => String(id));
-    let countDeleted = 0;
+    // TODO should this be caught and return NOT_DELETED?
+    await this.connection.getRepository(ctx, ChannelNotification).remove(entity);
 
-    const defaultChannelId = (await this.channelService.getDefaultChannel()).id;
-    if (defaultChannelId === ctx.channelId) {
-      // We are in the default channel, so we can delete the notifications completely
-      const deleteResult = await this.connection.getRepository(ctx, ChannelNotification).delete({ id: In(castedIds) });
-      countDeleted += deleteResult.affected ?? 0;
-    } else {
-      // Check if there are any channels left for the notification, if not, delete it completely
-      const notifications = await this.connection.findByIdsInChannel(ctx, ChannelNotification, castedIds, ctx.channelId, { relations: ['channels'] });
-      const idsToDeleteFromChannel = notifications.filter(n => n.channels.length > 2).map(n => n.id); // 2 because default-channel plus the active channel
-      const idsToDeleteCompletely = notifications.filter(n => n.channels.length <= 2).map(n => n.id); // 2 because default-channel plus the active channel
+    Logger.verbose(`Deleted ChannelNotification (${entity.id})`, loggerCtx);
+    await this.eventBus.publish(new ChannelNotificationEvent(ctx, entity, "deleted", input));
 
-      if (idsToDeleteFromChannel.length > 0) {
-        await Promise.all(idsToDeleteFromChannel.map(id => this.channelService.removeFromChannels(ctx, ChannelNotification, id, [ctx.channelId])));
-        countDeleted += idsToDeleteFromChannel.length;
-      }
-
-      if (idsToDeleteCompletely.length > 0) {
-        const deleteResult = await this.connection.getRepository(ctx, ChannelNotification).delete({ id: In(idsToDeleteCompletely) });
-        countDeleted += deleteResult.affected ?? 0;
-      }
-    }
-
-    const result = countDeleted === ids.length ? DeletionResult.DELETED : DeletionResult.NOT_DELETED;
-    const message = `${countDeleted} of ${ids.length} ChannelNotifications deleted`; // TODO i18n?
-
-    // TODO logging ?
-    // TODO eventbus events
-
-    return { result, message };
+    return { result: DeletionResult.DELETED }
   }
 
   async markAsRead(ctx: RequestContext, ids: ID[]): Promise<Success> {
@@ -197,20 +170,22 @@ export class ChannelNotificationsService {
       const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).existsBy({
         channels: { id: ctx.channelId },
         notificationId: id,
-        userId: ctx.activeUserId,
+        userId: activeUserId,
       });
 
       if (readEntryExists) continue;
 
-      const entry = new ChannelNotificationReadReceipt({ dateTime: new Date(), notificationId: id, userId: ctx.activeUserId });
+      const entry = new ChannelNotificationReadReceipt({ dateTime: new Date(), notificationId: id, userId: activeUserId });
       await this.channelService.assignToCurrentChannel(entry, ctx);
 
       await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).save(entry);
 
-      // TODO eventbus?
       // TODO customfields?
+
+      Logger.verbose(`Marked ChannelNotification (${id}) as read by User (${activeUserId})`, loggerCtx);
     }
 
+    await this.eventBus.publish(new ChannelNotificationEventMarkedAsRead(ctx, { ids }));
     return { success: true };
   }
 }

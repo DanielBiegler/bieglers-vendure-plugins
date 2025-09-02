@@ -43,6 +43,15 @@ export const updateNotification = gql`
   }
 `;
 
+export const deleteNotification = gql`
+  mutation deleteNotification($input: ChannelNotificationDeleteInput!) {
+    channelNotificationDelete(input: $input) {
+      result
+      message
+    }
+  }
+`;
+
 export const readNotification = gql`
   ${fragmentNotification}
   query readNotification($id: ID!) {

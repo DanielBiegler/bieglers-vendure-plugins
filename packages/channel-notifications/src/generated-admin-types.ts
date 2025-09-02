@@ -482,6 +482,10 @@ export type ChannelNotificationCreateInput = {
   translations: Array<ChannelNotificationTranslationInput>;
 };
 
+export type ChannelNotificationDeleteInput = {
+  id: Scalars['ID']['input'];
+};
+
 export type ChannelNotificationFilterParameter = {
   _and?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
   _or?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
@@ -1455,7 +1459,7 @@ export type CustomFields = {
   Asset: Array<CustomFieldConfig>;
   Channel: Array<CustomFieldConfig>;
   ChannelNotification: Array<CustomFieldConfig>;
-  ChannelNotificationReadEntry: Array<CustomFieldConfig>;
+  ChannelNotificationReadReceipt: Array<CustomFieldConfig>;
   Collection: Array<CustomFieldConfig>;
   Customer: Array<CustomFieldConfig>;
   CustomerGroup: Array<CustomFieldConfig>;
@@ -3265,7 +3269,7 @@ export type MutationChannelNotificationCreateArgs = {
 
 
 export type MutationChannelNotificationDeleteArgs = {
-  ids: Array<Scalars['ID']['input']>;
+  input: ChannelNotificationDeleteInput;
 };
 
 

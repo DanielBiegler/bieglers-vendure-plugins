@@ -6,6 +6,9 @@ export const adminApiExtensions = gql`
     createdAt: DateTime!
     updatedAt: DateTime!
     
+    # TODO maybe user?
+    # author: User
+    
     "For potentially displaying a thumbnail/banner in the notification or attaching a file"
     asset: Asset
     "See if there is a connected asset without needing to resolve the full asset"
@@ -67,6 +70,10 @@ export const adminApiExtensions = gql`
     translations: [ChannelNotificationTranslationInput!]
   }
 
+  input ChannelNotificationDeleteInput {
+    id: ID!
+  }
+
   input ChannelNotificationMarkAsReadInput {
     ids: [ID!]!
   }
@@ -74,7 +81,7 @@ export const adminApiExtensions = gql`
   extend type Mutation {
     channelNotificationCreate(input: ChannelNotificationCreateInput!): ChannelNotification!
     channelNotificationUpdate(input: ChannelNotificationUpdateInput!): ChannelNotification!
-    channelNotificationDelete(ids: [ID!]!): DeletionResponse!
+    channelNotificationDelete(input: ChannelNotificationDeleteInput!): DeletionResponse!
     channelNotificationMarkAsRead(input: ChannelNotificationMarkAsReadInput!): Success!
   }
 `;

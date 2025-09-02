@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { ChannelNotificationsPlugin } from "../src/plugin";
-import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
+import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, DeleteNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
 describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
   const config = {
@@ -87,30 +87,16 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(response.channelNotificationCreate.translations.find((t: any) => t.languageCode === "de").content).toBeNull();
   });
 
-  test("Successfully delete multiple on channel", async ({ expect, task }) => {
-    const adminClient = newAdminClient();
-    await adminClient.asSuperAdmin();
-    const responseChannel = await adminClient.query(CreateMinimalChannelDocument, { code: task.id, token: task.id });
-    adminClient.setChannelToken((responseChannel.createChannel as { token: string }).token);
+  test("Successfully delete notification", async ({ expect }) => {
+    const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification to delete" });
+    const id = responseCreate.channelNotificationCreate.id;
 
-    const responseCreate01 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
-    const responseCreate02 = await adminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #2" });
-
-    const responseDelete = await adminClient.query(gql`
-      mutation {
-        channelNotificationDelete(ids: [
-          "${responseCreate01.channelNotificationCreate.id}",
-          "${responseCreate02.channelNotificationCreate.id}"
-        ]) {
-          result
-          message
-        }
-      }
-    `);
-
-    expect(responseDelete.channelNotificationDelete).toBeDefined();
+    const responseDelete = await globalAdminClient.query(DeleteNotificationDocument, { input: { id } });
     expect(responseDelete.channelNotificationDelete.result).toBe("DELETED");
-    expect(responseDelete.channelNotificationDelete.message).toBe("2 of 2 ChannelNotifications deleted");
+
+    // Fail to find it afterwards
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id });
+    expect(responseRead.channelNotification).toBeNull();
   });
 
   test("Successfully update notification", async ({ expect }) => {

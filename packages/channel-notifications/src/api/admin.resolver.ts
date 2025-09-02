@@ -58,7 +58,7 @@ export class AdminResolver {
     @Ctx() ctx: RequestContext,
     @Args() args: MutationChannelNotificationDeleteArgs,
   ): Promise<DeletionResponse> {
-    return this.service.delete(ctx, args.ids);
+    return this.service.delete(ctx, args.input);
   }
 
   @Mutation()
