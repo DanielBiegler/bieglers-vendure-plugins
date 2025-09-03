@@ -478,6 +478,7 @@ export type ChannelNotification = Node & {
 };
 
 export type ChannelNotificationCreateInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
   idAsset?: InputMaybe<Scalars['ID']['input']>;
   translations: Array<ChannelNotificationTranslationInput>;
@@ -553,6 +554,7 @@ export type ChannelNotificationTranslationInput = {
 };
 
 export type ChannelNotificationUpdateInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
   id: Scalars['ID']['input'];
   idAsset?: InputMaybe<Scalars['ID']['input']>;

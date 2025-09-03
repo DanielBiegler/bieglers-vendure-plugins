@@ -61,6 +61,7 @@ export const adminApiExtensions = gql`
     dateTime: DateTime
     idAsset: ID
     translations: [ChannelNotificationTranslationInput!]!
+    customFields: JSON
   }
 
   input ChannelNotificationUpdateInput {
@@ -68,6 +69,7 @@ export const adminApiExtensions = gql`
     dateTime: DateTime
     idAsset: ID
     translations: [ChannelNotificationTranslationInput!]
+    customFields: JSON
   }
 
   input ChannelNotificationDeleteInput {

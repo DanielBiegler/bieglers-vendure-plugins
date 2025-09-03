@@ -107,8 +107,8 @@ export class ChannelNotificationsService {
       },
     });
 
-    // TODO customfields
-    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotifications, input, entity);
+    // TODO
+    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
 
     Logger.verbose(`Created ChannelNotification (${entity.id})`, loggerCtx);
     await this.eventBus.publish(new ChannelNotificationEvent(ctx, entity, "created", input));
@@ -139,7 +139,8 @@ export class ChannelNotificationsService {
       }
     });
 
-    // TODO customfields
+    // TODO
+    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
 
     Logger.verbose(`Updated ChannelNotification (${entity.id})`, loggerCtx);
     await this.eventBus.publish(new ChannelNotificationEvent(ctx, entity, "updated", input));
