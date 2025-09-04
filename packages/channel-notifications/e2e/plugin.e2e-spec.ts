@@ -8,7 +8,7 @@ import { testConfig } from "../../../utils/e2e/test-config";
 import { ChannelNotificationsPlugin } from "../src/plugin";
 import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, CreateNotificationDocument, DeleteNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
-describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
+describe("Plugin", { concurrent: true }, () => {
   const config = {
     ...testConfig(8001),
     importExportOptions: {
@@ -41,7 +41,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     await server.destroy();
   });
 
-  test("Successfully create notification", async ({ expect }) => {
+  test("Create notification", async ({ expect }) => {
     const response = await globalAdminClient.query(CreateNotificationDocument, {
       input: {
         dateTime: "2025-01-01T12:00:00Z",
@@ -73,7 +73,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(response.CreateChannelNotification.translations.find((t) => t.languageCode === "de")?.content).toBeNull();
   });
 
-  test("Successfully delete notification", async ({ expect }) => {
+  test("Delete notification", async ({ expect }) => {
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification to delete" });
     const id = responseCreate.CreateChannelNotification.id;
 
@@ -85,7 +85,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseRead.channelNotification).toBeNull();
   });
 
-  test("Successfully update notification", async ({ expect }) => {
+  test("Update notification", async ({ expect }) => {
     const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification #1" });
 
     const updatedTitle = "Updated Title";
@@ -131,7 +131,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseUpdate02.UpdateChannelNotification.asset?.id).toBeUndefined();
   });
 
-  test("Successfully read notification", async ({ expect }) => {
+  test("Read notification", async ({ expect }) => {
     const title = "Test Notification #1";
     const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title });
     const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.CreateChannelNotification.id });
@@ -141,12 +141,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseRead.channelNotification?.translations.length).toBe(1);
   });
 
-  test("Fail to read notification due non-existent ID", async ({ expect }) => {
-    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: 1337 });
-    expect(responseRead.channelNotification).toBeNull();
-  });
-
-  test("Successfully read paginated notifications, default order DESC", async ({ expect, task }) => {
+  test("Read paginated notifications, default order DESC", async ({ expect, task }) => {
     const adminClient = newAdminClient();
     await adminClient.asSuperAdmin();
     const responseChannel = await adminClient.query(CreateMinimalChannelDocument, { code: task.id, token: task.id });
@@ -173,7 +168,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseRead.channelNotificationList.items[1].dateTime).toBe(dateTime01);
   });
 
-  test("Successfully mark notification as read", async ({ expect }) => {
+  test("Mark notification as read", async ({ expect }) => {
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
 
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate.CreateChannelNotification.id, } });
@@ -183,7 +178,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseRead.channelNotification?.readAt).toBeDefined();
   });
 
-  test("Successfully mark notification as read with custom fields", async ({ expect }) => {
+  test("Mark notification as read with custom fields", async ({ expect }) => {
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
 
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
@@ -198,7 +193,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseRead.channelNotification?.readAt).toBeDefined();
   });
 
-  test("Successfully mark notifications as read twice", async ({ expect }) => {
+  test("Mark notification as read twice", async ({ expect }) => {
     const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
 
     const responseMark01 = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate01.CreateChannelNotification.id } });
@@ -206,6 +201,11 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
 
     const responseMark02 = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate01.CreateChannelNotification.id } });
     expect(responseMark02.MarkChannelNotificationAsRead.success).toBe(true);
+  });
+
+  test("Fail to read notification due non-existent ID", async ({ expect }) => {
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: 1337 });
+    expect(responseRead.channelNotification).toBeNull();
   });
 
   test("Fails marking notifications as read due to non-existent ID", async ({ expect }) => {
