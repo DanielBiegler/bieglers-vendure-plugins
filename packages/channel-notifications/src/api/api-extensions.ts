@@ -25,6 +25,18 @@ export const adminApiExtensions = gql`
     translations: [ChannelNotificationTranslation!]!
   }
 
+  type ChannelNotificationReadReceipt implements Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+
+    user: User!
+    userId: ID!
+    notification: ChannelNotification!
+    notificationId: ID!
+    dateTime: DateTime!
+  }
+
   # TODO DOES THIS GENERATE CUSTOM FIELDS TYPE???????????
   type ChannelNotificationTranslation implements Node {
     id: ID!
@@ -38,7 +50,6 @@ export const adminApiExtensions = gql`
     content: String
   }
 
-  # TODO check making distinct types?
   input CreateChannelNotificationTranslationInput {
     languageCode: LanguageCode!
     
@@ -48,7 +59,6 @@ export const adminApiExtensions = gql`
     content: String
   }
 
-  # TODO check making distinct types?
   input UpdateChannelNotificationTranslationInput {
     id: ID
     languageCode: LanguageCode!
@@ -91,8 +101,8 @@ export const adminApiExtensions = gql`
   }
 
   input MarkChannelNotificationAsReadInput {
-    ids: [ID!]!
-    # TODO maybe include customFields here and make it only create one
+    id: ID!
+    readReceiptCustomFields: JSON
   }
 
   extend type Mutation {

@@ -159,32 +159,34 @@ export class ChannelNotificationsService {
     return { result: DeletionResult.DELETED }
   }
 
+  // TODO this could be a union type with SUCCESS | ALREADY_READ | NO_ACTIVE_USER ?
   async markAsRead(ctx: RequestContext, input: MarkChannelNotificationAsReadInput): Promise<Success> {
     const { activeUserId } = ctx;
     if (!activeUserId) return { success: false };
 
-    for (const id of input.ids) {
-      await this.connection.getEntityOrThrow(ctx, ChannelNotification, id, { channelId: ctx.channelId });
+    const notification = await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
 
-      const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).existsBy({
-        channels: { id: ctx.channelId },
-        notificationId: id,
-        userId: activeUserId,
-      });
+    const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).existsBy({
+      channels: { id: ctx.channelId },
+      notificationId: notification.id,
+      userId: activeUserId,
+    });
 
-      if (readEntryExists) continue;
+    if (readEntryExists) return { success: true };
 
-      const entry = new ChannelNotificationReadReceipt({ dateTime: new Date(), notificationId: id, userId: activeUserId });
-      await this.channelService.assignToCurrentChannel(entry, ctx);
+    const readReceipt = await this.channelService.assignToCurrentChannel(new ChannelNotificationReadReceipt({
+      dateTime: new Date(),
+      notificationId: notification.id,
+      userId: activeUserId,
+      customFields: input.readReceiptCustomFields
+    }), ctx);
 
-      await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).save(entry);
+    await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).save(readReceipt);
+    await this.customFieldRelationService.updateRelations(ctx, ChannelNotificationReadReceipt, { customFields: input.readReceiptCustomFields }, readReceipt);
 
-      // TODO customfields?
+    Logger.verbose(`Marked ChannelNotification (${notification.id}) as read by User (${activeUserId})`, loggerCtx);
+    await this.eventBus.publish(new ChannelNotificationEventMarkedAsRead(ctx, input));
 
-      Logger.verbose(`Marked ChannelNotification (${id}) as read by User (${activeUserId})`, loggerCtx);
-    }
-
-    await this.eventBus.publish(new ChannelNotificationEventMarkedAsRead(ctx, { ids: input.ids }));
     return { success: true };
   }
 }

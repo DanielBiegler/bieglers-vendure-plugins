@@ -173,43 +173,42 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     expect(responseRead.channelNotificationList.items[1].dateTime).toBe(dateTime01);
   });
 
-  test("Successfully mark notifications as read", async ({ expect }) => {
-    const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
-    const responseCreate02 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#2" });
+  test("Successfully mark notification as read", async ({ expect }) => {
+    const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
+
+    const responseMark = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate.CreateChannelNotification.id, } });
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate.CreateChannelNotification.id });
+
+    expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
+    expect(responseRead.channelNotification?.readAt).toBeDefined();
+  });
+
+  test("Successfully mark notification as read with custom fields", async ({ expect }) => {
+    const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
 
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
       input: {
-        ids: [
-          responseCreate01.CreateChannelNotification.id,
-          responseCreate02.CreateChannelNotification.id
-        ]
+        id: responseCreate.CreateChannelNotification.id,
+        readReceiptCustomFields: { example: "Example Custom Field String" }
       }
     });
-
-    const responseRead01 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate01.CreateChannelNotification.id });
-    const responseRead02 = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate02.CreateChannelNotification.id });
-
     expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
-    expect(responseRead01.channelNotification?.readAt).toBeDefined();
-    expect(responseRead02.channelNotification?.readAt).toBeDefined();
+
+    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate.CreateChannelNotification.id });
+    expect(responseRead.channelNotification?.readAt).toBeDefined();
   });
 
   test("Successfully mark notifications as read twice", async ({ expect }) => {
     const responseCreate01 = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
 
-    const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
-      input: {
-        ids: [
-          responseCreate01.CreateChannelNotification.id,
-          responseCreate01.CreateChannelNotification.id,
-        ]
-      }
-    });
+    const responseMark01 = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate01.CreateChannelNotification.id } });
+    expect(responseMark01.MarkChannelNotificationAsRead.success).toBe(true);
 
-    expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
+    const responseMark02 = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate01.CreateChannelNotification.id } });
+    expect(responseMark02.MarkChannelNotificationAsRead.success).toBe(true);
   });
 
   test("Fails marking notifications as read due to non-existent ID", async ({ expect }) => {
-    await expect(globalAdminClient.query(MarkAsReadDocument, { input: { ids: [1337] } })).rejects.toThrow();
+    await expect(globalAdminClient.query(MarkAsReadDocument, { input: { id: 1337 } })).rejects.toThrow();
   });
 });

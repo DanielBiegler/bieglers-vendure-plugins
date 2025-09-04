@@ -509,6 +509,19 @@ export type ChannelNotificationListOptions = {
   take?: InputMaybe<Scalars['Int']['input']>;
 };
 
+export type ChannelNotificationReadReceipt = Node & {
+  __typename?: 'ChannelNotificationReadReceipt';
+  createdAt: Scalars['DateTime']['output'];
+  customFields?: Maybe<Scalars['JSON']['output']>;
+  dateTime: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  notification: ChannelNotification;
+  notificationId: Scalars['ID']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+  user: User;
+  userId: Scalars['ID']['output'];
+};
+
 export type ChannelNotificationSortParameter = {
   assetId?: InputMaybe<SortOrder>;
   content?: InputMaybe<SortOrder>;
@@ -2743,7 +2756,8 @@ export type ManualPaymentStateError = ErrorResult & {
 };
 
 export type MarkChannelNotificationAsReadInput = {
-  ids: Array<Scalars['ID']['input']>;
+  id: Scalars['ID']['input'];
+  readReceiptCustomFields?: InputMaybe<Scalars['JSON']['input']>;
 };
 
 export type MimeTypeError = ErrorResult & {
