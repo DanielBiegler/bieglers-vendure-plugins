@@ -41,7 +41,7 @@ describe("ChannelNotificationsPlugin", { concurrent: true }, () => {
     await server.destroy();
   });
 
-  test("Create", async ({ expect }) => {
+  test("Successfully create notification", async ({ expect }) => {
     const response = await globalAdminClient.query(CreateNotificationDocument, {
       input: {
         dateTime: "2025-01-01T12:00:00Z",
