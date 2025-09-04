@@ -24,7 +24,7 @@ import {
 } from "../constants";
 import { ChannelNotification, ChannelNotificationReadReceipt, ChannelNotificationTranslation } from "../entities/channel-notification.entity";
 import { ChannelNotificationEvent, ChannelNotificationEventMarkedAsRead } from "../events";
-import { ChannelNotificationCreateInput, ChannelNotificationDeleteInput, ChannelNotificationUpdateInput, DeletionResponse, DeletionResult, Success } from "../generated-admin-types";
+import { CreateChannelNotificationInput, DeleteChannelNotificationInput, DeletionResponse, DeletionResult, MarkChannelNotificationAsReadInput, Success, UpdateChannelNotificationInput } from "../generated-admin-types";
 import { ChannelNotificationsOptions } from "../types";
 
 /**
@@ -89,7 +89,7 @@ export class ChannelNotificationsService {
 
   async create(
     ctx: RequestContext,
-    input: ChannelNotificationCreateInput,
+    input: CreateChannelNotificationInput,
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
     const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
@@ -107,8 +107,7 @@ export class ChannelNotificationsService {
       },
     });
 
-    // TODO
-    // await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
+    await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
 
     Logger.verbose(`Created ChannelNotification (${entity.id})`, loggerCtx);
     await this.eventBus.publish(new ChannelNotificationEvent(ctx, entity, "created", input));
@@ -118,7 +117,7 @@ export class ChannelNotificationsService {
 
   async update(
     ctx: RequestContext,
-    input: ChannelNotificationUpdateInput,
+    input: UpdateChannelNotificationInput,
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
     await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
@@ -148,7 +147,7 @@ export class ChannelNotificationsService {
     return assertFound(this.findOne(ctx, entity.id, relations));
   }
 
-  async delete(ctx: RequestContext, input: ChannelNotificationDeleteInput): Promise<DeletionResponse> {
+  async delete(ctx: RequestContext, input: DeleteChannelNotificationInput): Promise<DeletionResponse> {
     const entity = await this.findOne(ctx, input.id);
     if (!entity) throw new EntityNotFoundError("ChannelNotification", input.id);
 
@@ -161,11 +160,11 @@ export class ChannelNotificationsService {
     return { result: DeletionResult.DELETED }
   }
 
-  async markAsRead(ctx: RequestContext, ids: ID[]): Promise<Success> {
+  async markAsRead(ctx: RequestContext, input: MarkChannelNotificationAsReadInput): Promise<Success> {
     const { activeUserId } = ctx;
     if (!activeUserId) return { success: false };
 
-    for (const id of ids) {
+    for (const id of input.ids) {
       await this.connection.getEntityOrThrow(ctx, ChannelNotification, id, { channelId: ctx.channelId });
 
       const readEntryExists = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).existsBy({
@@ -186,7 +185,7 @@ export class ChannelNotificationsService {
       Logger.verbose(`Marked ChannelNotification (${id}) as read by User (${activeUserId})`, loggerCtx);
     }
 
-    await this.eventBus.publish(new ChannelNotificationEventMarkedAsRead(ctx, { ids }));
+    await this.eventBus.publish(new ChannelNotificationEventMarkedAsRead(ctx, { ids: input.ids }));
     return { success: true };
   }
 }

@@ -1,12 +1,12 @@
 import { RequestContext, VendureEntityEvent, VendureEvent } from '@vendure/core';
 import { ChannelNotification } from './entities/channel-notification.entity';
-import { ChannelNotificationCreateInput, ChannelNotificationDeleteInput, ChannelNotificationMarkAsReadInput, ChannelNotificationUpdateInput, } from './generated-admin-types';
+import { CreateChannelNotificationInput, DeleteChannelNotificationInput, MarkChannelNotificationAsReadInput, UpdateChannelNotificationInput, } from './generated-admin-types';
 
 
 export type ChannelNotificationEventInput =
-  | ChannelNotificationCreateInput
-  | ChannelNotificationUpdateInput
-  | ChannelNotificationDeleteInput;
+  | CreateChannelNotificationInput
+  | UpdateChannelNotificationInput
+  | DeleteChannelNotificationInput;
 
 
 /**
@@ -29,7 +29,7 @@ export class ChannelNotificationEvent extends VendureEntityEvent<ChannelNotifica
 export class ChannelNotificationEventMarkedAsRead extends VendureEvent {
   constructor(
     public ctx: RequestContext,
-    public input: ChannelNotificationMarkAsReadInput,
+    public input: MarkChannelNotificationAsReadInput,
   ) {
     super();
   }

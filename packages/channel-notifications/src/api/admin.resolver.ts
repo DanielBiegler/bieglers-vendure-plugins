@@ -2,7 +2,7 @@ import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/g
 import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, TransactionalConnection, Translated } from "@vendure/core";
 import { permission } from "../constants";
 import { ChannelNotification, ChannelNotificationReadReceipt } from "../entities/channel-notification.entity";
-import { DeletionResponse, MutationChannelNotificationCreateArgs, MutationChannelNotificationDeleteArgs, MutationChannelNotificationMarkAsReadArgs, MutationChannelNotificationUpdateArgs, QueryChannelNotificationListArgs, Success } from "../generated-admin-types";
+import { DeletionResponse, MutationCreateChannelNotificationArgs, MutationDeleteChannelNotificationArgs, MutationMarkChannelNotificationAsReadArgs, MutationUpdateChannelNotificationArgs, QueryChannelNotificationListArgs, Success } from "../generated-admin-types";
 import { ChannelNotificationsService } from "../services/main.service";
 
 @Resolver()
@@ -32,9 +32,9 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Create)
-  async channelNotificationCreate(
+  async CreateChannelNotification(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationChannelNotificationCreateArgs,
+    @Args() args: MutationCreateChannelNotificationArgs,
     @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
   ): Promise<Translated<ChannelNotification>> {
     return this.service.create(ctx, args.input, relations);
@@ -43,9 +43,9 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Update)
-  async channelNotificationUpdate(
+  async UpdateChannelNotification(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationChannelNotificationUpdateArgs,
+    @Args() args: MutationUpdateChannelNotificationArgs,
     @Relations({ entity: ChannelNotification }) relations: RelationPaths<ChannelNotification>,
   ): Promise<Translated<ChannelNotification>> {
     return this.service.update(ctx, args.input, relations);
@@ -54,9 +54,9 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Delete)
-  async channelNotificationDelete(
+  async DeleteChannelNotification(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationChannelNotificationDeleteArgs,
+    @Args() args: MutationDeleteChannelNotificationArgs,
   ): Promise<DeletionResponse> {
     return this.service.delete(ctx, args.input);
   }
@@ -64,11 +64,11 @@ export class AdminResolver {
   @Mutation()
   @Transaction()
   @Allow(permission.Update)
-  async channelNotificationMarkAsRead(
+  async MarkChannelNotificationAsRead(
     @Ctx() ctx: RequestContext,
-    @Args() args: MutationChannelNotificationMarkAsReadArgs,
+    @Args() args: MutationMarkChannelNotificationAsReadArgs,
   ): Promise<Success> {
-    return this.service.markAsRead(ctx, args.input.ids);
+    return this.service.markAsRead(ctx, args.input);
   }
 }
 

@@ -25,22 +25,37 @@ export const adminApiExtensions = gql`
     translations: [ChannelNotificationTranslation!]!
   }
 
+  # TODO DOES THIS GENERATE CUSTOM FIELDS TYPE???????????
   type ChannelNotificationTranslation implements Node {
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
     languageCode: LanguageCode!
 
+    "Headline or title of the notification"
     title: String!
+    "Main content of the notification, depending on your needs you might want to use plain text, markdown, something else"
     content: String
   }
 
-  input ChannelNotificationTranslationInput {
-    # TODO check making distinct types?
-    # Only defined for update mutations
+  # TODO check making distinct types?
+  input CreateChannelNotificationTranslationInput {
+    languageCode: LanguageCode!
+    
+    "Headline or title of the notification"
+    title: String!
+    "Main content of the notification, depending on your needs you might want to use plain text, markdown, something else"
+    content: String
+  }
+
+  # TODO check making distinct types?
+  input UpdateChannelNotificationTranslationInput {
     id: ID
     languageCode: LanguageCode!
-    title: String!
+    
+    "Headline or title of the notification"
+    title: String
+    "Main content of the notification, depending on your needs you might want to use plain text, markdown, something else"
     content: String
   }
 
@@ -52,38 +67,38 @@ export const adminApiExtensions = gql`
   input ChannelNotificationListOptions
 
   extend type Query {
+    "Get a single notification"
     channelNotification(id: ID!): ChannelNotification
     "List all notifications for the active user, by default orders by dateTime descending"
     channelNotificationList(options: ChannelNotificationListOptions): ChannelNotificationList!
   }
 
-  input ChannelNotificationCreateInput {
+  input CreateChannelNotificationInput {
     dateTime: DateTime
     idAsset: ID
-    translations: [ChannelNotificationTranslationInput!]!
-    customFields: JSON
+    translations: [CreateChannelNotificationTranslationInput!]!
   }
 
-  input ChannelNotificationUpdateInput {
+  input UpdateChannelNotificationInput {
     id: ID!
     dateTime: DateTime
     idAsset: ID
-    translations: [ChannelNotificationTranslationInput!]
-    customFields: JSON
+    translations: [UpdateChannelNotificationTranslationInput!]
   }
 
-  input ChannelNotificationDeleteInput {
+  input DeleteChannelNotificationInput {
     id: ID!
   }
 
-  input ChannelNotificationMarkAsReadInput {
+  input MarkChannelNotificationAsReadInput {
     ids: [ID!]!
+    # TODO maybe include customFields here and make it only create one
   }
 
   extend type Mutation {
-    channelNotificationCreate(input: ChannelNotificationCreateInput!): ChannelNotification!
-    channelNotificationUpdate(input: ChannelNotificationUpdateInput!): ChannelNotification!
-    channelNotificationDelete(input: ChannelNotificationDeleteInput!): DeletionResponse!
-    channelNotificationMarkAsRead(input: ChannelNotificationMarkAsReadInput!): Success!
+    CreateChannelNotification(input: CreateChannelNotificationInput!): ChannelNotification!
+    UpdateChannelNotification(input: UpdateChannelNotificationInput!): ChannelNotification!
+    DeleteChannelNotification(input: DeleteChannelNotificationInput!): DeletionResponse!
+    MarkChannelNotificationAsRead(input: MarkChannelNotificationAsReadInput!): Success!
   }
 `;

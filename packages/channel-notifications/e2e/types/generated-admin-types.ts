@@ -477,17 +477,6 @@ export type ChannelNotification = Node & {
   updatedAt: Scalars['DateTime']['output'];
 };
 
-export type ChannelNotificationCreateInput = {
-  customFields?: InputMaybe<Scalars['JSON']['input']>;
-  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
-  translations: Array<ChannelNotificationTranslationInput>;
-};
-
-export type ChannelNotificationDeleteInput = {
-  id: Scalars['ID']['input'];
-};
-
 export type ChannelNotificationFilterParameter = {
   _and?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
   _or?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
@@ -520,10 +509,6 @@ export type ChannelNotificationListOptions = {
   take?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ChannelNotificationMarkAsReadInput = {
-  ids: Array<Scalars['ID']['input']>;
-};
-
 export type ChannelNotificationSortParameter = {
   assetId?: InputMaybe<SortOrder>;
   content?: InputMaybe<SortOrder>;
@@ -537,28 +522,14 @@ export type ChannelNotificationSortParameter = {
 
 export type ChannelNotificationTranslation = Node & {
   __typename?: 'ChannelNotificationTranslation';
+  /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
   content?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   languageCode: LanguageCode;
+  /** Headline or title of the notification */
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
-};
-
-export type ChannelNotificationTranslationInput = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  customFields?: InputMaybe<Scalars['JSON']['input']>;
-  id?: InputMaybe<Scalars['ID']['input']>;
-  languageCode: LanguageCode;
-  title: Scalars['String']['input'];
-};
-
-export type ChannelNotificationUpdateInput = {
-  customFields?: InputMaybe<Scalars['JSON']['input']>;
-  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
-  id: Scalars['ID']['input'];
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
-  translations?: InputMaybe<Array<ChannelNotificationTranslationInput>>;
 };
 
 export type ChannelSortParameter = {
@@ -879,6 +850,22 @@ export type CreateChannelInput = {
   sellerId?: InputMaybe<Scalars['ID']['input']>;
   token: Scalars['String']['input'];
   trackInventory?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type CreateChannelNotificationInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
+  idAsset?: InputMaybe<Scalars['ID']['input']>;
+  translations: Array<CreateChannelNotificationTranslationInput>;
+};
+
+export type CreateChannelNotificationTranslationInput = {
+  /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
+  content?: InputMaybe<Scalars['String']['input']>;
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  languageCode: LanguageCode;
+  /** Headline or title of the notification */
+  title: Scalars['String']['input'];
 };
 
 export type CreateChannelResult = Channel | LanguageNotAvailableError;
@@ -1685,6 +1672,10 @@ export type DeleteAssetsInput = {
   assetIds: Array<Scalars['ID']['input']>;
   deleteFromAllChannels?: InputMaybe<Scalars['Boolean']['input']>;
   force?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type DeleteChannelNotificationInput = {
+  id: Scalars['ID']['input'];
 };
 
 export type DeleteStockLocationInput = {
@@ -2751,6 +2742,10 @@ export type ManualPaymentStateError = ErrorResult & {
   message: Scalars['String']['output'];
 };
 
+export type MarkChannelNotificationAsReadInput = {
+  ids: Array<Scalars['ID']['input']>;
+};
+
 export type MimeTypeError = ErrorResult & {
   __typename?: 'MimeTypeError';
   errorCode: ErrorCode;
@@ -2809,6 +2804,10 @@ export type MultipleOrderError = ErrorResult & {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  CreateChannelNotification: ChannelNotification;
+  DeleteChannelNotification: DeletionResponse;
+  MarkChannelNotificationAsRead: Success;
+  UpdateChannelNotification: ChannelNotification;
   /** Add Customers to a CustomerGroup */
   addCustomersToGroup: CustomerGroup;
   addFulfillmentToOrder: AddFulfillmentToOrderResult;
@@ -2859,10 +2858,6 @@ export type Mutation = {
   cancelJob: Job;
   cancelOrder: CancelOrderResult;
   cancelPayment: CancelPaymentResult;
-  channelNotificationCreate: ChannelNotification;
-  channelNotificationDelete: DeletionResponse;
-  channelNotificationMarkAsRead: Success;
-  channelNotificationUpdate: ChannelNotification;
   /** Create a new Administrator */
   createAdministrator: Administrator;
   /** Create a new Asset */
@@ -3138,6 +3133,26 @@ export type Mutation = {
 };
 
 
+export type MutationCreateChannelNotificationArgs = {
+  input: CreateChannelNotificationInput;
+};
+
+
+export type MutationDeleteChannelNotificationArgs = {
+  input: DeleteChannelNotificationInput;
+};
+
+
+export type MutationMarkChannelNotificationAsReadArgs = {
+  input: MarkChannelNotificationAsReadInput;
+};
+
+
+export type MutationUpdateChannelNotificationArgs = {
+  input: UpdateChannelNotificationInput;
+};
+
+
 export type MutationAddCustomersToGroupArgs = {
   customerGroupId: Scalars['ID']['input'];
   customerIds: Array<Scalars['ID']['input']>;
@@ -3263,26 +3278,6 @@ export type MutationCancelOrderArgs = {
 
 export type MutationCancelPaymentArgs = {
   id: Scalars['ID']['input'];
-};
-
-
-export type MutationChannelNotificationCreateArgs = {
-  input: ChannelNotificationCreateInput;
-};
-
-
-export type MutationChannelNotificationDeleteArgs = {
-  input: ChannelNotificationDeleteInput;
-};
-
-
-export type MutationChannelNotificationMarkAsReadArgs = {
-  input: ChannelNotificationMarkAsReadInput;
-};
-
-
-export type MutationChannelNotificationUpdateArgs = {
-  input: ChannelNotificationUpdateInput;
 };
 
 
@@ -5201,6 +5196,7 @@ export type Query = {
   /** Get a list of Assets */
   assets: AssetList;
   channel?: Maybe<Channel>;
+  /** Get a single notification */
   channelNotification?: Maybe<ChannelNotification>;
   /** List all notifications for the active user, by default orders by dateTime descending */
   channelNotificationList: ChannelNotificationList;
@@ -6575,6 +6571,24 @@ export type UpdateChannelInput = {
   trackInventory?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+export type UpdateChannelNotificationInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
+  id: Scalars['ID']['input'];
+  idAsset?: InputMaybe<Scalars['ID']['input']>;
+  translations?: InputMaybe<Array<UpdateChannelNotificationTranslationInput>>;
+};
+
+export type UpdateChannelNotificationTranslationInput = {
+  /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
+  content?: InputMaybe<Scalars['String']['input']>;
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  id?: InputMaybe<Scalars['ID']['input']>;
+  languageCode: LanguageCode;
+  /** Headline or title of the notification */
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateChannelResult = Channel | LanguageNotAvailableError;
 
 export type UpdateCollectionInput = {
@@ -6895,21 +6909,28 @@ export type CreateMinimalNotificationMutationVariables = Exact<{
 }>;
 
 
-export type CreateMinimalNotificationMutation = { __typename?: 'Mutation', channelNotificationCreate: { __typename?: 'ChannelNotification', id: string | number, assetId?: string | number, dateTime?: any, readAt?: any, title: string, content?: string, asset?: { __typename?: 'Asset', id: string | number }, translations: Array<{ __typename?: 'ChannelNotificationTranslation', languageCode: LanguageCode, title: string, content?: string }> } };
+export type CreateMinimalNotificationMutation = { __typename?: 'Mutation', CreateChannelNotification: { __typename?: 'ChannelNotification', id: string | number, assetId?: string | number, dateTime?: any, readAt?: any, title: string, content?: string, asset?: { __typename?: 'Asset', id: string | number }, translations: Array<{ __typename?: 'ChannelNotificationTranslation', languageCode: LanguageCode, title: string, content?: string }> } };
+
+export type CreateNotificationMutationVariables = Exact<{
+  input: CreateChannelNotificationInput;
+}>;
+
+
+export type CreateNotificationMutation = { __typename?: 'Mutation', CreateChannelNotification: { __typename?: 'ChannelNotification', id: string | number, assetId?: string | number, dateTime?: any, readAt?: any, title: string, content?: string, asset?: { __typename?: 'Asset', id: string | number }, translations: Array<{ __typename?: 'ChannelNotificationTranslation', languageCode: LanguageCode, title: string, content?: string }> } };
 
 export type UpdateNotificationMutationVariables = Exact<{
-  input: ChannelNotificationUpdateInput;
+  input: UpdateChannelNotificationInput;
 }>;
 
 
-export type UpdateNotificationMutation = { __typename?: 'Mutation', channelNotificationUpdate: { __typename?: 'ChannelNotification', id: string | number, assetId?: string | number, dateTime?: any, readAt?: any, title: string, content?: string, asset?: { __typename?: 'Asset', id: string | number }, translations: Array<{ __typename?: 'ChannelNotificationTranslation', languageCode: LanguageCode, title: string, content?: string }> } };
+export type UpdateNotificationMutation = { __typename?: 'Mutation', UpdateChannelNotification: { __typename?: 'ChannelNotification', id: string | number, assetId?: string | number, dateTime?: any, readAt?: any, title: string, content?: string, asset?: { __typename?: 'Asset', id: string | number }, translations: Array<{ __typename?: 'ChannelNotificationTranslation', languageCode: LanguageCode, title: string, content?: string }> } };
 
 export type DeleteNotificationMutationVariables = Exact<{
-  input: ChannelNotificationDeleteInput;
+  input: DeleteChannelNotificationInput;
 }>;
 
 
-export type DeleteNotificationMutation = { __typename?: 'Mutation', channelNotificationDelete: { __typename?: 'DeletionResponse', result: DeletionResult, message?: string } };
+export type DeleteNotificationMutation = { __typename?: 'Mutation', DeleteChannelNotification: { __typename?: 'DeletionResponse', result: DeletionResult, message?: string } };
 
 export type ReadNotificationQueryVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -6934,17 +6955,18 @@ export type CreateMinimalChannelMutationVariables = Exact<{
 export type CreateMinimalChannelMutation = { __typename?: 'Mutation', createChannel: { __typename?: 'Channel', id: string | number, token: string } | { __typename?: 'LanguageNotAvailableError' } };
 
 export type MarkAsReadMutationVariables = Exact<{
-  input: ChannelNotificationMarkAsReadInput;
+  input: MarkChannelNotificationAsReadInput;
 }>;
 
 
-export type MarkAsReadMutation = { __typename?: 'Mutation', channelNotificationMarkAsRead: { __typename?: 'Success', success: boolean } };
+export type MarkAsReadMutation = { __typename?: 'Mutation', MarkChannelNotificationAsRead: { __typename?: 'Success', success: boolean } };
 
 export const AllFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<AllFragment, unknown>;
-export const CreateMinimalNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createMinimalNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"title"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dateTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channelNotificationCreate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"dateTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dateTime"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"translations"},"value":{"kind":"ListValue","values":[{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"languageCode"},"value":{"kind":"EnumValue","value":"en"}},{"kind":"ObjectField","name":{"kind":"Name","value":"title"},"value":{"kind":"Variable","name":{"kind":"Name","value":"title"}}}]}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables>;
-export const UpdateNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotificationUpdateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channelNotificationUpdate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationMutation, UpdateNotificationMutationVariables>;
-export const DeleteNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"deleteNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotificationDeleteInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channelNotificationDelete"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<DeleteNotificationMutation, DeleteNotificationMutationVariables>;
+export const CreateMinimalNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createMinimalNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"title"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dateTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"CreateChannelNotification"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"dateTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dateTime"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"translations"},"value":{"kind":"ListValue","values":[{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"languageCode"},"value":{"kind":"EnumValue","value":"en"}},{"kind":"ObjectField","name":{"kind":"Name","value":"title"},"value":{"kind":"Variable","name":{"kind":"Name","value":"title"}}}]}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<CreateMinimalNotificationMutation, CreateMinimalNotificationMutationVariables>;
+export const CreateNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateChannelNotificationInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"CreateChannelNotification"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<CreateNotificationMutation, CreateNotificationMutationVariables>;
+export const UpdateNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateChannelNotificationInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"UpdateChannelNotification"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<UpdateNotificationMutation, UpdateNotificationMutationVariables>;
+export const DeleteNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"deleteNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeleteChannelNotificationInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"DeleteChannelNotification"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<DeleteNotificationMutation, DeleteNotificationMutationVariables>;
 export const ReadNotificationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"readNotification"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channelNotification"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<ReadNotificationQuery, ReadNotificationQueryVariables>;
 export const ReadNotificationListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"readNotificationList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotificationListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channelNotificationList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"all"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"all"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotification"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"dateTime"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"translations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"languageCode"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<ReadNotificationListQuery, ReadNotificationListQueryVariables>;
 export const CreateMinimalChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createMinimalChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"code"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"token"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"code"},"value":{"kind":"Variable","name":{"kind":"Name","value":"code"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"token"},"value":{"kind":"Variable","name":{"kind":"Name","value":"token"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"defaultLanguageCode"},"value":{"kind":"EnumValue","value":"en"}},{"kind":"ObjectField","name":{"kind":"Name","value":"pricesIncludeTax"},"value":{"kind":"BooleanValue","value":true}},{"kind":"ObjectField","name":{"kind":"Name","value":"currencyCode"},"value":{"kind":"EnumValue","value":"USD"}},{"kind":"ObjectField","name":{"kind":"Name","value":"defaultShippingZoneId"},"value":{"kind":"StringValue","value":"T_1","block":false}},{"kind":"ObjectField","name":{"kind":"Name","value":"defaultTaxZoneId"},"value":{"kind":"StringValue","value":"T_1","block":false}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"token"}}]}}]}}]}}]} as unknown as DocumentNode<CreateMinimalChannelMutation, CreateMinimalChannelMutationVariables>;
-export const MarkAsReadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"markAsRead"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ChannelNotificationMarkAsReadInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channelNotificationMarkAsRead"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}}]}}]}}]} as unknown as DocumentNode<MarkAsReadMutation, MarkAsReadMutationVariables>;
+export const MarkAsReadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"markAsRead"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"MarkChannelNotificationAsReadInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"MarkChannelNotificationAsRead"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}}]}}]}}]} as unknown as DocumentNode<MarkAsReadMutation, MarkAsReadMutationVariables>;

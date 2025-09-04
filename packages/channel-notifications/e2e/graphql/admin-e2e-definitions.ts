@@ -22,7 +22,7 @@ export const fragmentNotification = gql`
 export const createMinimalNotification = gql`
   ${fragmentNotification}
   mutation createMinimalNotification($title: String!, $dateTime: DateTime) {
-    channelNotificationCreate(input: {
+    CreateChannelNotification(input: {
       dateTime: $dateTime,
       translations: [{
         languageCode: en,
@@ -34,18 +34,27 @@ export const createMinimalNotification = gql`
   }
 `;
 
+export const createNotification = gql`
+  ${fragmentNotification}
+  mutation createNotification($input: CreateChannelNotificationInput!) {
+    CreateChannelNotification(input: $input) {
+      ...all
+    }
+  }
+`;
+
 export const updateNotification = gql`
   ${fragmentNotification}
-  mutation updateNotification($input: ChannelNotificationUpdateInput!) {
-    channelNotificationUpdate(input: $input) {
+  mutation updateNotification($input: UpdateChannelNotificationInput!) {
+    UpdateChannelNotification(input: $input) {
       ...all
     }
   }
 `;
 
 export const deleteNotification = gql`
-  mutation deleteNotification($input: ChannelNotificationDeleteInput!) {
-    channelNotificationDelete(input: $input) {
+  mutation deleteNotification($input: DeleteChannelNotificationInput!) {
+    DeleteChannelNotification(input: $input) {
       result
       message
     }
@@ -94,8 +103,8 @@ export const createMinimalChannel = gql`
 
 export const markAsRead = gql`
   ${fragmentNotification}
-  mutation markAsRead($input: ChannelNotificationMarkAsReadInput!) {
-    channelNotificationMarkAsRead(input: $input) {
+  mutation markAsRead($input: MarkChannelNotificationAsReadInput!) {
+    MarkChannelNotificationAsRead(input: $input) {
       success
     }
   }

@@ -476,17 +476,6 @@ export type ChannelNotification = Node & {
   updatedAt: Scalars['DateTime']['output'];
 };
 
-export type ChannelNotificationCreateInput = {
-  customFields?: InputMaybe<Scalars['JSON']['input']>;
-  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
-  translations: Array<ChannelNotificationTranslationInput>;
-};
-
-export type ChannelNotificationDeleteInput = {
-  id: Scalars['ID']['input'];
-};
-
 export type ChannelNotificationFilterParameter = {
   _and?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
   _or?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
@@ -519,10 +508,6 @@ export type ChannelNotificationListOptions = {
   take?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ChannelNotificationMarkAsReadInput = {
-  ids: Array<Scalars['ID']['input']>;
-};
-
 export type ChannelNotificationSortParameter = {
   assetId?: InputMaybe<SortOrder>;
   content?: InputMaybe<SortOrder>;
@@ -536,28 +521,14 @@ export type ChannelNotificationSortParameter = {
 
 export type ChannelNotificationTranslation = Node & {
   __typename?: 'ChannelNotificationTranslation';
+  /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
   content?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   languageCode: LanguageCode;
+  /** Headline or title of the notification */
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
-};
-
-export type ChannelNotificationTranslationInput = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  customFields?: InputMaybe<Scalars['JSON']['input']>;
-  id?: InputMaybe<Scalars['ID']['input']>;
-  languageCode: LanguageCode;
-  title: Scalars['String']['input'];
-};
-
-export type ChannelNotificationUpdateInput = {
-  customFields?: InputMaybe<Scalars['JSON']['input']>;
-  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
-  id: Scalars['ID']['input'];
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
-  translations?: InputMaybe<Array<ChannelNotificationTranslationInput>>;
 };
 
 export type ChannelSortParameter = {
@@ -878,6 +849,22 @@ export type CreateChannelInput = {
   sellerId?: InputMaybe<Scalars['ID']['input']>;
   token: Scalars['String']['input'];
   trackInventory?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type CreateChannelNotificationInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
+  idAsset?: InputMaybe<Scalars['ID']['input']>;
+  translations: Array<CreateChannelNotificationTranslationInput>;
+};
+
+export type CreateChannelNotificationTranslationInput = {
+  /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
+  content?: InputMaybe<Scalars['String']['input']>;
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  languageCode: LanguageCode;
+  /** Headline or title of the notification */
+  title: Scalars['String']['input'];
 };
 
 export type CreateChannelResult = Channel | LanguageNotAvailableError;
@@ -1684,6 +1671,10 @@ export type DeleteAssetsInput = {
   assetIds: Array<Scalars['ID']['input']>;
   deleteFromAllChannels?: InputMaybe<Scalars['Boolean']['input']>;
   force?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type DeleteChannelNotificationInput = {
+  id: Scalars['ID']['input'];
 };
 
 export type DeleteStockLocationInput = {
@@ -2750,6 +2741,10 @@ export type ManualPaymentStateError = ErrorResult & {
   message: Scalars['String']['output'];
 };
 
+export type MarkChannelNotificationAsReadInput = {
+  ids: Array<Scalars['ID']['input']>;
+};
+
 export type MimeTypeError = ErrorResult & {
   __typename?: 'MimeTypeError';
   errorCode: ErrorCode;
@@ -2808,6 +2803,10 @@ export type MultipleOrderError = ErrorResult & {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  CreateChannelNotification: ChannelNotification;
+  DeleteChannelNotification: DeletionResponse;
+  MarkChannelNotificationAsRead: Success;
+  UpdateChannelNotification: ChannelNotification;
   /** Add Customers to a CustomerGroup */
   addCustomersToGroup: CustomerGroup;
   addFulfillmentToOrder: AddFulfillmentToOrderResult;
@@ -2858,10 +2857,6 @@ export type Mutation = {
   cancelJob: Job;
   cancelOrder: CancelOrderResult;
   cancelPayment: CancelPaymentResult;
-  channelNotificationCreate: ChannelNotification;
-  channelNotificationDelete: DeletionResponse;
-  channelNotificationMarkAsRead: Success;
-  channelNotificationUpdate: ChannelNotification;
   /** Create a new Administrator */
   createAdministrator: Administrator;
   /** Create a new Asset */
@@ -3137,6 +3132,26 @@ export type Mutation = {
 };
 
 
+export type MutationCreateChannelNotificationArgs = {
+  input: CreateChannelNotificationInput;
+};
+
+
+export type MutationDeleteChannelNotificationArgs = {
+  input: DeleteChannelNotificationInput;
+};
+
+
+export type MutationMarkChannelNotificationAsReadArgs = {
+  input: MarkChannelNotificationAsReadInput;
+};
+
+
+export type MutationUpdateChannelNotificationArgs = {
+  input: UpdateChannelNotificationInput;
+};
+
+
 export type MutationAddCustomersToGroupArgs = {
   customerGroupId: Scalars['ID']['input'];
   customerIds: Array<Scalars['ID']['input']>;
@@ -3262,26 +3277,6 @@ export type MutationCancelOrderArgs = {
 
 export type MutationCancelPaymentArgs = {
   id: Scalars['ID']['input'];
-};
-
-
-export type MutationChannelNotificationCreateArgs = {
-  input: ChannelNotificationCreateInput;
-};
-
-
-export type MutationChannelNotificationDeleteArgs = {
-  input: ChannelNotificationDeleteInput;
-};
-
-
-export type MutationChannelNotificationMarkAsReadArgs = {
-  input: ChannelNotificationMarkAsReadInput;
-};
-
-
-export type MutationChannelNotificationUpdateArgs = {
-  input: ChannelNotificationUpdateInput;
 };
 
 
@@ -5200,6 +5195,7 @@ export type Query = {
   /** Get a list of Assets */
   assets: AssetList;
   channel?: Maybe<Channel>;
+  /** Get a single notification */
   channelNotification?: Maybe<ChannelNotification>;
   /** List all notifications for the active user, by default orders by dateTime descending */
   channelNotificationList: ChannelNotificationList;
@@ -6572,6 +6568,24 @@ export type UpdateChannelInput = {
   sellerId?: InputMaybe<Scalars['ID']['input']>;
   token?: InputMaybe<Scalars['String']['input']>;
   trackInventory?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type UpdateChannelNotificationInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  dateTime?: InputMaybe<Scalars['DateTime']['input']>;
+  id: Scalars['ID']['input'];
+  idAsset?: InputMaybe<Scalars['ID']['input']>;
+  translations?: InputMaybe<Array<UpdateChannelNotificationTranslationInput>>;
+};
+
+export type UpdateChannelNotificationTranslationInput = {
+  /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
+  content?: InputMaybe<Scalars['String']['input']>;
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  id?: InputMaybe<Scalars['ID']['input']>;
+  languageCode: LanguageCode;
+  /** Headline or title of the notification */
+  title?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateChannelResult = Channel | LanguageNotAvailableError;

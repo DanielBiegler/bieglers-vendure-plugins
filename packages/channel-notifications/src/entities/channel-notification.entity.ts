@@ -2,7 +2,7 @@ import { Asset, Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, I
 import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
 
 export class CustomChannelNotificationFields { }
-export class CustomChannelNotificationReadEntryFields { }
+export class CustomChannelNotificationReadReceiptFields { }
 export class CustomChannelNotificationFieldsTranslation { }
 
 @Entity()
@@ -50,8 +50,8 @@ export class ChannelNotificationReadReceipt extends VendureEntity implements Has
   @JoinTable()
   channels: Channel[];
 
-  @Column(() => CustomChannelNotificationReadEntryFields)
-  customFields: CustomChannelNotificationReadEntryFields;
+  @Column(() => CustomChannelNotificationReadReceiptFields)
+  customFields: CustomChannelNotificationReadReceiptFields;
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   user: User;
