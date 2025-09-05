@@ -5,22 +5,18 @@ export const adminApiExtensions = gql`
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
-    
-    # TODO maybe user?
-    # author: User
-    
-    "For potentially displaying a thumbnail/banner in the notification or attaching a file"
-    asset: Asset
-    "See if there is a connected asset without needing to resolve the full asset"
-    assetId: ID
-    "Used for ordering, would also be the time for a changelog"
-    dateTime: DateTime
+        
+    "Used for default ordering, sorts in descending order to show last notification first."
+    dateTime: DateTime!
     "Headline or title of the notification"
     title: String!
     "Main content of the notification, depending on your needs you might want to use plain text, markdown, something else"
     content: String
+
     "This gets resolved for the active user"
     readAt: DateTime
+    "This gets resolved for the active user"
+    readReceipt: ChannelNotificationReadReceipt  # TODO maybe remove this
 
     translations: [ChannelNotificationTranslation!]!
   }
@@ -85,14 +81,12 @@ export const adminApiExtensions = gql`
 
   input CreateChannelNotificationInput {
     dateTime: DateTime
-    idAsset: ID
     translations: [CreateChannelNotificationTranslationInput!]!
   }
 
   input UpdateChannelNotificationInput {
     id: ID!
     dateTime: DateTime
-    idAsset: ID
     translations: [UpdateChannelNotificationTranslationInput!]
   }
 

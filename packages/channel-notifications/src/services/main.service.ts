@@ -1,7 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   assertFound,
-  Asset,
   ChannelService,
   CustomFieldRelationService,
   EntityNotFoundError,
@@ -92,9 +91,6 @@ export class ChannelNotificationsService {
     input: CreateChannelNotificationInput,
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
-    const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
-    const assetId = asset?.id || null;
-
     const entity = await this.translatableSaver.create({
       ctx,
       input,
@@ -102,8 +98,6 @@ export class ChannelNotificationsService {
       translationType: ChannelNotificationTranslation,
       beforeSave: async entity => {
         await this.channelService.assignToCurrentChannel(entity, ctx);
-        entity.asset = asset;
-        entity.assetId = assetId;
       },
     });
 
@@ -121,21 +115,13 @@ export class ChannelNotificationsService {
     relations?: RelationPaths<ChannelNotification>
   ): Promise<Translated<ChannelNotification>> {
     await this.connection.getEntityOrThrow(ctx, ChannelNotification, input.id, { channelId: ctx.channelId });
-    const asset = input.idAsset ? await this.connection.getEntityOrThrow(ctx, Asset, input.idAsset, { channelId: ctx.channelId }) : null;
-    const assetId = asset?.id ?? null;
 
     const entity = await this.translatableSaver.update({
       ctx,
       input,
       entityType: ChannelNotification,
       translationType: ChannelNotificationTranslation,
-      beforeSave: async entity => {
-        // Only update asset if actually present, null to delete
-        if (input.idAsset !== undefined) {
-          entity.asset = asset;
-          entity.assetId = assetId;
-        }
-      }
+      // beforeSave: async entity => {}
     });
 
     await this.customFieldRelationService.updateRelations(ctx, ChannelNotification, input, entity);
@@ -188,5 +174,18 @@ export class ChannelNotificationsService {
     await this.eventBus.publish(new ChannelNotificationEventMarkedAsRead(ctx, input));
 
     return { success: true };
+  }
+
+  async getReadReceiptForActiveUser(ctx: RequestContext, notification: ChannelNotification): Promise<ChannelNotificationReadReceipt | null> {
+    const { activeUserId: userId } = ctx;
+    if (!userId) return null;
+
+    const receipt = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).findOneBy({
+      userId,
+      notificationId: notification.id,
+      channels: { id: ctx.channelId }
+    });
+
+    return receipt;
   }
 }

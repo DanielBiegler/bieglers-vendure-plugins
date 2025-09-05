@@ -3,10 +3,14 @@ import gql from "graphql-tag";
 export const fragmentNotification = gql`
   fragment all on ChannelNotification {
     id
-    asset { id }
-    assetId
     dateTime
     readAt
+    readReceipt {
+      id
+      notificationId
+      userId
+      dateTime
+    }
     
     title
     content
@@ -97,6 +101,23 @@ export const createMinimalChannel = gql`
         id
         token
       }
+    }
+  }
+`;
+
+export const createMinimalAdmin = gql`
+  mutation createMinimalAdmin($input: CreateAdministratorInput!) {
+    createAdministrator(input: $input) {
+      id
+      user { id }
+    }
+  }
+`;
+
+export const createRole = gql`
+  mutation createRole($input: CreateRoleInput!) {
+    createRole(input: $input) {
+      id
     }
   }
 `;

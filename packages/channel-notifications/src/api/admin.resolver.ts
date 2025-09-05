@@ -1,5 +1,5 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, TransactionalConnection, Translated } from "@vendure/core";
+import { Allow, Ctx, ID, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, Translated } from "@vendure/core";
 import { permission } from "../constants";
 import { ChannelNotification, ChannelNotificationReadReceipt } from "../entities/channel-notification.entity";
 import { DeletionResponse, MutationCreateChannelNotificationArgs, MutationDeleteChannelNotificationArgs, MutationMarkChannelNotificationAsReadArgs, MutationUpdateChannelNotificationArgs, QueryChannelNotificationListArgs, Success } from "../generated-admin-types";
@@ -63,7 +63,7 @@ export class AdminResolver {
 
   @Mutation()
   @Transaction()
-  @Allow(permission.Update)
+  @Allow(permission.Read) // TODO think more about specific permission
   async MarkChannelNotificationAsRead(
     @Ctx() ctx: RequestContext,
     @Args() args: MutationMarkChannelNotificationAsReadArgs,
@@ -74,25 +74,25 @@ export class AdminResolver {
 
 @Resolver("ChannelNotification")
 export class FieldResolver {
+  constructor(private service: ChannelNotificationsService) { }
 
-  constructor(private connection: TransactionalConnection) { }
+  @Allow(permission.Update) // TODO permission due to custom fields that could hold sensitive info
+  @ResolveField()
+  async readReceipt(
+    @Ctx() ctx: RequestContext,
+    @Parent() notification: ChannelNotification,
+  ): Promise<ChannelNotificationReadReceipt | null> {
+    return this.service.getReadReceiptForActiveUser(ctx, notification);
+  }
 
+  @Allow(permission.Read)
   @ResolveField()
   async readAt(
     @Ctx() ctx: RequestContext,
     @Parent() notification: ChannelNotification,
   ): Promise<Date | null> {
-    const { activeUserId: userId } = ctx;
-    if (!userId) return null;
-
-    const receipt = await this.connection.getRepository(ctx, ChannelNotificationReadReceipt).findOneBy({
-      userId,
-      notificationId: notification.id,
-      channels: { id: ctx.channelId }
-    });
-    if (!receipt) return null;
-
-    return receipt.dateTime;
+    const receipt = await this.service.getReadReceiptForActiveUser(ctx, notification);
+    return receipt?.dateTime ?? null;
   }
 }
 

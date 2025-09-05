@@ -1,4 +1,4 @@
-import { Asset, Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, LanguageCode, LocaleString, Translatable, Translation, User, VendureEntity } from '@vendure/core';
+import { Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, LanguageCode, LocaleString, Translatable, Translation, User, VendureEntity } from '@vendure/core';
 import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from 'typeorm';
 
 export class CustomChannelNotificationFields { }
@@ -21,19 +21,14 @@ export class ChannelNotification extends VendureEntity implements HasCustomField
   @Column(() => CustomChannelNotificationFields)
   customFields: CustomChannelNotificationFields;
 
-  @Column({ type: "datetime", nullable: true })
-  dateTime: Date | null;
+  @Column({ type: "datetime", default: () => "CURRENT_TIMESTAMP" })
+  dateTime: Date;
 
   @OneToMany(() => ChannelNotificationReadReceipt, e => e.notification)
   readEntries: ChannelNotificationReadReceipt[];
 
   // `readAt` gets resolved via field-resolver
-
-  @ManyToOne(() => Asset, { nullable: true })
-  asset: Asset | null;
-
-  @EntityId({ nullable: true })
-  assetId: ID | null;
+  // `readReceipt` gets resolved via field-resolver
 
   title: LocaleString;
   content: LocaleString | null;

@@ -457,19 +457,17 @@ export type ChannelListOptions = {
 
 export type ChannelNotification = Node & {
   __typename?: 'ChannelNotification';
-  /** For potentially displaying a thumbnail/banner in the notification or attaching a file */
-  asset?: Maybe<Asset>;
-  /** See if there is a connected asset without needing to resolve the full asset */
-  assetId?: Maybe<Scalars['ID']['output']>;
   /** Main content of the notification, depending on your needs you might want to use plain text, markdown, something else */
   content?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTime']['output'];
   customFields?: Maybe<Scalars['JSON']['output']>;
-  /** Used for ordering, would also be the time for a changelog */
-  dateTime?: Maybe<Scalars['DateTime']['output']>;
+  /** Used for default ordering, sorts in descending order to show last notification first. */
+  dateTime: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   /** This gets resolved for the active user */
   readAt?: Maybe<Scalars['DateTime']['output']>;
+  /** This gets resolved for the active user */
+  readReceipt?: Maybe<ChannelNotificationReadReceipt>;
   /** Headline or title of the notification */
   title: Scalars['String']['output'];
   translations: Array<ChannelNotificationTranslation>;
@@ -479,7 +477,6 @@ export type ChannelNotification = Node & {
 export type ChannelNotificationFilterParameter = {
   _and?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
   _or?: InputMaybe<Array<ChannelNotificationFilterParameter>>;
-  assetId?: InputMaybe<IdOperators>;
   content?: InputMaybe<StringOperators>;
   createdAt?: InputMaybe<DateOperators>;
   dateTime?: InputMaybe<DateOperators>;
@@ -522,7 +519,6 @@ export type ChannelNotificationReadReceipt = Node & {
 };
 
 export type ChannelNotificationSortParameter = {
-  assetId?: InputMaybe<SortOrder>;
   content?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   dateTime?: InputMaybe<SortOrder>;
@@ -867,7 +863,6 @@ export type CreateChannelInput = {
 export type CreateChannelNotificationInput = {
   customFields?: InputMaybe<Scalars['JSON']['input']>;
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
   translations: Array<CreateChannelNotificationTranslationInput>;
 };
 
@@ -6588,7 +6583,6 @@ export type UpdateChannelNotificationInput = {
   customFields?: InputMaybe<Scalars['JSON']['input']>;
   dateTime?: InputMaybe<Scalars['DateTime']['input']>;
   id: Scalars['ID']['input'];
-  idAsset?: InputMaybe<Scalars['ID']['input']>;
   translations?: InputMaybe<Array<UpdateChannelNotificationTranslationInput>>;
 };
 

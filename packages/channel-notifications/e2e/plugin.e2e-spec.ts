@@ -1,13 +1,14 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
-import { Asset, LanguageCode, User, VendureConfig } from "@vendure/core";
+import { ID, LanguageCode, Product, User, VendureConfig } from "@vendure/core";
 import { createTestEnvironment, SimpleGraphQLClient } from "@vendure/testing";
 import gql from "graphql-tag";
 import path from "path";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
+import { permission } from "../src/constants";
 import { ChannelNotificationsPlugin } from "../src/plugin";
-import { CreateMinimalChannelDocument, CreateMinimalNotificationDocument, CreateNotificationDocument, DeleteNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
+import { CreateMinimalAdminDocument, CreateMinimalChannelDocument, CreateMinimalNotificationDocument, CreateNotificationDocument, CreateRoleDocument, DeleteNotificationDocument, MarkAsReadDocument, ReadNotificationDocument, ReadNotificationListDocument, UpdateNotificationDocument } from "./types/generated-admin-types";
 
 describe("Plugin", { concurrent: true }, () => {
   const config = {
@@ -23,7 +24,7 @@ describe("Plugin", { concurrent: true }, () => {
       ],
       ChannelNotificationReadReceipt: [
         { name: "foo", type: "boolean", },
-        { name: "asset", type: "relation", entity: Asset, },
+        { name: "product", type: "relation", entity: Product, },
       ],
     },
     plugins: [
@@ -39,6 +40,8 @@ describe("Plugin", { concurrent: true }, () => {
 
   const { server, adminClient: globalAdminClient } = createTestEnvironment(config);
 
+  let idRoleCanReadNotifications: ID;
+
   beforeAll(async () => {
     await server.init({
       productsCsvPath: path.join(__dirname, "../../../utils/e2e/e2e-products-full.csv"),
@@ -47,6 +50,9 @@ describe("Plugin", { concurrent: true }, () => {
       logging: true,
     });
     await globalAdminClient.asSuperAdmin();
+
+    const responseRole = await globalAdminClient.query(CreateRoleDocument, { input: { code: "read-notifications", description: "", permissions: [permission.Read] } })
+    idRoleCanReadNotifications = responseRole.createRole.id;
   }, 60000);
 
   afterAll(async () => {
@@ -57,7 +63,6 @@ describe("Plugin", { concurrent: true }, () => {
     const response = await globalAdminClient.query(CreateNotificationDocument, {
       input: {
         dateTime: "2025-01-01T12:00:00Z",
-        idAsset: "T_1",
         translations: [
           {
             languageCode: LanguageCode.en,
@@ -77,8 +82,6 @@ describe("Plugin", { concurrent: true }, () => {
     expect(response.CreateChannelNotification.content).toBe("This is a test notification.");
     expect(response.CreateChannelNotification.dateTime).toBe("2025-01-01T12:00:00.000Z");
     expect(response.CreateChannelNotification.readAt).toBeNull();
-    expect(response.CreateChannelNotification.asset?.id).toBe("T_1");
-    expect(response.CreateChannelNotification.assetId).toBe("T_1");
     expect(response.CreateChannelNotification.translations).toHaveLength(2);
     expect(response.CreateChannelNotification.translations.map((t) => t.languageCode).sort()).toEqual(["de", "en"]);
     expect(response.CreateChannelNotification.translations.find((t) => t.languageCode === "de")?.title).toBe("Testbenachrichtigung");
@@ -136,13 +139,11 @@ describe("Plugin", { concurrent: true }, () => {
     const updatedTitle = "Updated Title";
     const updatedContent = "Updated Content";
     const updatedDateTime = "1969-01-01T12:00:00.000Z";
-    const updatedAssetId = "T_1";
 
     const responseUpdate01 = await globalAdminClient.query(UpdateNotificationDocument, {
       input: {
         id: responseCreate01.CreateChannelNotification.id,
         dateTime: updatedDateTime,
-        idAsset: updatedAssetId,
         translations: [{
           languageCode: LanguageCode.en,
           title: updatedTitle,
@@ -155,25 +156,6 @@ describe("Plugin", { concurrent: true }, () => {
     expect(responseUpdate01.UpdateChannelNotification.dateTime).toBe(updatedDateTime);
     expect(responseUpdate01.UpdateChannelNotification.title).toBe(updatedTitle);
     expect(responseUpdate01.UpdateChannelNotification.content).toBe(updatedContent);
-    expect(responseUpdate01.UpdateChannelNotification.assetId).toBe(updatedAssetId);
-    expect(responseUpdate01.UpdateChannelNotification.asset?.id).toBe(updatedAssetId);
-
-    // Unassign Asset
-
-    const responseUpdate02 = await globalAdminClient.query(UpdateNotificationDocument, {
-      input: {
-        id: responseCreate01.CreateChannelNotification.id,
-        idAsset: null!, // TODO Why does TS need the non null assert here? 
-        // I confirmed the resolver does pass it correctly and the service gets the null.
-      }
-    });
-
-    expect(responseUpdate02.UpdateChannelNotification).toBeDefined();
-    expect(responseUpdate02.UpdateChannelNotification.dateTime).toBe(updatedDateTime);
-    expect(responseUpdate02.UpdateChannelNotification.title).toBe(updatedTitle);
-    expect(responseUpdate02.UpdateChannelNotification.content).toBe(updatedContent);
-    expect(responseUpdate02.UpdateChannelNotification.assetId).toBeNull();
-    expect(responseUpdate02.UpdateChannelNotification.asset?.id).toBeUndefined();
   });
 
   test("Read notification", async ({ expect }) => {
@@ -213,29 +195,78 @@ describe("Plugin", { concurrent: true }, () => {
     expect(responseRead.channelNotificationList.items[1].dateTime).toBe(dateTime01);
   });
 
-  test("Mark notification as read", async ({ expect }) => {
+  test("Mark notification as read, with permission to read receipt", async ({ expect }) => {
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
+    expect(responseCreate.CreateChannelNotification?.readReceipt).toBeNull();
 
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, { input: { id: responseCreate.CreateChannelNotification.id, } });
     const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate.CreateChannelNotification.id });
 
     expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
-    expect(responseRead.channelNotification?.readAt).toBeDefined();
+    expect(responseRead.channelNotification?.readAt).toBeTypeOf("string");
+    expect(responseRead.channelNotification?.readReceipt?.dateTime).toBeTypeOf("string");
+    expect(responseRead.channelNotification?.readAt).toStrictEqual(responseRead.channelNotification?.readReceipt?.dateTime);
+  });
+
+  test("Mark notification as read, without permission to read receipt", async ({ expect, task }) => {
+    const emailAddress = `${task.id}@test.test`;
+    const password = "password";
+    const responseAdmin = await globalAdminClient.query(CreateMinimalAdminDocument, {
+      input: {
+        emailAddress,
+        firstName: task.id,
+        lastName: task.id,
+        password,
+        roleIds: [idRoleCanReadNotifications]
+      }
+    });
+    const adminClient = newAdminClient();
+    await adminClient.asUserWithCredentials(emailAddress, password);
+
+    const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
+    expect(responseCreate.CreateChannelNotification?.readReceipt).toBeNull();
+
+    const responseMark = await adminClient.query(MarkAsReadDocument, { input: { id: responseCreate.CreateChannelNotification.id, } });
+    expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
+
+    const promiseRead = adminClient.query(ReadNotificationDocument, { id: responseCreate.CreateChannelNotification.id });
+    // Due to requesting readReceipt, see admin-e2e-definitions > readNotification
+    await expect(promiseRead).rejects.toThrow("You are not currently authorized to perform this action");
   });
 
   test("Mark notification as read with custom fields", async ({ expect }) => {
+    const foo = true;
+    const productId = "1";
+
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
 
     const responseMark = await globalAdminClient.query(MarkAsReadDocument, {
       input: {
         id: responseCreate.CreateChannelNotification.id,
-        readReceiptCustomFields: { example: "Example Custom Field String" }
+        readReceiptCustomFields: { foo, productId }
       }
     });
+
     expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
 
-    const responseRead = await globalAdminClient.query(ReadNotificationDocument, { id: responseCreate.CreateChannelNotification.id });
-    expect(responseRead.channelNotification?.readAt).toBeDefined();
+    const responseRead = await globalAdminClient.query(gql`
+      query readNotificationWithCustomField($id: ID!) {
+        channelNotification(id: $id) {
+          id
+          readReceipt {
+            customFields {
+              foo
+              product { id name }
+            }
+          }
+        }
+      }`,
+      { id: responseCreate.CreateChannelNotification.id }
+    );
+
+    expect(responseRead.channelNotification?.readReceipt?.customFields?.foo).toBe(foo);
+    expect(responseRead.channelNotification?.readReceipt?.customFields?.product?.id).toBe(`T_${productId}`);
+    expect(responseRead.channelNotification?.readReceipt?.customFields?.product?.name).toBe("Laptop");
   });
 
   test("Mark notification as read twice", async ({ expect }) => {
