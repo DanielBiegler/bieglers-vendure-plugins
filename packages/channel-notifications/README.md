@@ -12,7 +12,7 @@ Foundation for building notification inboxes and or changelogs for your users. F
 
 - Notification entity with read-receipts
 - Title and content are [translatable](#TODO)
-- Notification-/, Translation-/ and Read-Receipt-Entities are extendable by you via [Custom Fields](#TODO) to fit your specific business needs
+- Notification-/ and Read-Receipt-Entities are extendable by you via [Custom Fields](#TODO) to fit your specific business needs
 - Each Channel can have their own separate notifications as they implement [`ChannelAware`](#TODO)
 - Publishes events on the [EventBus](#TODO)
 - Granular CRUD permissions
@@ -121,7 +121,25 @@ For more details on how Channels work, see Vendures [Channel Documentation](http
 ### 5. Create a notification
 
 ```graphql
-# TODO
+mutation {
+  CreateChannelNotification(input: {
+    dateTime: "2025-09-04T12:00:00Z"
+    translations: [
+      {
+        languageCode: en,
+        title: "My first notification",
+        content: "Hello world!"
+      },
+      {
+        languageCode: de,
+        title: "Meine erste Benachrichtigung",
+        content: "Hallo Welt!"
+      }
+    ]
+  }) {
+    id
+  }
+}
 ```
 
 ### 6. Consume notifications
@@ -129,13 +147,28 @@ For more details on how Channels work, see Vendures [Channel Documentation](http
 1. List paginated notifications
 
 ```graphql
-# TODO
+query {
+  channelNotificationList(options: { take: 5 }) {
+    totalItems
+    items {
+      id
+      dateTime
+      title
+      content
+      readAt
+    }
+  }
+}
 ```
 
 2. Mark them as read
 
 ```graphql
-#TODO
+mutation {
+  MarkChannelNotificationAsRead(input: { id: "1" }) {
+    success
+  }
+}
 ```
 
 ## Practical Guides and Resources
@@ -146,7 +179,7 @@ For more details on how Channels work, see Vendures [Channel Documentation](http
 
 ### Resources
 
-- TODO
+- Free [Notification Inbox UI Component](https://flowbite.com/docs/components/dropdowns/#notification-bell) using TailwindCSS 
 
 ---
 
