@@ -1,6 +1,7 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
-import { LanguageCode } from "@vendure/core";
+import { Asset, LanguageCode, User, VendureConfig } from "@vendure/core";
 import { createTestEnvironment, SimpleGraphQLClient } from "@vendure/testing";
+import gql from "graphql-tag";
 import path from "path";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
@@ -14,6 +15,17 @@ describe("Plugin", { concurrent: true }, () => {
     importExportOptions: {
       importAssetsDir: path.join(__dirname, "fixtures"),
     },
+    customFields: {
+      ChannelNotification: [
+        { name: "author", type: "relation", entity: User, },
+        { name: "urlAction", type: "localeString", },
+        { name: "foo", type: "boolean", }
+      ],
+      ChannelNotificationReadReceipt: [
+        { name: "foo", type: "boolean", },
+        { name: "asset", type: "relation", entity: Asset, },
+      ],
+    },
     plugins: [
       AssetServerPlugin.init({
         route: "assets",
@@ -21,7 +33,7 @@ describe("Plugin", { concurrent: true }, () => {
       }),
       ChannelNotificationsPlugin.init({}),
     ],
-  };
+  } satisfies VendureConfig;
 
   const newAdminClient = () => new SimpleGraphQLClient(config, `http://localhost:${config.apiOptions.port}/${config.apiOptions.adminApiPath!}`);
 
@@ -72,6 +84,39 @@ describe("Plugin", { concurrent: true }, () => {
     expect(response.CreateChannelNotification.translations.find((t) => t.languageCode === "de")?.title).toBe("Testbenachrichtigung");
     expect(response.CreateChannelNotification.translations.find((t) => t.languageCode === "de")?.content).toBeNull();
   });
+
+  test("Create notification with custom fields", async ({ expect }) => {
+    const foo = true;
+    const urlAction = "EN-URL-ACTION";
+    const idUser = "T_1";
+
+    const response = await globalAdminClient.query(gql`mutation {
+      CreateChannelNotification(input: {
+        translations: [{
+          languageCode: en,
+          title: "Test Notification",
+          customFields: { urlAction: "${urlAction}" }
+        }]
+        customFields: {
+          foo: ${foo},
+          authorId: "${idUser}"
+        }
+      }) {
+        title
+        customFields {
+          foo
+          author { id }
+          urlAction
+        }
+      }
+    }`);
+
+    expect(response.CreateChannelNotification).toBeDefined();
+    expect(response.CreateChannelNotification.customFields.foo).toBe(foo);
+    expect(response.CreateChannelNotification.customFields.author.id).toBe(idUser);
+    expect(response.CreateChannelNotification.customFields.urlAction).toBe(urlAction);
+  });
+
 
   test("Delete notification", async ({ expect }) => {
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "Test Notification to delete" });
