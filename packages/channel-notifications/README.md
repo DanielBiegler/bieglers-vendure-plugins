@@ -21,20 +21,22 @@ Foundation for building notification inboxes and or changelogs for your users. F
 ### End-To-End Tests
 
 ```
- ✓ channel-notifications/e2e/plugin.e2e-spec.ts (10 tests)
+ ✓ channel-notifications/e2e/plugin.e2e-spec.ts (12 tests)
    ✓ Plugin > Create notification
+   ✓ Plugin > Create notification with custom fields
    ✓ Plugin > Delete notification
    ✓ Plugin > Update notification
    ✓ Plugin > Read notification
    ✓ Plugin > Read paginated notifications, default order DESC 
-   ✓ Plugin > Mark notification as read
+   ✓ Plugin > Mark notification as read, with permission to read receipt
+   ✓ Plugin > Mark notification as read, without permission to read receipt 
    ✓ Plugin > Mark notification as read with custom fields
    ✓ Plugin > Mark notification as read twice
    ✓ Plugin > Fail to read notification due non-existent ID
    ✓ Plugin > Fails marking notifications as read due to non-existent ID
 
  Test Files  1 passed (1)
-      Tests  10 passed (10)
+      Tests  12 passed (12)
 ```
 
 ## How To: Usage
@@ -107,7 +109,7 @@ Notifications are [Channel-Aware](#TODO), meaning each channel has their own sep
 A short example using ApolloClient in React:
 
 ```ts
-const { loading, error, data } = useQuery(GET_PRODUCT_LIST, {
+const { loading, error, data } = useQuery(GET_NOTIFICATION_LIST, {
     context: {
         headers: {
             'vendure-token': 'my-example-channel-token',
@@ -175,7 +177,49 @@ mutation {
 
 ### Guides
 
-- TODO
+It's important to note that this plugin aims to be **a foundation** for you to build upon. The default notification entity only holds the bare minimum of information and you are supposed to extend it via [custom fields](#TODO) to fit your specific business need. Here are some examples:
+
+#### Example #1: Adding an Avatar and click action
+
+Think about how notifications on social media sites work: They often feature an image and you can click on them to get to the relevant event. You can extend the notification with an asset and text input like so:
+
+```ts
+const vendureConfig = {
+  // ...
+  plugins: [
+    ChannelNotificationsPlugin.init({}),
+  ],
+  customFields: {
+    ChannelNotification: [
+      { name: "asset", type: "relation", entity: Asset, },
+      { name: "urlAction", type: "string", },
+    ],
+  },
+};
+```
+
+Now let's say someone reviewed your product and you'd like to notify the admins working that channel:
+
+```ts
+const event = { /* ... */ }; // Imagine subscribing to some event that holds data you need
+const response = await adminClient.query(CreateNotificationDocument, {
+  input: {
+    dateTime: event.date,
+    customFields: {
+      assetId: event.product.featuredAssetId,
+      urlAction: `https://YOURBACKEND/dashboard/review/${event.review.id}`,
+    },
+    translations: [
+      {
+        languageCode: LanguageCode.en,
+        title: `A new review has been submitted for **"${event.product.name}"**`,
+        content: `${event.user.firstName}: "${event.review.content.slice(0, 32)}..."`,
+      },
+      // ...
+    ]
+  }
+});
+```
 
 ### Resources
 
