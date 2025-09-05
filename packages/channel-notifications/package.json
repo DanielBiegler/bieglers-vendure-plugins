@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
+    "c": "ts-node generate-types.ts",
     "codegen": "ts-node generate-types.ts",
     "build": "rimraf dist && tsc -p ./tsconfig.build.json",
     "e2e": "cross-env PACKAGE=channel-notifications vitest -c ../../utils/e2e/vitest.config.mts"
