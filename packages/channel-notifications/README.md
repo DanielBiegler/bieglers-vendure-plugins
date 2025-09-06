@@ -221,6 +221,38 @@ const response = await adminClient.query(CreateNotificationDocument, {
 });
 ```
 
+#### Example #2: Customizing Read-Receipts
+
+Let's say you'd like your users to snooze a notification so that it pops up later again.
+
+```ts
+const vendureConfig = {
+  // ...
+  plugins: [
+    ChannelNotificationsPlugin.init({}),
+  ],
+  customFields: {
+    ChannelNotificationReadReceipt: [
+      { name: "renotifyAt", type: "datetime", },
+    ],
+  },
+};
+```
+
+Then in your notification inbox add a button for snoozing and query like so:
+
+```ts
+const dateAfter15Minutes = new Date(Date.now() + (1000 * 60 * 15));
+const responseMark = await adminClient.query(MarkAsReadDocument, {
+  input: {
+    id: notification.id,
+    readReceiptCustomFields: { renotifyAt: dateAfter15Minutes }
+  }
+});
+```
+
+Now the notification will be marked as read and contain info for your backend to re-notify the user.
+
 ### Resources
 
 - Free [Notification Inbox UI Component](https://flowbite.com/docs/components/dropdowns/#notification-bell) using TailwindCSS 
