@@ -253,6 +253,9 @@ const responseMark = await adminClient.query(MarkAsReadDocument, {
 
 Now the notification will be marked as read and contain info for your backend to re-notify the user. In this example scenario, imagine having a [scheduled task][scheduledtasks] that regularly checks and updates read-receipts once enough time has passed.
 
+> [!IMPORTANT]
+> Users with read permissions can see their read-receipt, so keep that in mind when attaching data that's only intended for Superadmins for example! Vendures [custom fields][customfields] do allow restricting permissions on them via `requiresPermission`.
+
 ### Resources
 
 - Free [Notification Inbox UI Component](https://flowbite.com/docs/components/dropdowns/#notification-bell) using TailwindCSS 
