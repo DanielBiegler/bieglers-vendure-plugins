@@ -12,7 +12,7 @@ generateTypes(
   },
   {
     pluginDir: __dirname,
-    e2e: true,
+    e2e: "admin",
     ui: false,
   },
 ).then(() => process.exit(0));
