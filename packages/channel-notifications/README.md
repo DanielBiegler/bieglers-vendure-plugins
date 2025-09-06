@@ -11,10 +11,10 @@ Foundation for building notification inboxes and or changelogs for your users. F
 ## Features
 
 - Notification entity with read-receipts
-- Title and content are [translatable](#TODO)
-- Notification-/ and Read-Receipt-Entities are extendable by you via [Custom Fields](#TODO) to fit your specific business needs
-- Each Channel can have their own separate notifications as they implement [`ChannelAware`](#TODO)
-- Publishes events on the [EventBus](#TODO)
+- Title and content are [translatable][translatable]
+- Notification-/ and Read-Receipt-Entities are extendable by you via [Custom Fields][customfields] to fit your specific business needs
+- Each [Channel][channels] can have their own inbox, because notifications implement [`ChannelAware`][channelaware]
+- Publishes [events][events] on the [EventBus][eventbus]
 - Granular CRUD permissions
 - Suite of end-to-end tests ensuring correctness
 
@@ -41,12 +41,10 @@ Foundation for building notification inboxes and or changelogs for your users. F
 
 ## How To: Usage
 
-<!-- TODO maybe?
 > [!TIP]
-> This initial How-To Guide shows just the general usage to give you an overview of the plugin, for a more specific example check ["Practical Guides"](#practical-guides-and-resources) below.
- -->
+> This initial How-To Guide shows just the general usage to give you an overview of the plugin, for more details on how to customize notifications to fit your needs, check ["Practical Guides"](#practical-guides-and-resources) below.
 
-The plugin extends the admin API with queries and mutations:
+The plugin [extends][extendapi] the admin API with queries and mutations:
 
 ```graphql
 extend type Query {
@@ -74,7 +72,7 @@ You can find the package over on [npm](https://www.npmjs.com/package/@danielbieg
 npm i @danielbiegler/vendure-plugin-channel-notifications
 ```
 
-Add it to your Vendure Config:
+Add it to your [Vendure Config][configuration]:
 
 ```ts
 import { ChannelNotificationsPlugin } from "@danielbiegler/vendure-plugin-channel-notifications";
@@ -96,15 +94,15 @@ This plugin adds new entities, namely:
 - `ChannelNotificationTranslation`
 - `ChannelNotificationReadReceipt`
 
-which requires you to generate a database migration. See Vendure's [migration documentation](https://docs.vendure.io/guides/developer-guide/migrations/) for further guidance.
+which requires you to generate a database migration. See Vendure's [migration documentation][migrations] for further guidance.
 
 ### 3. Create Roles
 
-You'll probably want to enable some users to create notifications while others are only given read permissions. This plugin adds custom permissions which you can assign in Vendures settings.
+You'll probably want to enable some users to create notifications while others are only given [read permissions][roles]. This plugin adds [custom permissions][custompermissions] which you can assign in Vendures settings.
 
 ### 4. Include Channel-Token
 
-Notifications are [Channel-Aware](#TODO), meaning each channel has their own separate notifications. Given a multi-vendor setup where each vendor is their own Channel, each Vendor can be notified separately, simply by supplying the Channel-Token in the request header.
+Notifications are [Channel-Aware][channelaware], meaning each channel has their own separate notifications. Given a multi-vendor setup where each vendor is their own Channel, each Vendor can be notified separately, simply by supplying the Channel-Token in the request header.
 
 A short example using ApolloClient in React:
 
@@ -118,7 +116,7 @@ const { loading, error, data } = useQuery(GET_NOTIFICATION_LIST, {
 });
 ```
 
-For more details on how Channels work, see Vendures [Channel Documentation](https://docs.vendure.io/guides/core-concepts/channels/).
+For more details on how Channels work, see Vendures [Channel Documentation][channels].
 
 ### 5. Create a notification
 
@@ -177,7 +175,7 @@ mutation {
 
 ### Guides
 
-It's important to note that this plugin aims to be **a foundation** for you to build upon. The default notification entity only holds the bare minimum of information and you are supposed to extend it via [custom fields](#TODO) to fit your specific business need. Here are some examples:
+It's important to note that this plugin aims to be **a foundation** for you to build upon. The default notification entity only holds the bare minimum of information and you are supposed to extend it via [custom fields][customfields] to fit your specific business need. Here are some examples:
 
 #### Example #1: Adding an Avatar and click action
 
@@ -198,27 +196,29 @@ const vendureConfig = {
 };
 ```
 
-Now let's say someone reviewed your product and you'd like to notify the admins working that channel:
+Now let's say someone reviewed your product and you'd like to notify the admins working that channel. Everytime a new review-event [gets published][eventbus] we can create notifications:
 
 ```ts
-const event = { /* ... */ }; // Imagine subscribing to some event that holds data you need
-const response = await adminClient.query(CreateNotificationDocument, {
-  input: {
-    dateTime: event.date,
-    customFields: {
-      assetId: event.product.featuredAssetId,
-      urlAction: `https://YOURBACKEND/dashboard/review/${event.review.id}`,
-    },
-    translations: [
-      {
-        languageCode: LanguageCode.en,
-        title: `A new review has been submitted for **"${event.product.name}"**`,
-        content: `${event.user.firstName}: "${event.review.content.slice(0, 32)}..."`,
+async onApplicationBootstrap() {
+  this.eventBus.ofType(NewReviewEvent).subscribe(async event => {
+    // This is just an example, you should handle errors in prod
+    await this.channelNotificationService.create(event.ctx, {
+      dateTime: event.input.date,
+      customFields: {
+        assetId: event.input.product.featuredAssetId,
+        urlAction: `https://YOURBACKEND/dashboard/review/${event.input.review.id}`,
       },
-      // ...
-    ]
-  }
-});
+      translations: [
+        {
+          languageCode: LanguageCode.en,
+          title: `A new review has been submitted for **"${event.input.product.name}"**`,
+          content: `${event.input.user.firstName}: "${event.input.review.content.slice(0, 32)}..."`,
+        },
+        // ...
+      ]
+    })
+  });
+}
 ```
 
 #### Example #2: Customizing Read-Receipts
@@ -251,7 +251,7 @@ const responseMark = await adminClient.query(MarkAsReadDocument, {
 });
 ```
 
-Now the notification will be marked as read and contain info for your backend to re-notify the user.
+Now the notification will be marked as read and contain info for your backend to re-notify the user. In this example scenario, imagine having a [scheduled task][scheduledtasks] that regularly checks and updates read-receipts once enough time has passed.
 
 ### Resources
 
@@ -262,3 +262,21 @@ Now the notification will be marked as read and contain info for your backend to
 #### Credits
 
 - Banner Photos created and edited by [Daniel Biegler](https://www.danielbiegler.de/)
+
+<!-- Link references -->
+
+[customfields]: https://docs.vendure.io/guides/developer-guide/custom-fields/
+[channelaware]: https://docs.vendure.io/guides/developer-guide/channel-aware/
+[channels]: https://docs.vendure.io/guides/core-concepts/channels/
+[migrations]: https://docs.vendure.io/guides/developer-guide/migrations/
+[configuration]: https://docs.vendure.io/guides/developer-guide/configuration/
+[plugins]: https://docs.vendure.io/guides/developer-guide/plugins/
+[custompermissions]: https://docs.vendure.io/guides/developer-guide/custom-permissions/
+[translatable]: https://docs.vendure.io/guides/developer-guide/translatable/
+[events]: https://docs.vendure.io/guides/developer-guide/events/
+[eventbus]: https://docs.vendure.io/reference/typescript-api/events/event-bus/
+[roles]: https://docs.vendure.io/guides/core-concepts/auth/#roles--permissions
+[extendapi]: https://docs.vendure.io/guides/developer-guide/extend-graphql-api/
+[jobqueue]: https://docs.vendure.io/guides/developer-guide/worker-job-queue/
+[entity]: https://docs.vendure.io/guides/developer-guide/database-entity/
+[scheduledtasks]: https://docs.vendure.io/guides/developer-guide/scheduled-tasks/

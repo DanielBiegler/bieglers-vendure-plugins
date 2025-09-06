@@ -16,7 +16,7 @@ export const adminApiExtensions = gql`
     "This gets resolved for the active user"
     readAt: DateTime
     "This gets resolved for the active user"
-    readReceipt: ChannelNotificationReadReceipt  # TODO maybe remove this
+    readReceipt: ChannelNotificationReadReceipt
 
     translations: [ChannelNotificationTranslation!]!
   }
@@ -33,7 +33,6 @@ export const adminApiExtensions = gql`
     dateTime: DateTime!
   }
 
-  # TODO DOES THIS GENERATE CUSTOM FIELDS TYPE???????????
   type ChannelNotificationTranslation implements Node {
     id: ID!
     createdAt: DateTime!

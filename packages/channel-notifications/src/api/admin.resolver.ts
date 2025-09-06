@@ -63,7 +63,7 @@ export class AdminResolver {
 
   @Mutation()
   @Transaction()
-  @Allow(permission.Read) // TODO think more about specific permission
+  @Allow(permission.Read)
   async MarkChannelNotificationAsRead(
     @Ctx() ctx: RequestContext,
     @Args() args: MutationMarkChannelNotificationAsReadArgs,
@@ -76,7 +76,7 @@ export class AdminResolver {
 export class FieldResolver {
   constructor(private service: ChannelNotificationsService) { }
 
-  @Allow(permission.Update) // TODO permission due to custom fields that could hold sensitive info
+  @Allow(permission.Read)
   @ResolveField()
   async readReceipt(
     @Ctx() ctx: RequestContext,
