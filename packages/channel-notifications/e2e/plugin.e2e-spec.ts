@@ -208,7 +208,7 @@ describe("Plugin", { concurrent: true }, () => {
     expect(responseRead.channelNotification?.readAt).toStrictEqual(responseRead.channelNotification?.readReceipt?.dateTime);
   });
 
-  test("Mark notification as read, without permission to read receipt", async ({ expect, task }) => {
+  test("Mark notification as read, without permission to read notification", async ({ expect, task }) => {
     const emailAddress = `${task.id}@test.test`;
     const password = "password";
     const responseAdmin = await globalAdminClient.query(CreateMinimalAdminDocument, {
@@ -217,7 +217,7 @@ describe("Plugin", { concurrent: true }, () => {
         firstName: task.id,
         lastName: task.id,
         password,
-        roleIds: [idRoleCanReadNotifications]
+        roleIds: [ /* idRoleCanReadNotifications */]
       }
     });
     const adminClient = newAdminClient();
@@ -226,12 +226,8 @@ describe("Plugin", { concurrent: true }, () => {
     const responseCreate = await globalAdminClient.query(CreateMinimalNotificationDocument, { title: "#1" });
     expect(responseCreate.CreateChannelNotification?.readReceipt).toBeNull();
 
-    const responseMark = await adminClient.query(MarkAsReadDocument, { input: { id: responseCreate.CreateChannelNotification.id, } });
-    expect(responseMark.MarkChannelNotificationAsRead.success).toBe(true);
-
-    const promiseRead = adminClient.query(ReadNotificationDocument, { id: responseCreate.CreateChannelNotification.id });
-    // Due to requesting readReceipt, see admin-e2e-definitions > readNotification
-    await expect(promiseRead).rejects.toThrow("You are not currently authorized to perform this action");
+    const promiseMark = adminClient.query(MarkAsReadDocument, { input: { id: responseCreate.CreateChannelNotification.id, } });
+    await expect(promiseMark).rejects.toThrow("You are not currently authorized to perform this action");
   });
 
   test("Mark notification as read with custom fields", async ({ expect }) => {
