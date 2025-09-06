@@ -32,7 +32,7 @@ You can find the package over on [npm](https://www.npmjs.com/package/@danielbieg
 npm i @danielbiegler/vendure-plugin-__SCAFFOLD_TITLE_URL_SAFE__
 ```
 
-TODO
+Add it to your [Vendure Config][configuration]:
 
 ```ts
 import { TODO } from "@danielbiegler/vendure-plugin-__SCAFFOLD_TITLE_URL_SAFE__";
@@ -50,7 +50,7 @@ Please refer to the specific [docs](https://github.com/DanielBiegler/bieglers-ve
 
 ### 2. Generate a database migration
 
-This plugin adds a custom field to the `Asset` entity called `previewImageHash`, which requires you to generate a database migration. See Vendure's [migration documentation](https://docs.vendure.io/guides/developer-guide/migrations/) for further guidance.
+This plugin adds a custom field to the `Asset` entity called `previewImageHash`, which requires you to generate a database migration. See Vendure's [migration documentation][migrations] for further guidance.
 
 ### 3. // TODO
 
@@ -69,3 +69,21 @@ This plugin adds a custom field to the `Asset` entity called `previewImageHash`,
 #### Credits
 
 - Original Banner Photo by [// TODO](#), edited by [Daniel Biegler](https://www.danielbiegler.de/)
+
+<!-- Link references -->
+
+[customfields]: https://docs.vendure.io/guides/developer-guide/custom-fields/
+[channelaware]: https://docs.vendure.io/guides/developer-guide/channel-aware/
+[channels]: https://docs.vendure.io/guides/core-concepts/channels/
+[migrations]: https://docs.vendure.io/guides/developer-guide/migrations/
+[configuration]: https://docs.vendure.io/guides/developer-guide/configuration/
+[plugins]: https://docs.vendure.io/guides/developer-guide/plugins/
+[custompermissions]: https://docs.vendure.io/guides/developer-guide/custom-permissions/
+[translatable]: https://docs.vendure.io/guides/developer-guide/translatable/
+[events]: https://docs.vendure.io/guides/developer-guide/events/
+[eventbus]: https://docs.vendure.io/reference/typescript-api/events/event-bus/
+[roles]: https://docs.vendure.io/guides/core-concepts/auth/#roles--permissions
+[extendapi]: https://docs.vendure.io/guides/developer-guide/extend-graphql-api/
+[jobqueue]: https://docs.vendure.io/guides/developer-guide/worker-job-queue/
+[entity]: https://docs.vendure.io/guides/developer-guide/database-entity/
+[scheduledtasks]: https://docs.vendure.io/guides/developer-guide/scheduled-tasks/
