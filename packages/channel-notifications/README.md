@@ -287,7 +287,7 @@ Now the notification will be marked as read and contain info for your backend to
 
 #### Credits
 
-- Banner Photos created and edited by [Daniel Biegler](https://www.danielbiegler.de/)
+- [Banner Photos](https://github.com/DanielBiegler/bieglers-vendure-plugins/blob/master/packages/channel-notifications/assets/channel-notifications.psd) created and edited by [Daniel Biegler](https://www.danielbiegler.de/)
 
 <!-- Link references -->
 
