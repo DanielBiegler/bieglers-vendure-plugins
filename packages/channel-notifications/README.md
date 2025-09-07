@@ -221,7 +221,42 @@ async onApplicationBootstrap() {
 }
 ```
 
-#### Example #2: Customizing Read-Receipts
+#### Example #2: Adding a Notification-Kind
+
+Depending on your platform, a single inbox without the ability to filter notifications could overwhelm users, so you might want to add a notification-"kind":
+
+```ts
+const vendureConfig = {
+  // ...
+  plugins: [
+    ChannelNotificationsPlugin.init({}),
+  ],
+  customFields: {
+    ChannelNotification: [
+      {
+        name: "kind",
+        type: "string",
+        defaultValue: "general",
+        nullable: false,
+        validate: value => {
+          // This is just a simple example,
+          // in a real scenario you'd hopefully do this properly
+          if (["general", "review", "order"].includes(value)) return;
+
+          return [
+            { languageCode: LanguageCode.en, value: 'Invalid kind' },
+            // ...
+          ];
+        }
+      },
+    ],
+  },
+};
+```
+
+See about validation and other common props at [Custom Fields][customfields]
+
+#### Example #3: Customizing Read-Receipts
 
 Let's say you'd like your users to snooze a notification so that it pops up later again.
 
