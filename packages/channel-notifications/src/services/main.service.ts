@@ -136,7 +136,6 @@ export class ChannelNotificationsService {
     const entity = await this.findOne(ctx, input.id);
     if (!entity) throw new EntityNotFoundError("ChannelNotification", input.id);
 
-    // TODO should this be caught and return NOT_DELETED?
     await this.connection.getRepository(ctx, ChannelNotification).remove(entity);
 
     Logger.verbose(`Deleted ChannelNotification (${entity.id})`, loggerCtx);
@@ -145,7 +144,6 @@ export class ChannelNotificationsService {
     return { result: DeletionResult.DELETED }
   }
 
-  // TODO this could be a union type with SUCCESS | ALREADY_READ | NO_ACTIVE_USER ?
   async markAsRead(ctx: RequestContext, input: MarkChannelNotificationAsReadInput): Promise<Success> {
     const { activeUserId } = ctx;
     if (!activeUserId) return { success: false };
