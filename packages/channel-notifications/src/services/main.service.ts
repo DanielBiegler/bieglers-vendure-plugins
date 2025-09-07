@@ -27,7 +27,8 @@ import { CreateChannelNotificationInput, DeleteChannelNotificationInput, Deletio
 import { ChannelNotificationsOptions } from "../types";
 
 /**
- * // TODO
+ * The ChannelNotificationsService provides methods for working with ChannelNotifications
+ * and ChannelNotificationReadReceipts
  *
  * @category Services
  */

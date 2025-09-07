@@ -22,18 +22,6 @@ Foundation for building notification inboxes and or changelogs for your users. F
 
 ```
  ✓ channel-notifications/e2e/plugin.e2e-spec.ts (12 tests)
-   ✓ Plugin > Create notification
-   ✓ Plugin > Create notification with custom fields
-   ✓ Plugin > Delete notification
-   ✓ Plugin > Update notification
-   ✓ Plugin > Read notification
-   ✓ Plugin > Read paginated notifications, default order DESC 
-   ✓ Plugin > Mark notification as read, with permission to read receipt
-   ✓ Plugin > Mark notification as read, without permission to read receipt 
-   ✓ Plugin > Mark notification as read with custom fields
-   ✓ Plugin > Mark notification as read twice
-   ✓ Plugin > Fail to read notification due non-existent ID
-   ✓ Plugin > Fails marking notifications as read due to non-existent ID
 
  Test Files  1 passed (1)
       Tests  12 passed (12)
