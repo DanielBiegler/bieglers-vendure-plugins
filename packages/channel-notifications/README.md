@@ -221,9 +221,9 @@ async onApplicationBootstrap() {
 }
 ```
 
-#### Example #2: Adding a Notification-Kind
+#### Example #2: Adding a Notification Category
 
-Depending on your platform, a single inbox without the ability to filter notifications could overwhelm users, so you might want to add a notification-"kind":
+Depending on your platform, a single inbox without the ability to filter notifications could overwhelm users, so you might want to add a notification-"category" to be able to group them:
 
 ```ts
 const vendureConfig = {
@@ -234,17 +234,17 @@ const vendureConfig = {
   customFields: {
     ChannelNotification: [
       {
-        name: "kind",
+        name: "category",
         type: "string",
         defaultValue: "general",
         nullable: false,
         validate: value => {
           // This is just a simple example,
           // in a real scenario you'd hopefully do this properly
-          if (["general", "review", "order"].includes(value)) return;
+          if (["general", "review", "order", /* ... */].includes(value)) return;
 
           return [
-            { languageCode: LanguageCode.en, value: 'Invalid kind' },
+            { languageCode: LanguageCode.en, value: 'Invalid category' },
             // ...
           ];
         }
