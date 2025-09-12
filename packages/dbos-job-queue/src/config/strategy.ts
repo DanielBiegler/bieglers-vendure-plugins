@@ -1,4 +1,5 @@
-import { Injector, Job, JobData, JobQueueStrategy, JobQueueStrategyJobOptions, Logger } from "@vendure/core";
+import { JobListOptions } from "@vendure/common/lib/generated-types";
+import { ID, Injector, InspectableJobQueueStrategy, Job, JobData, JobQueueStrategyJobOptions, Logger, PaginatedList } from "@vendure/core";
 import { loggerCtx, PLUGIN_INIT_OPTIONS } from "../constants";
 import { DBOSHealthIndicator } from "../services/health-indicator.health";
 import { DBOSJobQueueOptions } from "../types";
@@ -14,7 +15,7 @@ import { DBOSJobQueueOptions } from "../types";
  * npm install # TODO
  * ```
  */
-export class DBOSJobQueueStrategy implements JobQueueStrategy {
+export class DBOSJobQueueStrategy implements InspectableJobQueueStrategy {
   private options: DBOSJobQueueOptions;
 
   async init(injector: Injector): Promise<void> {
@@ -45,6 +46,25 @@ export class DBOSJobQueueStrategy implements JobQueueStrategy {
     throw new Error("Method not implemented.");
   }
 
-  destroy?: (() => void | Promise<void>) | undefined;
+  findOne(id: ID): Promise<Job | undefined> {
+    throw new Error("Method not implemented.");
+  }
 
+  findMany(options?: JobListOptions): Promise<PaginatedList<Job>> {
+    throw new Error("Method not implemented.");
+  }
+
+  findManyById(ids: ID[]): Promise<Job[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  removeSettledJobs(queueNames?: string[], olderThan?: Date): Promise<number> {
+    throw new Error("Method not implemented.");
+  }
+
+  cancelJob(jobId: ID): Promise<Job | undefined> {
+    throw new Error("Method not implemented.");
+  }
+
+  destroy?: (() => void | Promise<void>) | undefined;
 }
