@@ -1,7 +1,6 @@
 import { PluginCommonModule, VendurePlugin } from "@vendure/core";
-import { AdminResolver } from "./api/admin.resolver";
-import { adminApiExtensions } from "./api/api-extensions";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
+import { DBOSHealthIndicator } from "./services/health-indicator.health";
 import { DBOSJobQueueService } from "./services/main.service";
 import { DBOSJobQueueOptions } from "./types";
 
@@ -18,12 +17,17 @@ import { DBOSJobQueueOptions } from "./types";
       useFactory: () => DBOSJobQueuePlugin.options,
     },
     DBOSJobQueueService,
+    DBOSHealthIndicator,
   ],
-  adminApiExtensions: {
-    resolvers: [AdminResolver],
-    schema: adminApiExtensions,
-  },
-  compatibility: ">=3.0.0",
+  // TODO
+  // configuration: config => {
+  //   config.jobQueueOptions.jobQueueStrategy = new BullMQJobQueueStrategy();
+  //   config.jobQueueOptions.jobBufferStorageStrategy = new RedisJobBufferStorageStrategy();
+  //   config.systemOptions.healthChecks.push(new RedisHealthCheckStrategy());
+  //   config.schedulerOptions.tasks.push(cleanIndexedSetsTask);
+  //   return config;
+  // },
+  compatibility: ">=3.0.0", // TODO figure out when nestjs/terminus got added, we use it in the healthcheck - would this impact older instances?
 })
 export class DBOSJobQueuePlugin {
   /** @internal */
@@ -34,6 +38,7 @@ export class DBOSJobQueuePlugin {
    *
    * @example
    * ```ts
+   * // TODO
    * DBOSJobQueuePlugin.init({}),
    * ```
    */
