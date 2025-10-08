@@ -26,13 +26,14 @@
     "better-sqlite3": "^9.6.0",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
+    "esbuild": "0.25.10",
     "fs-extra": "^11.2.0",
     "graphql-tag": "^2.12.6",
     "lerna": "^8.1.8",
     "prettier": "3.3.3",
     "rimraf": "^6.0.1",
     "ts-node": "10.9.2",
-    "typescript": "5.3.3",
+    "typescript": "5.9.3",
     "unplugin-swc": "^1.5.1",
     "vitest": "3.2.3"
   }
