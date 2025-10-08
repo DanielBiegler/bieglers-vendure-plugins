@@ -1,0 +1,40 @@
+{
+  "name": "bieglers-vendure-helper",
+  "displayName": "Bieglers Vendure Helper",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bieglers-vendure-helper.helloWorld",
+        "title": "Hello World"
+      }
+    ]
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit -p .",
+    "compile": "npm run check-types && node esbuild.js",
+    "compile-tests": "tsc -p . --outDir out",
+    "pretest": "npm run compile-tests && npm run compile",
+    "test": "vscode-test",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "package": "npm run check-types && node esbuild.js --production"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.104.0",
+    "@types/mocha": "10.0.10",
+    "@types/node": "22.x",
+    "@vscode/test-cli": "0.0.11",
+    "@vscode/test-electron": "2.5.2"
+  }
+}
