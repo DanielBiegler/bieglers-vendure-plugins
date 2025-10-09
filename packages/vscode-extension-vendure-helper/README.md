@@ -1,3 +1,5 @@
+![Banner Image](./assets/thumbnail_16x9.png)
+
 # Bieglers Vendure Helper
 
 VS Code Extension to improve working on Vendure projects.
