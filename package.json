@@ -23,6 +23,7 @@
     "@vendure/core": "3.2.3",
     "@vendure/testing": "3.2.3",
     "@vendure/ui-devkit": "3.2.3",
+    "@vscode/vsce": "3.6.2",
     "better-sqlite3": "^9.6.0",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
