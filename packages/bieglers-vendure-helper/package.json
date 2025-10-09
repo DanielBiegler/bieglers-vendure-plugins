@@ -1,21 +1,21 @@
 {
-  "name": "bieglers-vendure-helper",
+  "name": "@danielbiegler/vendure-helper-vscode-extension",
   "displayName": "Bieglers Vendure Helper",
-  "description": "",
-  "version": "0.0.1",
+  "description": "VS Code Extension to improve working on Vendure projects",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.104.0"
   },
   "categories": [
-    "Other"
+    "Education"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "bieglers-vendure-helper.helloWorld",
-        "title": "Hello World"
+        "command": "bieglers-vendure-helper.docSearch",
+        "title": "Vendure Docs Search"
       }
     ]
   },
