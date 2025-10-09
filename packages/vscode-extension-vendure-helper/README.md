@@ -10,7 +10,9 @@ VS Code Extension to improve working on Vendure projects.
 
 Quickly find relevant Vendure Docs and open them in your browser.
 
-![Vendure Docs Search Example](./assets/docs-search-example.webm)
+<video src="./assets/docs-search-example.webm" controls width="100%">
+  Your browser does not support the video tag.
+</video>
 
 > [!TIP] Pro-Tips
 > 1. Configure a shortcut in VSCode settings for example `CTRL+K CTRL+V`
