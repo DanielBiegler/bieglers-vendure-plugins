@@ -18,6 +18,10 @@ Quickly find relevant Vendure Docs and open them in your browser.
 
 * None
 
+## Download
+
+You can find extensions to download in the [`./downloads`](./downloads/) folder.
+
 ## Installation
 
 Local VS Code extensions are bundled into a `.vsix` files and can be installed by running this in your shell:
