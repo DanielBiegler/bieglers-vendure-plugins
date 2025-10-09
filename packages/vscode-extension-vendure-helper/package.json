@@ -1,0 +1,60 @@
+{
+  "name": "bieglers-vendure-helper-vscode-extension",
+  "displayName": "Bieglers Vendure Helper",
+  "description": "VS Code Extension to improve working on Vendure projects.",
+  "license": "MIT",
+  "version": "0.1.0",
+  "scripts": {
+    "check-types": "tsc --noEmit -p .",
+    "compile": "npm run check-types && node esbuild.js",
+    "compile-tests": "tsc -p . --outDir out",
+    "pretest": "npm run compile-tests && npm run compile",
+    "test": "vscode-test",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "package": "npm run check-types && node esbuild.js --production && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.104.0",
+    "@types/mocha": "10.0.10",
+    "@types/node": "22.x",
+    "@vscode/test-cli": "0.0.11",
+    "@vscode/test-electron": "2.5.2"
+  },
+  "files": [
+    "package.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.txt",
+    "dist/**"
+  ],
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "Education"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bieglers-vendure-helper.docSearch",
+        "title": "Vendure Docs Search"
+      }
+    ]
+  },
+  "author": {
+    "name": "Daniel Biegler",
+    "url": "https://www.danielbiegler.de"
+  },
+  "bugs": {
+    "url": "https://github.com/DanielBiegler/bieglers-vendure-plugins/issues"
+  },
+  "homepage": "https://github.com/DanielBiegler/bieglers-vendure-plugins/packages/vscode-extension-vendure-helper",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanielBiegler/bieglers-vendure-plugins"
+  }
+}
