@@ -3,7 +3,7 @@
   "displayName": "Bieglers Vendure Helper",
   "description": "VS Code Extension to improve working on Vendure projects.",
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "check-types": "tsc --noEmit -p .",
     "compile": "npm run check-types && node esbuild.js",

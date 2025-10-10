@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 
+const ID_DIRECT_SEARCH = "direct_search";
+const URI_SEARCH = vscode.Uri.parse("https://docs.vendure.io/search", true);
+const TOOLTIP_REMOVE_RECENT = "Remove from recently picked list";
+
 type CustomQuickPickItem = vscode.QuickPickItem & {
 	id?: string
-	uri: vscode.Uri
+	uri?: vscode.Uri
 };
 
 function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
@@ -41,22 +45,49 @@ async function fetchLlmMarkdown(): Promise<string> {
 
 	if (res.ok) return res.text()
 	else {
-		vscode.window.showErrorMessage("Failed to fetch documentation.");
+		vscode.window.showErrorMessage(`Failed to fetch documentation from ${URI_SEARCH.authority}. Try reloading the extension.`);
 		return "";
 	}
 }
 
-export async function activate(context: vscode.ExtensionContext) {
-	const ID_DIRECT_SEARCH = "direct_search";
-	const markdown = await fetchLlmMarkdown();
-	const items = quickPickItemsFromMarkdown(markdown);
-	items.push({
+function genQuickPickItems(
+	recent: Set<CustomQuickPickItem>,
+	items: CustomQuickPickItem[]
+): CustomQuickPickItem[] {
+	// Could allocate with a size
+	const output: CustomQuickPickItem[] = [];
+
+	if (recent.size > 0) {
+		output.push({
+			label: "Recently picked",
+			kind: vscode.QuickPickItemKind.Separator,
+		});
+
+		// Reversing allows us to show last inserted items first because Sets iterate in insertion-order
+		output.push(...[...recent].reverse());
+
+		output.push({
+			label: "",
+			kind: vscode.QuickPickItemKind.Separator,
+		});
+	}
+
+	output.push(...items);
+	output.push({
 		id: ID_DIRECT_SEARCH,
 		label: "Search directly for input",
 		alwaysShow: true,
-		uri: vscode.Uri.parse("https://docs.vendure.io/search", true),
-		description: "https://docs.vendure.io/search",
+		uri: URI_SEARCH,
+		description: URI_SEARCH.toString(),
 	});
+
+	return output;
+}
+
+export async function activate(context: vscode.ExtensionContext) {
+	const recentResults: Set<CustomQuickPickItem> = new Set();
+	const markdown = await fetchLlmMarkdown();
+	const items = quickPickItemsFromMarkdown(markdown);
 
 	const disposable = vscode.commands.registerCommand("bieglers-vendure-helper.docSearch", async (args) => {
 
@@ -69,13 +100,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		quickPick.ignoreFocusOut = true;
 		quickPick.matchOnDescription = true;
 		quickPick.matchOnDetail = true;
-		quickPick.items = items;
+		quickPick.items = genQuickPickItems(recentResults, items);
 
 		// Consider debouncing if the list gets large
 		// Tested on my 8 year old laptop and search is snappy for 765 links
 		// Debouncing doesnt seem necessary (yet)
 		quickPick.onDidChangeValue((value) => {
-			if (!value) return quickPick.items = items;
+			if (!value) return quickPick.items = genQuickPickItems(recentResults, items);
 			quickPick.busy = true;
 
 			const searchTerms = value.toLowerCase().split(/\s+/).filter(t => t !== '');
@@ -101,12 +132,28 @@ export async function activate(context: vscode.ExtensionContext) {
 		quickPick.onDidAccept(() => {
 			const selected = quickPick.selectedItems[0];
 			if (selected) {
+				// Once clicked needs to remove it again, see `onDidTriggerItemButton`
+				selected.buttons = [{ iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT }]
+				// Delete + Add because Sets iterate in insertion-order, see `genQuickPickItems`
+				recentResults.delete(selected);
+				recentResults.add(selected);
+
 				const uri = selected.id === ID_DIRECT_SEARCH
-					? selected.uri.with({ query: `q=${quickPick.value}` })
+					? selected.uri?.with({ query: `q=${quickPick.value}` })
 					: selected.uri;
-				vscode.env.openExternal(uri);
+
+				if (uri) vscode.env.openExternal(uri)
+				else vscode.window.showErrorMessage("Selected item has no configured URI");
 			}
 			quickPick.hide();
+		});
+
+		quickPick.onDidTriggerItemButton(async e => {
+			if (e.button.tooltip === TOOLTIP_REMOVE_RECENT) {
+				recentResults.delete(e.item);
+				if (e.item.buttons) e.item.buttons = e.item.buttons.filter(b => b.tooltip !== TOOLTIP_REMOVE_RECENT);
+				quickPick.items = genQuickPickItems(recentResults, items);
+			}
 		});
 
 		quickPick.onDidHide(() => {
