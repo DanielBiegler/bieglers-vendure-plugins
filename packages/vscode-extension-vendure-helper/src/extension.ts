@@ -37,6 +37,14 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 		});
 	}
 
+	items.push({
+		id: ID_DIRECT_SEARCH,
+		label: "Search directly for input",
+		alwaysShow: true,
+		uri: URI_SEARCH,
+		description: URI_SEARCH.toString(),
+	});
+
 	return items;
 }
 
@@ -73,13 +81,6 @@ function genQuickPickItems(
 	}
 
 	output.push(...items);
-	output.push({
-		id: ID_DIRECT_SEARCH,
-		label: "Search directly for input",
-		alwaysShow: true,
-		uri: URI_SEARCH,
-		description: URI_SEARCH.toString(),
-	});
 
 	return output;
 }

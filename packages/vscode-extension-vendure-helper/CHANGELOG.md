@@ -9,6 +9,12 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 0.2.1
+
+### Fixed
+
+- In 0.2.0 the option to use the direct search accidently disappeared. Now it's available again.
+
 ## 0.2.0
 
 ### Added
