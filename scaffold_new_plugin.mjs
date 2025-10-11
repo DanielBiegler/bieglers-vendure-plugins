@@ -41,7 +41,7 @@ function initVariables(argv) {
   return {
     __SCAFFOLD_TITLE__: argTitle,
     __SCAFFOLD_TITLE_URL_SAFE__: argTitle.toLowerCase().replaceAll(/\s/g, "-"),
-    __SCAFFOLD_TITLE_NO_SPACE__: argTitle.replaceAll(/\s/g, ""),
+    __SCAFFOLD_TITLE_NO_SPACE__: argTitle.replaceAll(/[\s-]/g, ""),
     __SCAFFOLD_DESCRIPTION__: argDescription,
     __SCAFFOLD_YEAR__: new Date().getFullYear(),
   };
