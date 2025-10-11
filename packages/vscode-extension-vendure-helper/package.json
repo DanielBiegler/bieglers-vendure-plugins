@@ -6,7 +6,7 @@
   "version": "0.2.1",
   "scripts": {
     "check-types": "tsc --noEmit -p .",
-    "compile": "npm run check-types && node esbuild.js",
+    "compile": "npm run check-types && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",
     "pretest": "npm run compile-tests && npm run compile",
     "test": "vscode-test",
