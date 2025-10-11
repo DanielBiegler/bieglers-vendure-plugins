@@ -50,7 +50,7 @@ Please refer to the specific [docs](https://github.com/DanielBiegler/bieglers-ve
 
 ### 2. Generate a database migration
 
-This plugin adds a custom field to the `Asset` entity called `previewImageHash`, which requires you to generate a database migration. See Vendure's [migration documentation][migrations] for further guidance.
+This plugin adds // TODO, which requires you to generate a database migration. See Vendure's [migration documentation][migrations] for further guidance.
 
 ### 3. // TODO
 
