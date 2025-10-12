@@ -41,7 +41,21 @@
     "commands": [
       {
         "command": "bieglers-vendure-helper.docSearch",
-        "title": "Vendure Docs Search"
+        "title": "Docs Search",
+        "category": "Bieglers Vendure Helper"
+      },
+      {
+        "command": "bieglers-vendure-helper.copyDocUri",
+        "title": "Copy QuickPick Item",
+        "category": "Bieglers Vendure Helper",
+        "enablement": "inQuickOpen"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bieglers-vendure-helper.copyDocUri",
+        "key": "ctrl+c",
+        "when": "inQuickOpen"
       }
     ]
   },

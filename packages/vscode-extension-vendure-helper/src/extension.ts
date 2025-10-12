@@ -3,12 +3,17 @@ import * as vscode from 'vscode';
 const ID_DIRECT_SEARCH = "direct_search";
 const URI_SEARCH = vscode.Uri.parse("https://docs.vendure.io/search", true);
 const TOOLTIP_REMOVE_RECENT = "Remove from recently picked list";
-const TOOLTIP_COPY_URL = "Copy URL to clipboard";
+const TOOLTIP_COPY_URL = "Copy URL to clipboard (CTRL+C)";
+
+const buttonRecentResult: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT };
+const buttonCopyUri: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("copy"), tooltip: TOOLTIP_COPY_URL };
 
 type CustomQuickPickItem = vscode.QuickPickItem & {
 	id?: string
 	uri?: vscode.Uri
 };
+
+type RecentResults = Set<CustomQuickPickItem>;
 
 function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 	if (md === "") return [];
@@ -28,7 +33,7 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 			description: url,
 			detail: label === description ? undefined : description,
 			uri,
-			buttons: [{ iconPath: new vscode.ThemeIcon("copy"), tooltip: TOOLTIP_COPY_URL }],
+			buttons: [buttonCopyUri],
 			/**
 			 * Important: Currently its impossible to disable matching on the label,
 			 * this is an issue because it hides items when the filter contains a space for example.
@@ -45,6 +50,7 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 		alwaysShow: true,
 		uri: URI_SEARCH,
 		description: URI_SEARCH.toString(),
+		buttons: [buttonCopyUri]
 	});
 
 	return items;
@@ -87,12 +93,40 @@ function genQuickPickItems(
 	return output;
 }
 
+async function handleCopyCommand(
+	quickPick: vscode.QuickPick<CustomQuickPickItem>,
+	item: CustomQuickPickItem,
+	recentResults: RecentResults
+) {
+	if (item.uri) {
+		await vscode.env.clipboard.writeText(item.uri.toString());
+		vscode.window.showInformationMessage(`Copied "${item.label}"-URL to clipboard!`);
+		quickPick.hide();
+		await handleAddToRecentResult(recentResults, item);
+	} else {
+		vscode.window.showErrorMessage(`Undefined URI from QuickPick Item: ${item}`);
+	}
+}
+
+async function handleAddToRecentResult(
+	recentResults: RecentResults,
+	item: CustomQuickPickItem
+) {
+	// Delete + Add because Sets iterate in insertion-order, see `genQuickPickItems`
+	recentResults.delete(item);
+	recentResults.add(item);
+	// Once added, needs to be removed in `onDidTriggerItemButton`
+	if (!item.buttons?.find(b => b.tooltip === TOOLTIP_REMOVE_RECENT))
+		item.buttons = item.buttons?.concat(buttonRecentResult);
+}
+
 export async function activate(context: vscode.ExtensionContext) {
-	const recentResults: Set<CustomQuickPickItem> = new Set();
+	const recentResults: RecentResults = new Set();
 	const markdown = await fetchLlmMarkdown();
 	const items = quickPickItemsFromMarkdown(markdown);
+	let currentQuickPick: vscode.QuickPick<CustomQuickPickItem> | null = null;
 
-	const disposable = vscode.commands.registerCommand("bieglers-vendure-helper.docSearch", async (args) => {
+	const disposableSearch = vscode.commands.registerCommand("bieglers-vendure-helper.docSearch", async (args) => {
 
 		// Tried moving the quick pick creation outside the command, but it doesn't work as expected,
 		// the selectable items just disappear after the first use, fair enough we can still leave the 
@@ -104,6 +138,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		quickPick.matchOnDescription = true;
 		quickPick.matchOnDetail = true;
 		quickPick.items = genQuickPickItems(recentResults, items);
+		currentQuickPick = quickPick;
 
 		// Consider debouncing if the list gets large
 		// Tested on my 8 year old laptop and search is snappy for 765 links
@@ -135,11 +170,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		quickPick.onDidAccept(() => {
 			const selected = quickPick.selectedItems[0];
 			if (selected) {
-				// Once clicked needs to remove it again, see `onDidTriggerItemButton`
-				selected.buttons = selected.buttons?.concat({ iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT });
-				// Delete + Add because Sets iterate in insertion-order, see `genQuickPickItems`
-				recentResults.delete(selected);
-				recentResults.add(selected);
+				handleAddToRecentResult(recentResults, selected);
 
 				const uri = selected.id === ID_DIRECT_SEARCH
 					? selected.uri?.with({ query: `q=${quickPick.value}` })
@@ -160,12 +191,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					break;
 
 				case TOOLTIP_COPY_URL:
-					if (e.item.uri) {
-						await vscode.env.clipboard.writeText(e.item.uri?.toString());
-						quickPick.hide();
-					} else {
-						vscode.window.showErrorMessage(`Undefined URI from QuickPick Item: ${e.item}`);
-					}
+					handleCopyCommand(quickPick, e.item, recentResults);
 					break;
 
 				default:
@@ -174,6 +200,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 
 		quickPick.onDidHide(() => {
+			currentQuickPick = null;
 			quickPick.dispose();
 		});
 
@@ -185,7 +212,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		quickPick.show();
 	});
 
-	context.subscriptions.push(disposable);
+	const disposableCopy = vscode.commands.registerCommand('bieglers-vendure-helper.copyDocUri', async () => {
+		if (currentQuickPick && currentQuickPick.activeItems.length > 0) {
+			const item = currentQuickPick.activeItems[0];
+			handleCopyCommand(currentQuickPick, item, recentResults);
+		}
+	});
+
+	context.subscriptions.push(disposableSearch);
+	context.subscriptions.push(disposableCopy);
 }
 
 export function deactivate() { }
