@@ -9,6 +9,12 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 0.3.0
+
+### Added
+
+- Ability to copy the URL of the highlighted item either via button or pressing CTRL+C directly
+
 ## 0.2.1
 
 ### Fixed

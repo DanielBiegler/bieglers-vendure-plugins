@@ -8,7 +8,8 @@ VS Code Extension to improve working on Vendure projects.
 
 ### Docs Search
 
-Quickly find relevant Vendure Docs and open them in your browser.
+- Quickly find relevant Vendure Docs and open them in your browser
+- Copy the URL of the highlighted item either by button or pressing CTRL+C
 
 ![Docs Search Example](./assets/docs-search-example.gif)
 

@@ -3,7 +3,7 @@
   "displayName": "Bieglers Vendure Helper",
   "description": "VS Code Extension to improve working on Vendure projects.",
   "license": "MIT",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "scripts": {
     "check-types": "tsc --noEmit -p .",
     "compile": "npm run check-types && node esbuild.js --production",
@@ -46,7 +46,7 @@
       },
       {
         "command": "bieglers-vendure-helper.copyDocUri",
-        "title": "Copy QuickPick Item",
+        "title": "Copy Doc URI",
         "category": "Bieglers Vendure Helper",
         "enablement": "inQuickOpen"
       }
