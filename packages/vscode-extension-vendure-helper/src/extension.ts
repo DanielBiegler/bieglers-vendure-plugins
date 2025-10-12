@@ -98,14 +98,15 @@ async function handleCopyCommand(
 	item: CustomQuickPickItem,
 	recentResults: RecentResults
 ) {
-	if (item.uri) {
-		await vscode.env.clipboard.writeText(item.uri.toString());
-		vscode.window.showInformationMessage(`Copied "${item.label}"-URL to clipboard!`);
-		quickPick.hide();
-		await handleAddToRecentResult(recentResults, item);
-	} else {
-		vscode.window.showErrorMessage(`Undefined URI from QuickPick Item: ${item}`);
-	}
+	if (!item.uri)
+		return void await vscode.window.showErrorMessage(`Undefined URI from QuickPick Item: ${item}`);
+
+	const toCopyUri = item.id === ID_DIRECT_SEARCH ? genSearchUri(item.uri, quickPick.value) : item.uri;
+
+	await vscode.env.clipboard.writeText(toCopyUri.toString());
+	vscode.window.showInformationMessage(`Copied "${item.label}"-URL to clipboard!`);
+	quickPick.hide();
+	await handleAddToRecentResult(recentResults, item);
 }
 
 async function handleAddToRecentResult(
@@ -118,6 +119,10 @@ async function handleAddToRecentResult(
 	// Once added, needs to be removed in `onDidTriggerItemButton`
 	if (!item.buttons?.find(b => b.tooltip === TOOLTIP_REMOVE_RECENT))
 		item.buttons = item.buttons?.concat(buttonRecentResult);
+}
+
+function genSearchUri(uri: vscode.Uri, value: string): vscode.Uri {
+	return uri.with({ query: `q=${value}` });
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -172,8 +177,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (selected) {
 				handleAddToRecentResult(recentResults, selected);
 
-				const uri = selected.id === ID_DIRECT_SEARCH
-					? selected.uri?.with({ query: `q=${quickPick.value}` })
+				const uri = selected.id === ID_DIRECT_SEARCH && selected.uri
+					? genSearchUri(selected.uri, quickPick.value)
 					: selected.uri;
 
 				if (uri) vscode.env.openExternal(uri)
