@@ -9,6 +9,12 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## [Unfinished]
+
+### Changed
+
+- Mention Changelog in README.md
+
 ## 1.0.0
 
 ### Added

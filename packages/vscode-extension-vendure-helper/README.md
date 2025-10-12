@@ -23,7 +23,7 @@ VS Code Extension to improve working on Vendure projects.
 
 ## Download
 
-You can find extensions to download in the [`./downloads`](./downloads/) folder.
+Check the [`./CHANGELOG.md`](./CHANGELOG.md) to see what's new and then you can find extensions to download in the [`./downloads`](./downloads/) folder.
 
 ## Installation
 
