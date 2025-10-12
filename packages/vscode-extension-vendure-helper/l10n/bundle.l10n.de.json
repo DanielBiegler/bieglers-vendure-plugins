@@ -1,0 +1,10 @@
+{
+  "Remove from recently picked list": "Aus der Liste der zuletzt ausgewählten Elemente entfernen",
+  "Copy URL to clipboard (CTRL/CMD+C)": "URL in die Zwischenablage kopieren (STRG/CMD+C)",
+  "Search directly for input": "Direkt nach Eingabe suchen",
+  "Failed to fetch documentation from {domain}. Try reloading the extension.": "Das Abrufen der Dokumentation von {domain} ist fehlgeschlagen. Versuche, die Erweiterung neu zu laden.",
+  "Recently picked": "Kürzlich ausgewählt",
+  "Copied \"{label}\"-URL to clipboard!": "URL \"{label}\" in Zwischenablage kopiert!",
+  "Search for Vendure Docs": "Nach Vendure Dokumentation suchen",
+  "Type to filter...": "Zum filtern eingeben..."
+}

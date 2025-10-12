@@ -1,9 +1,9 @@
 {
   "name": "bieglers-vendure-helper-vscode-extension",
   "displayName": "Bieglers Vendure Helper",
-  "description": "VS Code Extension to improve working on Vendure projects.",
+  "description": "%description%",
   "license": "MIT",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "scripts": {
     "check-types": "tsc --noEmit -p .",
     "compile": "npm run check-types && node esbuild.js --production",
@@ -24,10 +24,12 @@
   },
   "files": [
     "package.json",
+    "package.nls*.json",
     "README.md",
     "CHANGELOG.md",
     "LICENSE.txt",
-    "dist/**"
+    "dist/**",
+    "l10n/**"
   ],
   "engines": {
     "vscode": "^1.104.0"
@@ -37,24 +39,31 @@
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
+  "l10n": "./l10n",
   "contributes": {
     "commands": [
       {
         "command": "bieglers-vendure-helper.docSearch",
-        "title": "Docs Search",
+        "title": "%docSearch.title%",
         "category": "Bieglers Vendure Helper"
       },
       {
         "command": "bieglers-vendure-helper.copyDocUri",
-        "title": "Copy Doc URI",
+        "title": "%copyUri.title%",
         "category": "Bieglers Vendure Helper",
         "enablement": "inQuickOpen"
       }
     ],
     "keybindings": [
       {
+        "command": "bieglers-vendure-helper.docSearch",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v"
+      },
+      {
         "command": "bieglers-vendure-helper.copyDocUri",
         "key": "ctrl+c",
+        "mac": "cmd+c",
         "when": "inQuickOpen"
       }
     ]

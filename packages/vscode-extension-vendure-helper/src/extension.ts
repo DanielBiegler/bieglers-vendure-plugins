@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 
 const ID_DIRECT_SEARCH = "direct_search";
 const URI_SEARCH = vscode.Uri.parse("https://docs.vendure.io/search", true);
-const TOOLTIP_REMOVE_RECENT = "Remove from recently picked list";
-const TOOLTIP_COPY_URL = "Copy URL to clipboard (CTRL+C)";
+// Since VSCode needs to restart entirely we can use these globally
+const TOOLTIP_REMOVE_RECENT = vscode.l10n.t("Remove from recently picked list");
+const TOOLTIP_COPY_URL = vscode.l10n.t("Copy URL to clipboard (CTRL/CMD+C)");
 
 const buttonRecentResult: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT };
 const buttonCopyUri: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("copy"), tooltip: TOOLTIP_COPY_URL };
@@ -46,7 +47,7 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 
 	items.push({
 		id: ID_DIRECT_SEARCH,
-		label: "Search directly for input",
+		label: vscode.l10n.t("Search directly for input"),
 		alwaysShow: true,
 		uri: URI_SEARCH,
 		description: URI_SEARCH.toString(),
@@ -57,11 +58,14 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 }
 
 async function fetchLlmMarkdown(): Promise<string> {
-	const res = await fetch("https://docs.vendure.io/llms.txt");
+	const res = await fetch(`https://${URI_SEARCH.authority}/llms.txt`);
 
 	if (res.ok) return res.text()
 	else {
-		vscode.window.showErrorMessage(`Failed to fetch documentation from ${URI_SEARCH.authority}. Try reloading the extension.`);
+		vscode.window.showErrorMessage(vscode.l10n.t(
+			`Failed to fetch documentation from {domain}. Try reloading the extension.`,
+			{ domain: URI_SEARCH.authority }
+		));
 		return "";
 	}
 }
@@ -75,7 +79,7 @@ function genQuickPickItems(
 
 	if (recent.size > 0) {
 		output.push({
-			label: "Recently picked",
+			label: vscode.l10n.t("Recently picked"),
 			kind: vscode.QuickPickItemKind.Separator,
 		});
 
@@ -104,7 +108,10 @@ async function handleCopyCommand(
 	const toCopyUri = item.id === ID_DIRECT_SEARCH ? genSearchUri(item.uri, quickPick.value) : item.uri;
 
 	await vscode.env.clipboard.writeText(toCopyUri.toString());
-	vscode.window.showInformationMessage(`Copied "${item.label}"-URL to clipboard!`);
+	vscode.window.showInformationMessage(vscode.l10n.t(
+		'Copied "{label}"-URL to clipboard!',
+		{ label: item.label }
+	));
 	quickPick.hide();
 	await handleAddToRecentResult(recentResults, item);
 }
@@ -137,8 +144,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		// the selectable items just disappear after the first use, fair enough we can still leave the 
 		// expensive call to generate the items outside, that seems to work.
 		const quickPick = vscode.window.createQuickPick<CustomQuickPickItem>();
-		quickPick.title = "Search for Vendure Docs";
-		quickPick.placeholder = "Type to filter...";
+		quickPick.title = vscode.l10n.t("Search for Vendure Docs");
+		quickPick.placeholder = vscode.l10n.t("Type to filter...");
 		quickPick.ignoreFocusOut = true;
 		quickPick.matchOnDescription = true;
 		quickPick.matchOnDetail = true;
@@ -224,8 +231,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(disposableSearch);
-	context.subscriptions.push(disposableCopy);
+	context.subscriptions.push(
+		disposableSearch,
+		disposableCopy,
+	);
 }
 
 export function deactivate() { }

@@ -1,0 +1,10 @@
+{
+  "Remove from recently picked list": "Удалить из списка недавно выбранных",
+  "Copy URL to clipboard (CTRL/CMD+C)": "Скопировать URL-адрес в буфер обмена (CTRL/CMD+C)",
+  "Search directly for input": "Поиск по введенному тексту",
+  "Failed to fetch documentation from {domain}. Try reloading the extension.": "Не удалось получить документацию с {domain}. Попробуйте перезагрузить расширение.",
+  "Recently picked": "Недавно выбранные",
+  "Copied \"{label}\"-URL to clipboard!": "URL-адрес «{label}» скопирован в буфер обмена!",
+  "Search for Vendure Docs": "Поиск в документации Vendure",
+  "Type to filter...": "Введите текст для фильтрации..."
+}

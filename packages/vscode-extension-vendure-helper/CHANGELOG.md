@@ -9,6 +9,16 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 1.0.0
+
+### Added
+
+- Shortcut for opening the QuickPick Menu `CTRL+K V` (`CMD+K V` on Mac)
+- Translation Support for messages, tooltips, etc. and provide:
+  - English
+  - German
+  - Russian
+
 ## 0.3.0
 
 ### Added
