@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 const ID_DIRECT_SEARCH = "direct_search";
 const URI_SEARCH = vscode.Uri.parse("https://docs.vendure.io/search", true);
 const TOOLTIP_REMOVE_RECENT = "Remove from recently picked list";
+const TOOLTIP_COPY_URL = "Copy URL to clipboard";
 
 type CustomQuickPickItem = vscode.QuickPickItem & {
 	id?: string
@@ -27,6 +28,7 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 			description: url,
 			detail: label === description ? undefined : description,
 			uri,
+			buttons: [{ iconPath: new vscode.ThemeIcon("copy"), tooltip: TOOLTIP_COPY_URL }],
 			/**
 			 * Important: Currently its impossible to disable matching on the label,
 			 * this is an issue because it hides items when the filter contains a space for example.
@@ -134,7 +136,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			const selected = quickPick.selectedItems[0];
 			if (selected) {
 				// Once clicked needs to remove it again, see `onDidTriggerItemButton`
-				selected.buttons = [{ iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT }]
+				selected.buttons = selected.buttons?.concat({ iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT });
 				// Delete + Add because Sets iterate in insertion-order, see `genQuickPickItems`
 				recentResults.delete(selected);
 				recentResults.add(selected);
@@ -150,10 +152,24 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 
 		quickPick.onDidTriggerItemButton(async e => {
-			if (e.button.tooltip === TOOLTIP_REMOVE_RECENT) {
-				recentResults.delete(e.item);
-				if (e.item.buttons) e.item.buttons = e.item.buttons.filter(b => b.tooltip !== TOOLTIP_REMOVE_RECENT);
-				quickPick.items = genQuickPickItems(recentResults, items);
+			switch (e.button.tooltip) {
+				case TOOLTIP_REMOVE_RECENT:
+					recentResults.delete(e.item);
+					if (e.item.buttons) e.item.buttons = e.item.buttons.filter(b => b.tooltip !== TOOLTIP_REMOVE_RECENT);
+					quickPick.items = genQuickPickItems(recentResults, items);
+					break;
+
+				case TOOLTIP_COPY_URL:
+					if (e.item.uri) {
+						await vscode.env.clipboard.writeText(e.item.uri?.toString());
+						quickPick.hide();
+					} else {
+						vscode.window.showErrorMessage(`Undefined URI from QuickPick Item: ${e.item}`);
+					}
+					break;
+
+				default:
+					vscode.window.showErrorMessage(`Unimplemented Trigger For Item Button: ${e.button}`);
 			}
 		});
 
