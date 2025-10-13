@@ -1,5 +1,12 @@
 import * as vscode from 'vscode';
 
+type CustomQuickPickItem = vscode.QuickPickItem & {
+	id?: string
+	uri?: vscode.Uri
+};
+
+type RecentResults = Set<CustomQuickPickItem>;
+
 const ID_DIRECT_SEARCH = "direct_search";
 const URI_SEARCH = vscode.Uri.parse("https://docs.vendure.io/search", true);
 // Since VSCode needs to restart entirely we can use these globally
@@ -9,12 +16,29 @@ const TOOLTIP_COPY_URL = vscode.l10n.t("Copy URL to clipboard (CTRL/CMD+C)");
 const buttonRecentResult: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("close"), tooltip: TOOLTIP_REMOVE_RECENT };
 const buttonCopyUri: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("copy"), tooltip: TOOLTIP_COPY_URL };
 
-type CustomQuickPickItem = vscode.QuickPickItem & {
-	id?: string
-	uri?: vscode.Uri
-};
+// Appearantly in the year 2025 there is no such advanced alien technology
+// to let extensions display file-icons in a quickpicker, eventhough
+// the same icons are already being rendered in the quick-open file picker,
+// so we have to fallback to using default codicon icons for now.
+// See https://github.com/microsoft/vscode/issues/59826
+const iconApiGql = new vscode.ThemeIcon("type-hierarchy-sub");
+const iconApiTs = new vscode.ThemeIcon("json");
+const iconDashboard = new vscode.ThemeIcon("dashboard");
+const iconFallback = new vscode.ThemeIcon("circle-small");
+const iconGuides = new vscode.ThemeIcon("mortar-board");
+const iconReference = new vscode.ThemeIcon("file-code");
+const iconSearch = new vscode.ThemeIcon("search-fuzzy");
 
-type RecentResults = Set<CustomQuickPickItem>;
+function getIconByUri(uri: vscode.Uri): vscode.IconPath {
+	if (uri.path.includes("/typescript-api")) return iconApiTs;
+	if (uri.path.includes("/graphql-api")) return iconApiGql;
+	if (uri.path.includes("/guides")) return iconGuides;
+	if (uri.path.includes("/dashboard/")) return iconDashboard;
+	if (uri.path.includes("/reference")) return iconReference;
+	if (uri.path.includes("/user-guide")) return iconGuides;
+
+	return iconFallback;
+}
 
 function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 	if (md === "") return [];
@@ -28,13 +52,16 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 
 		const [, label, url, description] = match;
 		const uri = vscode.Uri.parse(url, true);
+		// Sometimes the description is just the label, no need to include this
+		const hasDescription = label.trim().toLowerCase() !== description.trim().toLowerCase();
 
 		items.push({
 			label: label,
 			description: url,
-			detail: label === description ? undefined : description,
+			detail: hasDescription ? description : undefined,
 			uri,
 			buttons: [buttonCopyUri],
+			iconPath: getIconByUri(uri),
 			/**
 			 * Important: Currently its impossible to disable matching on the label,
 			 * this is an issue because it hides items when the filter contains a space for example.
@@ -51,7 +78,8 @@ function quickPickItemsFromMarkdown(md: string): CustomQuickPickItem[] {
 		alwaysShow: true,
 		uri: URI_SEARCH,
 		description: URI_SEARCH.toString(),
-		buttons: [buttonCopyUri]
+		buttons: [buttonCopyUri],
+		iconPath: iconSearch,
 	});
 
 	return items;
@@ -168,11 +196,15 @@ export async function activate(context: vscode.ExtensionContext) {
 				if (allMatchLabel) return true;
 
 				// We prefer matching detail over descr. because we put the URL in the descr.
-				const allMatchDetail = searchTerms.every(term => item.detail?.toLowerCase().includes(term));
-				if (allMatchDetail) return true;
+				if (item.detail) {
+					const allMatchDetail = searchTerms.every(term => item.detail?.toLowerCase().includes(term));
+					if (allMatchDetail) return true;
+				}
 
-				const allMatchDescription = searchTerms.every(term => item.description?.toLowerCase().includes(term));
-				if (allMatchDescription) return true;
+				if (item.description) {
+					const allMatchDescription = searchTerms.every(term => item.description?.toLowerCase().includes(term));
+					if (allMatchDescription) return true;
+				}
 			});
 
 			quickPick.busy = false;

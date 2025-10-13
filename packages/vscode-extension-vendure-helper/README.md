@@ -8,10 +8,11 @@ VS Code Extension to improve working on Vendure projects.
 
 ### Docs Search
 
-- Quickly find relevant Vendure Docs and open them in your browser
-- Copy the URL of the highlighted item either by button or pressing `CTRL+C` (`CMD+C` on Mac)
+![example menu open](./assets/example-search-menu-open.png)
 
-![Docs Search Example](./assets/docs-search-example.gif)
+- Quickly find relevant Vendure Docs and open them in your browser or copy the URL to your clipboard directly via `CTRL+C` (`CMD+C` on Mac)
+- Localization support for English, German, Russian
+  - To add your own language please open a PR with new `./package.nls.??.json` and `./l10n/bundle.l10n.??.json` files, where `??` represents your languages ISO code. See [vscode-api](https://code.visualstudio.com/api/references/vscode-api#l10n) for more details.
 
 > [!TIP]
 > 1. The extension adds the shortcut: `CTRL+K V` (`CMD+K V` on Mac) to directly open the QuickPick menu.

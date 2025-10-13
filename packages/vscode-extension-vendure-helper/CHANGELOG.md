@@ -9,11 +9,22 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
-## [Unfinished]
+## 1.1.0
 
-### Changed
+### Added
 
-- Mention Changelog in README.md
+- QuickPick menu now displays icons beside results
+- Mention changelog and localization support in `README.md`
+- New image showing the search menu in `README.md` and extension bundle
+
+### Changes
+
+- Optimize search logic by reducing amount of function calls for if item has no detail or description
+- If the description of the link is just the label, don't show it separately
+
+### Fixed
+
+- Relative URLs and Images now work correctly when opening the extension in VS Code and perusing the displayed `README.md`
 
 ## 1.0.0
 

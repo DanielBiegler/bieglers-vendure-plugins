@@ -3,7 +3,7 @@
   "displayName": "Bieglers Vendure Helper",
   "description": "%description%",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "check-types": "tsc --noEmit -p .",
     "compile": "npm run check-types && node esbuild.js --production",
@@ -13,7 +13,7 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "watch-tests": "tsc -p . -w --outDir out",
-    "package": "npm run check-types && node esbuild.js --production && vsce package --no-dependencies"
+    "package": "npm run check-types && node esbuild.js --production && vsce package --no-dependencies --baseImagesUrl 'https://raw.githubusercontent.com/DanielBiegler/bieglers-vendure-plugins/master/packages/vscode-extension-vendure-helper/' --baseContentUrl 'https://github.com/DanielBiegler/bieglers-vendure-plugins/tree/master/packages/vscode-extension-vendure-helper'"
   },
   "devDependencies": {
     "@types/vscode": "1.104.0",
