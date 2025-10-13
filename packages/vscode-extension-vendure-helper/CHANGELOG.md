@@ -15,7 +15,7 @@ Format:
 
 - QuickPick menu now displays icons beside results
 - Mention changelog and localization support in `README.md`
-- New image showing the search menu in `README.md` and extension bundle
+- New image showing the search menu in `README.md`
 
 ### Changes
 
