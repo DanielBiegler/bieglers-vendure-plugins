@@ -220,7 +220,11 @@ export async function activate(context: vscode.ExtensionContext) {
 					? genSearchUri(selected.uri, quickPick.value)
 					: selected.uri;
 
-				if (uri) vscode.env.openExternal(uri)
+				if (uri) {
+					const openInternally = vscode.workspace.getConfiguration('bieglers-vendure-helper-vscode-extension').get<boolean>("openInternally");
+					if (openInternally) vscode.commands.executeCommand("simpleBrowser.show", uri)
+					else vscode.env.openExternal(uri)
+				}
 				else vscode.window.showErrorMessage("Selected item has no configured URI");
 			}
 			quickPick.hide();

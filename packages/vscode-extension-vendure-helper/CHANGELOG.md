@@ -9,6 +9,13 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 1.2.0
+
+### Added
+
+- By default documentation links now open directly inside of VsCode
+  - This can be configured in VsCode settings to revert opening to your native browser.
+
 ## 1.1.0
 
 ### Added

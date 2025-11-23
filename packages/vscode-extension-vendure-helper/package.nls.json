@@ -1,5 +1,7 @@
 {
   "description": "Adds commands to improve working on Vendure projects.",
   "docSearch.title": "Search for documentation",
-  "copyUri.title": "Copy Docs URL"
+  "copyUri.title": "Copy Docs URL",
+  "config.openInternally.title": "Open Vendure Docs inside of VsCode",
+  "config.openInternally.description": "Whether or not to open the documentation links via the builtin VsCode extension \"simpleBrowser\" which should be enabled by default. Disabling this option will open the documentation links externally in your native browser."
 }

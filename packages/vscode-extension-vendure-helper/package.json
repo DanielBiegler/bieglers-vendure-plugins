@@ -3,7 +3,7 @@
   "displayName": "Bieglers Vendure Helper",
   "description": "%description%",
   "license": "MIT",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "scripts": {
     "check-types": "tsc --noEmit -p .",
     "compile": "npm run check-types && node esbuild.js --production",
@@ -66,7 +66,17 @@
         "mac": "cmd+c",
         "when": "inQuickOpen"
       }
-    ]
+    ],
+    "configuration": {
+      "properties": {
+        "bieglers-vendure-helper-vscode-extension.openInternally": {
+          "type": "boolean",
+          "default": true,
+          "title": "%config.openInternally.title%",
+          "description": "%config.openInternally.description%"
+        }
+      }
+    }
   },
   "author": {
     "name": "Daniel Biegler",

@@ -1,5 +1,7 @@
 {
   "description": "Fügt Befehle hinzu, um die Arbeit an Vendure-Projekten zu verbessern.",
   "docSearch.title": "Suche nach Dokumentation",
-  "copyUri.title": "Kopiere Doku URL"
+  "copyUri.title": "Kopiere Doku URL",
+  "config.openInternally.title": "Öffne Vendure Doku innerhalb von VsCode",
+  "config.openInternally.description": "Ob die Dokumentationslinks über die integrierte VsCode-Erweiterung „simpleBrowser“ geöffnet werden sollen, die standardmäßig aktiviert sein sollte. Wenn du diese Option deaktivierst, werden die Dokumentationslinks extern in deinem nativen Browser geöffnet."
 }
