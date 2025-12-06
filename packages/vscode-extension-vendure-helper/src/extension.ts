@@ -160,6 +160,10 @@ function genSearchUri(uri: vscode.Uri, value: string): vscode.Uri {
 	return uri.with({ query: `q=${value}` });
 }
 
+function shouldOpenInternally() {
+	return vscode.workspace.getConfiguration('bieglers-vendure-helper-vscode-extension').get<boolean>("openInternally");
+}
+
 export async function activate(context: vscode.ExtensionContext) {
 	const recentResults: RecentResults = new Set();
 	const markdown = await fetchLlmMarkdown();
@@ -221,8 +225,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					: selected.uri;
 
 				if (uri) {
-					const openInternally = vscode.workspace.getConfiguration('bieglers-vendure-helper-vscode-extension').get<boolean>("openInternally");
-					if (openInternally) vscode.commands.executeCommand("simpleBrowser.show", uri)
+					if (shouldOpenInternally()) vscode.commands.executeCommand("simpleBrowser.show", uri)
 					else vscode.env.openExternal(uri)
 				}
 				else vscode.window.showErrorMessage("Selected item has no configured URI");

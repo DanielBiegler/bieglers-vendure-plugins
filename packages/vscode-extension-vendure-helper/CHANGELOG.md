@@ -9,6 +9,12 @@ Format:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## [UNRELEASED]
+
+### Changed
+
+- Internal: Easier reuse of configuration variable
+
 ## 1.2.0
 
 ### Added
