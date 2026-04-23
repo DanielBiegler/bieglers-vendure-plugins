@@ -10,6 +10,7 @@
   - Must be Channel-Aware, HasCustomFields
   - Research: Immutibility for compliance - are snapshots needed, reference to Order might not be good enough
   - Research: Gapless sequence via row level transaction locks. In config entity?
+  - Research: Sync config lines with channel creations, is event enough?
   - Config: Add critical alert to changing sequence number, could break entire generation
   - Config: Make template nullable to inherit a base default template that can be updated by instance owner
   - Config: Own Nummernkreis per invoice/credit-note
