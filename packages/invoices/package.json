@@ -1,0 +1,43 @@
+{
+  "name": "@danielbiegler/vendure-plugin-invoices",
+  "description": "Fully customizable invoices / credit notes for single-/ and multi-vendor shops",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "ts-node dev-server/index.ts",
+    "codegen": "ts-node generate-types.ts",
+    "build": "rimraf dist && tsc -p ./tsconfig.build.json",
+    "e2e": "cross-env PACKAGE=invoices vitest -c ../../utils/e2e/vitest.config.mts"
+  },
+  "author": {
+    "name": "Daniel Biegler",
+    "url": "https://www.danielbiegler.de"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanielBiegler/bieglers-vendure-plugins/"
+  },
+  "keywords": [
+    "invoices",
+    "credit notes",
+    "vendure",
+    "plugin",
+    "vendure-plugin",
+    "ecommerce",
+    "headless",
+    "graphql",
+    "typescript"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "LICENSE.txt",
+    "CHANGELOG.md",
+    "docs"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

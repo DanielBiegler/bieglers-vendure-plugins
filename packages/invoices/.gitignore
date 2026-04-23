@@ -1,0 +1,6 @@
+node_modules/
+dist/
+src/e2e/__data__/
+/admin-ui
+.angular/
+
