@@ -1,11 +1,33 @@
+import { AssetStorageStrategy, ID } from "@vendure/core";
+import { InvoiceIdPrefixGenerationStrategy } from "./config/InvoiceIdPrefixGenerationStrategy";
+import { PdfGenerationStrategy } from "./config/PdfGenerationStrategy";
 
 /**
  * These are the configuration options for the plugin.
- *
+ * 
  * @category Plugin
  */
 export interface InvoicesOptions {
-  // TODO
+  invoiceIdPrefixGenerationStrategy: InvoiceIdPrefixGenerationStrategy,
+  pdfGenerationStrategy: PdfGenerationStrategy,
+  /**
+   * # TODO asset server doesnt export the default ?!?!
+   * Just null for now for debugging
+   */
+  storageStrategy: AssetStorageStrategy | null,
+  sequenceLeftPadCount?: number,
+
+  subscribeToOrderPlacedEvent?: boolean,
+  subscribeToOrderCancelledEvent?: boolean,
+}
+
+export type CreateInvoiceInput = {
+  orderId: ID;
+}
+
+export type CreateInvoiceResult = {
+  invoiceId: string;
+  assetUrl: string;
 }
 
 // In case you need customfields

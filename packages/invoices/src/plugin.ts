@@ -2,7 +2,9 @@ import { PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
-import { InvoicesService } from "./services/main.service";
+import { Invoice } from "./entities/Invoice.entity";
+import { InvoiceConfig } from "./entities/InvoiceConfig.entity";
+import { InvoiceService } from "./services/invoice.service";
 import { InvoicesOptions } from "./types";
 
 /**
@@ -17,7 +19,11 @@ import { InvoicesOptions } from "./types";
       provide: PLUGIN_INIT_OPTIONS,
       useFactory: () => InvoicesPlugin.options,
     },
-    InvoicesService,
+    InvoiceService,
+  ],
+  entities: [
+    InvoiceConfig,
+    Invoice,
   ],
   adminApiExtensions: {
     resolvers: [AdminResolver],

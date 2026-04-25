@@ -10,4 +10,4 @@
 export { InvoicesPlugin } from "./plugin";
 export { InvoicesOptions } from "./types";
 
-export { InvoicesService } from "./services/main.service";
+export { InvoiceService } from "./services/invoice.service";

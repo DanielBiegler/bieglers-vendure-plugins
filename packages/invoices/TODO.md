@@ -7,13 +7,14 @@
       - Add injector for lookups? But keep in mind if prefix is user controlled it could break compliance upon change. Strategy with injector would allow instance owner to make a user controlled prefix while the default strategy is only controllable by instance owner
     - Making customizable by vendor potentially breaks compliance?
 - [ ] Entity: Invoice, CreditNote, Config(?)
-  - Must be Channel-Aware, HasCustomFields
+  - Must be Channel-Aware, HasCustomFields, SoftDeletable
   - Research: Immutibility for compliance - are snapshots needed, reference to Order might not be good enough
   - Research: Gapless sequence via row level transaction locks. In config entity?
   - Research: Sync config lines with channel creations, is event enough?
   - Config: Add critical alert to changing sequence number, could break entire generation
   - Config: Make template nullable to inherit a base default template that can be updated by instance owner
   - Config: Own Nummernkreis per invoice/credit-note
+- [ ] Research: What about translations? I dont think thats a thing but lets see
 - [ ] Events: CRUD
 - [ ] Permission: Entity-CRUD, Dedicated Config-Permission
   - Update only for metadata/customfields, invoices must be immutable for compliance
@@ -27,8 +28,8 @@
     - Gut reaction: sounds more like an implementation detail, public REST endpoint could use service to read buffer and stream response, this would allow custom setups 
   - Research: Storage per Channel? Needed?
 - [ ] Default invoice template
+  - Research: Images, Fonts
   - Research: Hardening generation function due to multi vendor exploiting JS?
-  - Research: Images
   - Research: overridable per Channel
     - Only via code would be safer but multi-vendor setups dont have access to vendure instance. Gotta add it to UI.
 - [ ] UI

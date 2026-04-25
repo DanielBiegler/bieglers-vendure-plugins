@@ -1,10 +1,10 @@
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
 import { Allow, Ctx, Permission, RequestContext, Transaction } from "@vendure/core";
-import { InvoicesService } from "../services/main.service";
+import { InvoiceService } from "../services/invoice.service";
 
 @Resolver()
 export class AdminResolver {
-  constructor(private service: InvoicesService) { }
+  constructor(private service: InvoiceService) { }
 
   @Mutation()
   @Transaction()
