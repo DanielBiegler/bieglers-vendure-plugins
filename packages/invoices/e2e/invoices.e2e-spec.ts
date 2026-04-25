@@ -15,8 +15,8 @@ import { afterAll, beforeAll, describe, test } from "vitest";
 import { awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { EmptyInvoiceIdPrefixGenerationStrategy } from "../src/config/EmptyInvoiceIdPrefixGenerationStrategy";
 import { PdfGenerationStrategy } from "../src/config/PdfGenerationStrategy";
+import { StaticInvoiceIdPrefixGenerationStrategy } from "../src/config/StaticInvoiceIdPrefixGenerationStrategy";
 import { Invoice } from "../src/entities/Invoice.entity";
 import { InvoiceConfig } from "../src/entities/InvoiceConfig.entity";
 import { InvoicesPlugin } from "../src/plugin";
@@ -89,7 +89,7 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
         assetUploadDir: path.join(__dirname, "fixtures"),
       }),
       InvoicesPlugin.init({
-        invoiceIdPrefixGenerationStrategy: new EmptyInvoiceIdPrefixGenerationStrategy(),
+        invoiceIdPrefixGenerationStrategy: new StaticInvoiceIdPrefixGenerationStrategy("TEST"),
         pdfGenerationStrategy: new TestPdfGenerationStrategy(),
         sequenceLeftPadCount: 4,
         storageStrategy: new TestStorageStrategy(),
@@ -162,7 +162,7 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
 
     const invoices = await connection.rawConnection.getRepository(Invoice).find();
     expect(invoices).toHaveLength(1);
-    expect(invoices[0].invoiceId).toBe("0001");
+    expect(invoices[0].invoiceId).toBe("TEST0001");
 
     const configAfter = await connection.rawConnection.getRepository(InvoiceConfig).findOneByOrFail({});
     expect(configAfter?.sequence).toBe(1);
