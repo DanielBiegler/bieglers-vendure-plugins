@@ -4,6 +4,7 @@ import { Injector, PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
+import { CreditNote } from './entities/CreditNote.entity';
 import { Invoice } from "./entities/Invoice.entity";
 import { InvoiceConfig } from "./entities/InvoiceConfig.entity";
 import { InvoiceService } from "./services/invoice.service";
@@ -26,6 +27,7 @@ import { InvoicesOptions } from "./types";
   entities: [
     InvoiceConfig,
     Invoice,
+    CreditNote,
   ],
   adminApiExtensions: {
     resolvers: [AdminResolver],

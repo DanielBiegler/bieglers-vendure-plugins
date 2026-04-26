@@ -1,5 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import {
+  ChannelService,
   EventBus,
   JobQueue,
   JobQueueService,
@@ -11,12 +12,14 @@ import {
 } from "@vendure/core";
 import {
   loggerCtx,
-  PLUGIN_INIT_OPTIONS
+  PLUGIN_INIT_OPTIONS,
+  ROW_LOCK_COMPATIBLE_DATABASES
 } from "../constants";
+import { CreditNote } from "../entities/CreditNote.entity";
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceConfig } from "../entities/InvoiceConfig.entity";
-import { InvoiceEvent } from "../events";
-import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../types";
+import { CreditNoteEvent, InvoiceEvent } from "../events";
+import { CreateCreditNoteInput, CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions, SequentialIdKind } from "../types";
 
 /**
  * // TODO
@@ -27,9 +30,10 @@ import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../typ
 export class InvoiceService implements OnModuleInit {
   /** @internal */
   constructor(
+    private channelService: ChannelService,
+    private connection: TransactionalConnection,
     private eventBus: EventBus,
     private jobQueueService: JobQueueService,
-    private connection: TransactionalConnection,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: InvoicesOptions,
   ) { }
@@ -83,26 +87,36 @@ export class InvoiceService implements OnModuleInit {
    * caller blocks on `SELECT FOR UPDATE` until the first transaction commits
    * or rolls back, then reads the already-updated (or reverted) sequence.
    */
-  private async getNextInvoiceId(ctx: RequestContext): Promise<string> {
-    const prefix = await this.options.invoiceIdPrefixGenerationStrategy.generate();
+  private async getNextSequentialId(ctx: RequestContext, kind: SequentialIdKind): Promise<string> {
     const repo = this.connection.getRepository(ctx, InvoiceConfig);
-
-    const dbType = this.connection.rawConnection.options.type;
-    /**
-     * # TODO this should be thoroughly documented and mentioned in README!
-     */
-    const supportsRowLock = (["postgres", "aurora-postgres", "cockroachdb", "mysql", "mariadb", "aurora-mysql", "oracle"] as typeof this.connection.rawConnection.options.type[]).includes(dbType);
+    const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
+    const channelId = this.options.perChannelConfig ? ctx.channelId : (await this.channelService.getDefaultChannel(ctx)).id;
     const config = await repo.findOneOrFail({
-      where: { channels: { id: ctx.channelId } },
+      where: { channels: { id: channelId } },
       ...(supportsRowLock ? { lock: { mode: "pessimistic_write" as const } } : {}),
     });
 
-    config.sequence += 1;
-    await repo.save(config);
+    let prefix: string;
+    let sequence: string;
 
-    const sequence = this.options.invoiceSequenceLeftPadCount
-      ? config.sequence.toString().padStart(this.options.invoiceSequenceLeftPadCount, "0")
-      : config.sequence;
+    switch (kind) {
+      case SequentialIdKind.INVOICE: {
+        config.sequenceInvoice += 1;
+        prefix = await this.options.invoiceIdPrefixGenerationStrategy.generate();
+        sequence = config.sequenceInvoice.toString().padStart(this.options.invoiceSequenceLeftPadCount ?? 0, "0");
+        break;
+      }
+      case SequentialIdKind.CREDIT_NOTE: {
+        config.sequenceCreditNote += 1;
+        prefix = await this.options.creditNoteIdPrefixGenerationStrategy.generate();
+        sequence = config.sequenceCreditNote.toString().padStart(this.options.creditNoteSequenceLeftPadCount ?? 0, "0");
+        break;
+      }
+      default:
+        throw new Error("Unreachable: getNextSequentialId --> SequentialIdKind");
+    }
+
+    await repo.save(config);
 
     return `${prefix}${sequence}`;
   }
@@ -111,15 +125,14 @@ export class InvoiceService implements OnModuleInit {
    * #TODO
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
-    const invoiceId = await this.getNextInvoiceId(ctx);
+    const invoiceId = await this.getNextSequentialId(ctx, SequentialIdKind.INVOICE);
     // TODO potentially add the snapshot to strategy param?
     const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
-    const invoice = new Invoice({
+    const invoice = await this.channelService.assignToCurrentChannel(new Invoice({
       sequentialId: invoiceId,
       assetUrl,
-      channels: [ctx.channel],
-    });
+    }), ctx);
     await this.connection.getRepository(ctx, Invoice).save(invoice);
 
     // TODO custom fields relations?
@@ -127,6 +140,31 @@ export class InvoiceService implements OnModuleInit {
 
     return {
       invoiceId,
+      assetUrl,
+    };
+  }
+
+  /**
+   * #TODO
+   */
+  public async createCreditNote(ctx: RequestContext, input: CreateCreditNoteInput): Promise<CreateInvoiceResult> {
+    const sequentialId = await this.getNextSequentialId(ctx, SequentialIdKind.CREDIT_NOTE);
+    // TODO potentially add the snapshot to strategy param?
+    const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, sequentialId, input.invoiceId)
+    const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
+
+    const creditNote = await this.channelService.assignToCurrentChannel(new CreditNote({
+      sequentialId,
+      assetUrl,
+      invoice: { id: input.invoiceId },
+    }), ctx);
+    await this.connection.getRepository(ctx, CreditNote).save(creditNote);
+
+    // TODO custom fields relations?
+    await this.eventBus.publish(new CreditNoteEvent(ctx, creditNote, "created", input));
+
+    return {
+      invoiceId: sequentialId,
       assetUrl,
     };
   }

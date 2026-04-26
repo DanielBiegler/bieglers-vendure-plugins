@@ -11,7 +11,10 @@ export class InvoiceConfig extends VendureEntity implements ChannelAware, HasCus
   }
 
   @Column("integer", { nullable: false, default: 0 })
-  sequence: number;
+  sequenceInvoice: number;
+
+  @Column("integer", { nullable: false, default: 0 })
+  sequenceCreditNote: number;
 
   // TODO config unique per channel
   @ManyToMany(() => Channel)

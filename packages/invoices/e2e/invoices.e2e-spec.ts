@@ -77,6 +77,12 @@ class TestStorageStrategy implements AssetStorageStrategy {
 }
 
 describe("InvoicesPlugin", { concurrent: true }, () => {
+
+  const INITIAL_SEQUENCE_INVOICE = 1336;
+  const INITIAL_SEQUENCE_CREDITNOTE = 68;
+  const INVOICE_PREFIX = "INVOICE";
+  const CREDITNOTE_PREFIX = "CREDIT";
+
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
     paymentOptions: {
@@ -91,7 +97,7 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
         assetUploadDir: path.join(__dirname, "fixtures"),
       }),
       InvoicesPlugin.init({
-        invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("TEST"),
+        invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy(INVOICE_PREFIX),
         creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("CREDIT"),
         invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
         creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
@@ -128,17 +134,24 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     const connection = server.app.get(TransactionalConnection);
     await connection.rawConnection
       .getRepository(InvoiceConfig)
-      .save(new InvoiceConfig({ sequence: 0, channels: [defaultChannel] }));
+      .save(new InvoiceConfig({
+        sequenceInvoice: INITIAL_SEQUENCE_INVOICE,
+        sequenceCreditNote: INITIAL_SEQUENCE_CREDITNOTE,
+        channels: [defaultChannel],
+      }));
   }, 60000);
 
   afterAll(async () => {
     await server.destroy();
   });
 
+  // TODO multi vendor test with perChannelConfig, probably own file
+  // then this e2e should test sequence sharing over channels
+
   test("creates an invoice when an order is placed", async ({ expect }) => {
     const connection = server.app.get(TransactionalConnection);
     const configBefore = await connection.rawConnection.getRepository(InvoiceConfig).findOneByOrFail({});
-    expect(configBefore?.sequence).toBe(0);
+    expect(configBefore?.sequenceInvoice).toBe(INITIAL_SEQUENCE_INVOICE);
 
     const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
     const variantId = product.variants[0].id;
@@ -165,11 +178,12 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     await awaitRunningJobs(adminClient);
     await assertNoFailedJobs(adminClient);
 
+    const nextInvoiceSeq = INITIAL_SEQUENCE_INVOICE + 1;
     const invoices = await connection.rawConnection.getRepository(Invoice).find();
     expect(invoices).toHaveLength(1);
-    expect(invoices[0].sequentialId).toBe("TEST0001");
+    expect(invoices[0].sequentialId).toBe(`${INVOICE_PREFIX}${nextInvoiceSeq}`);
 
     const configAfter = await connection.rawConnection.getRepository(InvoiceConfig).findOneByOrFail({});
-    expect(configAfter?.sequence).toBe(1);
+    expect(configAfter?.sequenceInvoice).toBe(nextInvoiceSeq);
   });
 });

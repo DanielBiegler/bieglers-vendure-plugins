@@ -1,6 +1,7 @@
 import { RequestContext, VendureEntityEvent } from "@vendure/core";
+import { CreditNote } from "./entities/CreditNote.entity";
 import { Invoice } from "./entities/Invoice.entity";
-import { CreateInvoiceInput } from "./types";
+import { CreateCreditNoteInput, CreateInvoiceInput } from "./types";
 
 export type InvoiceEventInput =
   | CreateInvoiceInput;
@@ -19,4 +20,19 @@ export class InvoiceEvent extends VendureEntityEvent<Invoice, InvoiceEventInput>
   }
 }
 
-// TODO credit notes
+export type CreditNoteEventInput =
+  | CreateCreditNoteInput;
+
+/**
+ * This event is fired whenever an invoice is added, updated or deleted.
+ */
+export class CreditNoteEvent extends VendureEntityEvent<CreditNote, CreditNoteEventInput> {
+  constructor(
+    ctx: RequestContext,
+    entity: CreditNote,
+    type: 'created' | 'updated' | 'deleted',
+    input?: CreditNoteEventInput,
+  ) {
+    super(entity, type, ctx, input);
+  }
+}
