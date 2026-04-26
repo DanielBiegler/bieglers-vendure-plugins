@@ -11,3 +11,5 @@ export { InvoicesPlugin } from "./plugin";
 export { InvoicesOptions } from "./types";
 
 export { InvoiceService } from "./services/invoice.service";
+
+// TODO export strategies etc. after api is clear

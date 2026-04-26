@@ -1,9 +1,9 @@
-import { Channel, ChannelAware, DeepPartial, VendureEntity } from "@vendure/core";
+import { Channel, ChannelAware, DeepPartial, HasCustomFields, VendureEntity } from "@vendure/core";
 import { Column, Entity, JoinTable, ManyToMany } from "typeorm";
 
-// TODO  Channel-Aware, HasCustomFields, SoftDeletable
+// TODO should this be SoftDeletable?
 @Entity()
-export class InvoiceConfig extends VendureEntity implements ChannelAware {
+export class InvoiceConfig extends VendureEntity implements ChannelAware, HasCustomFields {
   constructor(input?: DeepPartial<InvoiceConfig>) {
     super(input);
   }
@@ -15,4 +15,9 @@ export class InvoiceConfig extends VendureEntity implements ChannelAware {
   @ManyToMany(() => Channel)
   @JoinTable()
   channels: Channel[];
+
+  @Column(() => CustomInvoiceConfigFields)
+  customFields: CustomInvoiceConfigFields;
 }
+
+export class CustomInvoiceConfigFields { }

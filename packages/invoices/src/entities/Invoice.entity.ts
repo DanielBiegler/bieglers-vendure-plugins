@@ -1,9 +1,8 @@
-import { Channel, ChannelAware, DeepPartial, VendureEntity } from "@vendure/core";
+import { Channel, ChannelAware, DeepPartial, HasCustomFields, VendureEntity } from "@vendure/core";
 import { Column, Entity, JoinTable, ManyToMany } from "typeorm";
 
-// TODO  Channel-Aware, HasCustomFields
 @Entity()
-export class Invoice extends VendureEntity implements ChannelAware {
+export class Invoice extends VendureEntity implements ChannelAware, HasCustomFields {
   constructor(input?: DeepPartial<Invoice>) {
     super(input);
   }
@@ -12,8 +11,6 @@ export class Invoice extends VendureEntity implements ChannelAware {
    * Unique identifier used for accounting
    * 
    * Format: Optional prefix, followed by a gapless sequential number
-   * 
-   * # TODO make primary key the actual identifier or keep vendure-ID?
    * 
    * @example "INVOICE123"
    */
@@ -28,4 +25,9 @@ export class Invoice extends VendureEntity implements ChannelAware {
   @ManyToMany(() => Channel)
   @JoinTable()
   channels: Channel[];
+
+  @Column(() => CustomInvoiceFields)
+  customFields: CustomInvoiceFields;
 }
+
+export class CustomInvoiceFields { }

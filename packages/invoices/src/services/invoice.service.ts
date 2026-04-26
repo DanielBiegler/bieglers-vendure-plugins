@@ -120,7 +120,7 @@ export class InvoiceService implements OnModuleInit {
     });
     await this.connection.getRepository(ctx, Invoice).save(invoice);
 
-    // TODO custom fields relations
+    // TODO custom fields relations?
     // TODO add events
 
     return {

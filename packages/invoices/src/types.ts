@@ -10,11 +10,7 @@ import { InvoiceIdPrefixGenerationStrategy } from "./config/InvoiceIdPrefixGener
 export interface InvoicesOptions {
   invoiceIdPrefixGenerationStrategy: InvoiceIdPrefixGenerationStrategy,
   invoiceFileGenerationStrategy: InvoiceFileGenerationStrategy,
-  /**
-   * # TODO asset server doesnt export the default ?!?!
-   * Just null for now for debugging
-   */
-  storageStrategy: AssetStorageStrategy | null,
+  storageStrategy: AssetStorageStrategy,
   sequenceLeftPadCount?: number,
 
   subscribeToOrderPlacedEvent?: boolean,
