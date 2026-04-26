@@ -112,7 +112,7 @@ export class InvoiceService implements OnModuleInit {
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
     const invoiceId = await this.getNextInvoiceId(ctx);
     const pdf = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
-    const assetUrl = await this.options.storageStrategy?.writeFileFromBuffer(invoiceId, pdf) ?? "# TODO remove once null changes";
+    const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(invoiceId, pdf);
     const invoice = new Invoice({
       invoiceId,
       assetUrl,
