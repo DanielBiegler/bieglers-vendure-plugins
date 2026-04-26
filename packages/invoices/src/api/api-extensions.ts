@@ -15,7 +15,22 @@ export const adminApiExtensions = gql`
     createdAt: DateTime!
     updatedAt: DateTime!
 
-    invoiceId: String!
+    orderId: ID!
+    order: Order!
+
+    sequentialId: String!
+    assetUrl: String!
+    creditNotes: [CreditNote]!
+  }
+
+  type CreditNote implements Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+
+    invoice: Invoice!
+
+    sequentialId: String!
     assetUrl: String!
   }
 
@@ -24,10 +39,32 @@ export const adminApiExtensions = gql`
     createdAt: DateTime!
     updatedAt: DateTime!
 
-    sequence: Int!
+    sequenceInvoice: Int!
+    sequenceCreditNote: Int!
+  }
+
+  type InvoiceList implements PaginatedList {
+    items: [Invoice!]!
+    totalItems: Int!
+  }
+  input InvoiceListOptions
+
+  extend type Query {
+    "Get a single invoice by its entity ID"
+    invoice(id: ID!): Invoice
+    
+    "Paginate through all invoices"
+    invoices(options: InvoiceListOptions): InvoiceList!
+    
+    "Get a single invoice by its sequential ID"
+    invoiceBySequentialId(sequentialId: String!): Invoice
+  }
+
+  input CreateInvoiceInput {
+    orderId: ID!
   }
 
   extend type Mutation {
-    pluginInvoicesExample: Boolean
+    createInvoice(input: CreateInvoiceInput!): Invoice!
   }
 `;

@@ -7,7 +7,7 @@ import { PLUGIN_INIT_OPTIONS } from "./constants";
 import { CreditNote } from './entities/CreditNote.entity';
 import { Invoice } from "./entities/Invoice.entity";
 import { InvoiceConfig } from "./entities/InvoiceConfig.entity";
-import { InvoiceService } from "./services/invoice.service";
+import { InvoiceService } from "./services/Invoice.service";
 import { InvoicesOptions } from "./types";
 
 /**

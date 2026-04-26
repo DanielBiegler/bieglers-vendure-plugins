@@ -1,5 +1,5 @@
-import { Channel, ChannelAware, DeepPartial, HasCustomFields, VendureEntity } from "@vendure/core";
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from "typeorm";
+import { Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, Order, VendureEntity } from "@vendure/core";
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from "typeorm";
 import { CreditNote } from "./CreditNote.entity";
 
 export class CustomInvoiceFields { }
@@ -9,6 +9,12 @@ export class Invoice extends VendureEntity implements ChannelAware, HasCustomFie
   constructor(input?: DeepPartial<Invoice>) {
     super(input);
   }
+
+  @EntityId({ nullable: false })
+  orderId: ID;
+
+  @ManyToOne(() => Order, { nullable: false })
+  order: Order;
 
   /**
    * Unique identifier used for accounting
@@ -23,7 +29,7 @@ export class Invoice extends VendureEntity implements ChannelAware, HasCustomFie
   @Column({ nullable: false, unique: true })
   assetUrl: string;
 
-  @ManyToOne(() => CreditNote, entity => entity.invoice)
+  @OneToMany(() => CreditNote, entity => entity.invoice)
   creditNotes: CreditNote[];
 
   @ManyToMany(() => Channel)

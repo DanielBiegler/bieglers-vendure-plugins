@@ -1,11 +1,13 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import {
   ChannelService,
+  EntityNotFoundError,
   EventBus,
   JobQueue,
   JobQueueService,
   Logger,
   OrderPlacedEvent,
+  OrderService,
   RequestContext,
   SerializedRequestContext,
   TransactionalConnection
@@ -34,6 +36,7 @@ export class InvoiceService implements OnModuleInit {
     private connection: TransactionalConnection,
     private eventBus: EventBus,
     private jobQueueService: JobQueueService,
+    private orderService: OrderService,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: InvoicesOptions,
   ) { }
@@ -68,7 +71,6 @@ export class InvoiceService implements OnModuleInit {
     // TODO refund subscription for credit notes
     // currently unsure how partial refunds/cancellations work exactly
 
-    // TODO type correctly
     this.jobQueue = await this.jobQueueService.createQueue({
       name: "plugin-invoices",
       process: async (job) => {
@@ -126,12 +128,20 @@ export class InvoiceService implements OnModuleInit {
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
     const invoiceId = await this.getNextSequentialId(ctx, SequentialIdKind.INVOICE);
+
+    // findOne scopes the query to ctx.channel, so an order from a different channel returns undefined
+    const order = await this.orderService.findOne(ctx, input.orderId);
+    if (!order) throw new EntityNotFoundError("Order", input.orderId);
+
+    // TODO what about custom fields on order and orderlines?
+
     // TODO potentially add the snapshot to strategy param?
     const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
     const invoice = await this.channelService.assignToCurrentChannel(new Invoice({
       sequentialId: invoiceId,
       assetUrl,
+      order,
     }), ctx);
     await this.connection.getRepository(ctx, Invoice).save(invoice);
 

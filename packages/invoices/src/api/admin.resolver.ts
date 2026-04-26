@@ -1,6 +1,7 @@
 import { Args, Mutation, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, Permission, RequestContext, Transaction } from "@vendure/core";
-import { InvoiceService } from "../services/invoice.service";
+import { Allow, Ctx, RequestContext, Transaction } from "@vendure/core";
+import { permissionsCrud } from "../constants";
+import { InvoiceService } from "../services/Invoice.service";
 
 @Resolver()
 export class AdminResolver {
@@ -8,8 +9,8 @@ export class AdminResolver {
 
   @Mutation()
   @Transaction()
-  @Allow(Permission.SuperAdmin)
-  async pluginInvoicesExample(
+  @Allow(permissionsCrud.Read)
+  async invoice(
     @Ctx() ctx: RequestContext,
     @Args() args: any, // TODO replace with your new types
   ): Promise<any> { // TODO replace with your new types

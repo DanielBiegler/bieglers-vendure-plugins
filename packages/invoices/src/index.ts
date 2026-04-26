@@ -8,8 +8,19 @@
  * - custom strategies that can be configured by the user of the plugin
  */
 export { InvoicesPlugin } from "./plugin";
-export { InvoicesOptions } from "./types";
 
-export { InvoiceService } from "./services/invoice.service";
+export * from "./entities/CreditNote.entity";
+export * from "./entities/Invoice.entity";
+export * from "./entities/InvoiceConfig.entity";
 
-// TODO export strategies etc. after api is clear
+export * from "./services/Invoice.service";
+
+export * from "./events";
+
+export * from "./types";
+
+export * from "./config/DebugFileGenerationStrategy";
+export * from "./config/InvoiceFileGenerationStrategy";
+export * from "./config/SequentialIdPrefixGenerationStrategy";
+export * from "./config/StaticSequentialIdPrefixGenerationStrategy";
+
