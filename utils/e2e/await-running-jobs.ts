@@ -16,6 +16,33 @@ export const GET_RUNNING_JOBS = gql`
     }
 `;
 
+const GET_FAILED_JOBS = gql`
+    query GetFailedJobs {
+        jobs(options: { filter: { state: { eq: "FAILED" } } }) {
+            items {
+                id
+                queueName
+                error
+            }
+            totalItems
+        }
+    }
+`;
+
+/**
+ * After awaiting running jobs, call this to assert none failed.
+ * Throws with the job error payload so failures are immediately visible in the test output.
+ */
+export async function assertNoFailedJobs(adminClient: SimpleGraphQLClient): Promise<void> {
+    const { jobs } = await adminClient.query(GET_FAILED_JOBS);
+    if (jobs.totalItems > 0) {
+        const details = jobs.items
+            .map((j: any) => `  [${j.queueName}] ${JSON.stringify(j.error)}`)
+            .join('\n');
+        throw new Error(`${jobs.totalItems} job(s) failed:\n${details}`);
+    }
+}
+
 /**
  * For mutation which trigger background jobs, this can be used to "pause" the execution of
  * the test until those jobs have completed;

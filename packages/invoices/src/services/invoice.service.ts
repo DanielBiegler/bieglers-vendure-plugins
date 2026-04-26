@@ -15,6 +15,7 @@ import {
 } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceConfig } from "../entities/InvoiceConfig.entity";
+import { InvoiceEvent } from "../events";
 import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../types";
 
 /**
@@ -51,7 +52,6 @@ export class InvoiceService implements OnModuleInit {
    * Bootstrapping the plugin
    */
   async onModuleInit() {
-    // TODO think about failure cases
     if (this.options.subscribeToOrderPlacedEvent) {
       this.eventBus.ofType(OrderPlacedEvent).subscribe(async (event) => {
         this.addToJobQueue(event.ctx, { orderId: event.order.id })
@@ -62,6 +62,7 @@ export class InvoiceService implements OnModuleInit {
     }
 
     // TODO refund subscription for credit notes
+    // currently unsure how partial refunds/cancellations work exactly
 
     // TODO type correctly
     this.jobQueue = await this.jobQueueService.createQueue({
@@ -99,8 +100,8 @@ export class InvoiceService implements OnModuleInit {
     config.sequence += 1;
     await repo.save(config);
 
-    const sequence = this.options.sequenceLeftPadCount
-      ? config.sequence.toString().padStart(this.options.sequenceLeftPadCount, "0")
+    const sequence = this.options.invoiceSequenceLeftPadCount
+      ? config.sequence.toString().padStart(this.options.invoiceSequenceLeftPadCount, "0")
       : config.sequence;
 
     return `${prefix}${sequence}`;
@@ -111,17 +112,18 @@ export class InvoiceService implements OnModuleInit {
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
     const invoiceId = await this.getNextInvoiceId(ctx);
-    const pdf = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
-    const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(invoiceId, pdf);
+    // TODO potentially add the snapshot to strategy param?
+    const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
+    const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
     const invoice = new Invoice({
-      invoiceId,
+      sequentialId: invoiceId,
       assetUrl,
       channels: [ctx.channel],
     });
     await this.connection.getRepository(ctx, Invoice).save(invoice);
 
     // TODO custom fields relations?
-    // TODO add events
+    await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", input));
 
     return {
       invoiceId,

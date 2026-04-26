@@ -1,9 +1,9 @@
-import { InvoiceIdPrefixGenerationStrategy } from "./InvoiceIdPrefixGenerationStrategy";
+import { SequentialIdPrefixGenerationStrategy } from "./SequentialIdPrefixGenerationStrategy";
 
 /**
  * @default "" Empty string
  */
-export class StaticInvoiceIdPrefixGenerationStrategy implements InvoiceIdPrefixGenerationStrategy {
+export class StaticSequentialIdPrefixGenerationStrategy implements SequentialIdPrefixGenerationStrategy {
   readonly prefix: string = "";
 
   constructor(prefix?: string) {

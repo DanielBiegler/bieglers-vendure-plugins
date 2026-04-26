@@ -1,4 +1,5 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
+import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
 import {
   AssetStorageStrategy,
   ChannelService,
@@ -12,11 +13,12 @@ import { createTestEnvironment } from "@vendure/testing";
 import path from "path";
 import { Stream } from "stream";
 import { afterAll, beforeAll, describe, test } from "vitest";
-import { awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
+import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
-import { StaticInvoiceIdPrefixGenerationStrategy } from "../src/config/StaticInvoiceIdPrefixGenerationStrategy";
+import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
+import { InvoiceFileGenerationResult, InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
+import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
 import { Invoice } from "../src/entities/Invoice.entity";
 import { InvoiceConfig } from "../src/entities/InvoiceConfig.entity";
 import { InvoicesPlugin } from "../src/plugin";
@@ -48,8 +50,8 @@ const testPaymentHandler = new PaymentMethodHandler({
 });
 
 class TestPdfGenerationStrategy implements InvoiceFileGenerationStrategy {
-  generate(_ctx: RequestContext, _invoiceNumber: string, _orderId: ID): Promise<Buffer> {
-    return Promise.resolve(Buffer.from("test-pdf"));
+  generate(_ctx: RequestContext, _invoiceNumber: string, _orderId: ID): Promise<InvoiceFileGenerationResult> {
+    return Promise.resolve({ filename: "testfile", buffer: Buffer.from("testfile") });
   }
 }
 
@@ -89,10 +91,12 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
         assetUploadDir: path.join(__dirname, "fixtures"),
       }),
       InvoicesPlugin.init({
-        invoiceIdPrefixGenerationStrategy: new StaticInvoiceIdPrefixGenerationStrategy("TEST"),
-        invoiceFileGenerationStrategy: new TestPdfGenerationStrategy(),
-        sequenceLeftPadCount: 4,
-        storageStrategy: new TestStorageStrategy(),
+        invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("TEST"),
+        creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("CREDIT"),
+        invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
+        creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
+        storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "test-invoices")),
+        invoiceSequenceLeftPadCount: 4,
         subscribeToOrderPlacedEvent: true,
         subscribeToOrderCancelledEvent: true,
       }),
@@ -159,10 +163,11 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     expect(addPaymentToOrder.state).toBe("PaymentSettled");
 
     await awaitRunningJobs(adminClient);
+    await assertNoFailedJobs(adminClient);
 
     const invoices = await connection.rawConnection.getRepository(Invoice).find();
     expect(invoices).toHaveLength(1);
-    expect(invoices[0].invoiceId).toBe("TEST0001");
+    expect(invoices[0].sequentialId).toBe("TEST0001");
 
     const configAfter = await connection.rawConnection.getRepository(InvoiceConfig).findOneByOrFail({});
     expect(configAfter?.sequence).toBe(1);

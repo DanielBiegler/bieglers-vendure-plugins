@@ -1,5 +1,8 @@
 import { Channel, ChannelAware, DeepPartial, HasCustomFields, VendureEntity } from "@vendure/core";
-import { Column, Entity, JoinTable, ManyToMany } from "typeorm";
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne } from "typeorm";
+import { CreditNote } from "./CreditNote.entity";
+
+export class CustomInvoiceFields { }
 
 @Entity()
 export class Invoice extends VendureEntity implements ChannelAware, HasCustomFields {
@@ -15,12 +18,13 @@ export class Invoice extends VendureEntity implements ChannelAware, HasCustomFie
    * @example "INVOICE123"
    */
   @Column({ nullable: false, unique: true })
-  invoiceId: string;
+  sequentialId: string;
 
   @Column({ nullable: false, unique: true })
   assetUrl: string;
 
-  // TODO other fields
+  @ManyToOne(() => CreditNote, entity => entity.invoice)
+  creditNotes: CreditNote[];
 
   @ManyToMany(() => Channel)
   @JoinTable()
@@ -29,5 +33,3 @@ export class Invoice extends VendureEntity implements ChannelAware, HasCustomFie
   @Column(() => CustomInvoiceFields)
   customFields: CustomInvoiceFields;
 }
-
-export class CustomInvoiceFields { }

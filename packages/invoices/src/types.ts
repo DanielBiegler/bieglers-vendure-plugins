@@ -1,6 +1,6 @@
 import { AssetStorageStrategy, ID } from "@vendure/core";
 import { InvoiceFileGenerationStrategy } from "./config/InvoiceFileGenerationStrategy";
-import { InvoiceIdPrefixGenerationStrategy } from "./config/InvoiceIdPrefixGenerationStrategy";
+import { SequentialIdPrefixGenerationStrategy } from "./config/SequentialIdPrefixGenerationStrategy";
 
 /**
  * These are the configuration options for the plugin.
@@ -8,10 +8,15 @@ import { InvoiceIdPrefixGenerationStrategy } from "./config/InvoiceIdPrefixGener
  * @category Plugin
  */
 export interface InvoicesOptions {
-  invoiceIdPrefixGenerationStrategy: InvoiceIdPrefixGenerationStrategy,
+  invoiceIdPrefixGenerationStrategy: SequentialIdPrefixGenerationStrategy,
+  creditNoteIdPrefixGenerationStrategy: SequentialIdPrefixGenerationStrategy,
+
   invoiceFileGenerationStrategy: InvoiceFileGenerationStrategy,
+  creditNoteFileGenerationStrategy: InvoiceFileGenerationStrategy,
   storageStrategy: AssetStorageStrategy,
-  sequenceLeftPadCount?: number,
+
+  invoiceSequenceLeftPadCount?: number,
+  creditNoteSequenceLeftPadCount?: number,
 
   subscribeToOrderPlacedEvent?: boolean,
   subscribeToOrderCancelledEvent?: boolean,

@@ -1,9 +1,11 @@
-import { AdminUiPlugin } from "@vendure/admin-ui-plugin";
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
+import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
 import { DefaultLogger, DefaultSearchPlugin, LogLevel, VendureConfig } from "@vendure/core";
 import "dotenv/config";
 import path from "path";
 import { InvoicesPlugin } from "../src";
+import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
+import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticInvoiceIdPrefixGenerationStrategy";
 
 const apiPort = process.env.API_PORT || 3000;
 
@@ -37,16 +39,15 @@ export const config: VendureConfig = {
     AssetServerPlugin.init({
       route: "assets",
       assetUploadDir: path.join(__dirname, "assets"),
+      storageStrategyFactory: undefined,
     }),
-    InvoicesPlugin.init({}),
+    InvoicesPlugin.init({
+      invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("INVOICE"),
+      creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("CREDIT"),
+      invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
+      creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
+      storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "invoices")),
+    }),
     DefaultSearchPlugin.init({}),
-    AdminUiPlugin.init({
-      port: 3002,
-      route: "admin",
-      adminUiConfig: {
-        apiPort: +apiPort,
-        apiHost: "http://localhost",
-      },
-    }),
   ],
 };
