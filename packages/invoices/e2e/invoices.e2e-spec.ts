@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, test } from "vitest";
 import { awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { PdfGenerationStrategy } from "../src/config/PdfGenerationStrategy";
+import { InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
 import { StaticInvoiceIdPrefixGenerationStrategy } from "../src/config/StaticInvoiceIdPrefixGenerationStrategy";
 import { Invoice } from "../src/entities/Invoice.entity";
 import { InvoiceConfig } from "../src/entities/InvoiceConfig.entity";
@@ -47,7 +47,7 @@ const testPaymentHandler = new PaymentMethodHandler({
   settlePayment: () => ({ success: true }),
 });
 
-class TestPdfGenerationStrategy implements PdfGenerationStrategy {
+class TestPdfGenerationStrategy implements InvoiceFileGenerationStrategy {
   generate(_ctx: RequestContext, _invoiceNumber: string, _orderId: ID): Promise<Buffer> {
     return Promise.resolve(Buffer.from("test-pdf"));
   }
@@ -90,7 +90,7 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
       }),
       InvoicesPlugin.init({
         invoiceIdPrefixGenerationStrategy: new StaticInvoiceIdPrefixGenerationStrategy("TEST"),
-        pdfGenerationStrategy: new TestPdfGenerationStrategy(),
+        invoiceFileGenerationStrategy: new TestPdfGenerationStrategy(),
         sequenceLeftPadCount: 4,
         storageStrategy: new TestStorageStrategy(),
         subscribeToOrderPlacedEvent: true,

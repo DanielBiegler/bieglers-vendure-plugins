@@ -52,10 +52,14 @@ export class InvoiceService implements OnModuleInit {
    */
   async onModuleInit() {
     // TODO think about failure cases
-    this.eventBus.ofType(OrderPlacedEvent).subscribe(async (event) => {
-      this.addToJobQueue(event.ctx, { orderId: event.order.id })
-    });
-    Logger.info("Subscribed to: OrderPlacedEvent", loggerCtx);
+    if (this.options.subscribeToOrderPlacedEvent) {
+      this.eventBus.ofType(OrderPlacedEvent).subscribe(async (event) => {
+        this.addToJobQueue(event.ctx, { orderId: event.order.id })
+      });
+      Logger.info("Subscribed to: OrderPlacedEvent", loggerCtx);
+    } else {
+      Logger.info("Did not subscribe to OrderPlacedEvent due to subscribeToOrderPlacedEvent being false", loggerCtx);
+    }
 
     // TODO refund subscription for credit notes
 
@@ -107,7 +111,7 @@ export class InvoiceService implements OnModuleInit {
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
     const invoiceId = await this.getNextInvoiceId(ctx);
-    const pdf = await this.options.pdfGenerationStrategy.generate(ctx, invoiceId, input.orderId)
+    const pdf = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
     const assetUrl = await this.options.storageStrategy?.writeFileFromBuffer(invoiceId, pdf) ?? "# TODO remove once null changes";
     const invoice = new Invoice({
       invoiceId,

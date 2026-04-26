@@ -1,8 +1,8 @@
 import { ID, Injector, Logger, OrderService, RequestContext } from "@vendure/core";
 import { loggerCtx } from "../constants";
-import { PdfGenerationStrategy } from "./PdfGenerationStrategy";
+import { InvoiceFileGenerationStrategy } from "./InvoiceFileGenerationStrategy";
 
-export class DebugPdfGenerationStrategy implements PdfGenerationStrategy {
+export class DebugFileGenerationStrategy implements InvoiceFileGenerationStrategy {
   private orderService: OrderService;
 
   init(injector: Injector) {

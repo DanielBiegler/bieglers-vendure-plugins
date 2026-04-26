@@ -1,6 +1,6 @@
 import { AssetStorageStrategy, ID } from "@vendure/core";
+import { InvoiceFileGenerationStrategy } from "./config/InvoiceFileGenerationStrategy";
 import { InvoiceIdPrefixGenerationStrategy } from "./config/InvoiceIdPrefixGenerationStrategy";
-import { PdfGenerationStrategy } from "./config/PdfGenerationStrategy";
 
 /**
  * These are the configuration options for the plugin.
@@ -9,7 +9,7 @@ import { PdfGenerationStrategy } from "./config/PdfGenerationStrategy";
  */
 export interface InvoicesOptions {
   invoiceIdPrefixGenerationStrategy: InvoiceIdPrefixGenerationStrategy,
-  pdfGenerationStrategy: PdfGenerationStrategy,
+  invoiceFileGenerationStrategy: InvoiceFileGenerationStrategy,
   /**
    * # TODO asset server doesnt export the default ?!?!
    * Just null for now for debugging

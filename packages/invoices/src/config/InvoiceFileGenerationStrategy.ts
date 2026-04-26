@@ -1,6 +1,6 @@
 import { ID, InjectableStrategy, RequestContext } from "@vendure/core";
 
-export interface PdfGenerationStrategy extends InjectableStrategy {
+export interface InvoiceFileGenerationStrategy extends InjectableStrategy {
   /**
    * #TODO: parameters are WIP, just exploring implementation details
    * @returns Raw bytes of the generated PDF file
@@ -8,6 +8,7 @@ export interface PdfGenerationStrategy extends InjectableStrategy {
   generate(
     ctx: RequestContext,
     invoiceNumber: string,
+    /** TODO MIGHT NEED SNAPSHOT HERE IN ORDER TO ALLOW COMPLIANT, DETERMINISTIC RE-GENERATION */
     orderId: ID,
   ): Promise<Buffer>;
 }
