@@ -21,6 +21,8 @@
   - Config Page
   - List Page
   - Detail Page
+- Banner images
+  - Use freepik, Pexels/Unsplash dont have what I want
 
 ## Should
 

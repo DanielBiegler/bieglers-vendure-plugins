@@ -78,7 +78,9 @@ On a personal machine you might just install [Puppeteer](https://github.com/pupp
 
 Personally I much prefer programmatic PDF generation with a library like [PDFKit](https://github.com/foliojs/pdfkit) but this comes with some other tradeoffs. Apart from fewer dependencies and layout options, more importantly, you can't just give untrusted vendors access to customize the PDF generation now, because running untrusted JavaScript code in Node is still (2026) a major PITA. An attacker could crash your entire instance or find other privilege escalations potentially.
 
-This is why this plugin only defines the interface and actual implementation details are handed off to the instance owner. For me personally, I decided separate vendors don't need the ability to customize the invoice template, but you certainly are able to do so, provided you create your own API extensions, generation strategy and bear the complexity cost. The aim is to provide a sound foundation with some practical implementations to choose from.
+This is why this plugin only defines the interface and actual implementation details are handed off to the instance owner. For me personally, I decided separate vendors don't need the ability to customize the invoice template, but you certainly are able to do so, provided you create your own API extensions, generation strategy and bear the complexity cost.
+
+The aim is to provide a sound foundation with some practical, generally useful implementations to choose from, but if your specific business needs custom data in the PDF you ought to roll your own implementation.
 
 ## Practical Guides and Resources
 
