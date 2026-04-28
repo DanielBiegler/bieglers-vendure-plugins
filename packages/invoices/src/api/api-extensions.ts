@@ -49,22 +49,19 @@ export const adminApiExtensions = gql`
   }
   input InvoiceListOptions
 
+  input GetSingleInvoiceInput {
+    id: ID
+    sequentialId: String
+  }
+
   extend type Query {
-    "Get a single invoice by its entity ID"
-    invoice(id: ID!): Invoice
+    """
+    Get a single invoice either by its entity ID or by its sequential ID.
+    Throws an error if neither ID nor sequential ID is specified.
+    """
+    invoice(input: GetSingleInvoiceInput!): Invoice
     
     "Paginate through all invoices"
-    invoices(options: InvoiceListOptions): InvoiceList!
-    
-    "Get a single invoice by its sequential ID"
-    invoiceBySequentialId(sequentialId: String!): Invoice
-  }
-
-  input CreateInvoiceInput {
-    orderId: ID!
-  }
-
-  extend type Mutation {
-    createInvoice(input: CreateInvoiceInput!): Invoice!
+    invoiceList(options: InvoiceListOptions): InvoiceList!
   }
 `;

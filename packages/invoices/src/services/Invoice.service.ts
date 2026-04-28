@@ -5,9 +5,13 @@ import {
   EventBus,
   JobQueue,
   JobQueueService,
+  ListQueryBuilder,
+  ListQueryOptions,
   Logger,
   OrderPlacedEvent,
   OrderService,
+  PaginatedList,
+  RelationPaths,
   RequestContext,
   SerializedRequestContext,
   TransactionalConnection
@@ -21,6 +25,7 @@ import { CreditNote } from "../entities/CreditNote.entity";
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceConfig } from "../entities/InvoiceConfig.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
+import { GetSingleInvoiceInput } from "../generated-admin-types";
 import { CreateCreditNoteInput, CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions, SequentialIdKind } from "../types";
 
 /**
@@ -35,6 +40,7 @@ export class InvoiceService implements OnModuleInit {
     private channelService: ChannelService,
     private connection: TransactionalConnection,
     private eventBus: EventBus,
+    private listQueryBuilder: ListQueryBuilder,
     private jobQueueService: JobQueueService,
     private orderService: OrderService,
     @Inject(PLUGIN_INIT_OPTIONS)
@@ -121,6 +127,52 @@ export class InvoiceService implements OnModuleInit {
     await repo.save(config);
 
     return `${prefix}${sequence}`;
+  }
+
+  // #region Find One
+  /**
+   * Is Channel-Aware
+   */
+  public async findOne(
+    ctx: RequestContext,
+    input: GetSingleInvoiceInput,
+    relations?: RelationPaths<Invoice>
+  ): Promise<Invoice | null> {
+    if (!input.id && !input.sequentialId)
+      throw new Error("You must specify either ID or sequential ID");
+
+    return this.connection.getRepository(ctx, Invoice).findOne({
+      where: {
+        channels: { id: ctx.channelId },
+        id: input.id,
+        sequentialId: input.sequentialId,
+      },
+      relations,
+    });
+  }
+
+  // #region Find All
+  /**
+   * Is Channel-Aware
+   */
+  public async findAll(
+    ctx: RequestContext,
+    options?: ListQueryOptions<Invoice>,
+    relations?: RelationPaths<Invoice>
+  ): Promise<PaginatedList<Invoice>> {
+    return this.listQueryBuilder
+      .build(
+        Invoice,
+        options,
+        {
+          relations,
+          channelId: ctx.channelId,
+          orderBy: { createdAt: options?.sort?.createdAt ?? 'DESC' },
+          ctx,
+        }
+      )
+      .getManyAndCount()
+      .then(async ([items, totalItems]) => ({ items, totalItems, }));
   }
 
   /**
