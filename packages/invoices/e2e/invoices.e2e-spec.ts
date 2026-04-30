@@ -2,7 +2,6 @@ import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
 import {
   AssetStorageStrategy,
-  ChannelService,
   ID,
   LanguageCode,
   PaymentMethodHandler,
@@ -20,7 +19,7 @@ import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationSt
 import { InvoiceFileGenerationResult, InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
 import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
 import { Invoice } from "../src/entities/Invoice.entity";
-import { InvoiceConfig } from "../src/entities/InvoiceConfig.entity";
+import { InvoiceSequence } from "../src/entities/Sequence.entity";
 import { InvoicesPlugin } from "../src/plugin";
 import { CREATE_PAYMENT_METHOD } from "./graphql/admin-e2e-definitions";
 import {
@@ -104,7 +103,6 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
         storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "test-invoices")),
         invoiceSequenceLeftPadCount: 4,
         subscribeToOrderPlacedEvent: true,
-        subscribeToOrderCancelledEvent: true,
       }),
     ],
   });
@@ -128,17 +126,6 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
         handler: { code: TEST_PAYMENT_METHOD_CODE, arguments: [] },
       },
     });
-
-    const channelService = server.app.get(ChannelService);
-    const defaultChannel = await channelService.getDefaultChannel();
-    const connection = server.app.get(TransactionalConnection);
-    await connection.rawConnection
-      .getRepository(InvoiceConfig)
-      .save(new InvoiceConfig({
-        sequenceInvoice: INITIAL_SEQUENCE_INVOICE,
-        sequenceCreditNote: INITIAL_SEQUENCE_CREDITNOTE,
-        channels: [defaultChannel],
-      }));
   }, 60000);
 
   afterAll(async () => {
@@ -150,8 +137,8 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
 
   test("creates an invoice when an order is placed", async ({ expect }) => {
     const connection = server.app.get(TransactionalConnection);
-    const configBefore = await connection.rawConnection.getRepository(InvoiceConfig).findOneByOrFail({});
-    expect(configBefore?.sequenceInvoice).toBe(INITIAL_SEQUENCE_INVOICE);
+    const configBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({});
+    expect(configBefore?.sequence).toBe(INITIAL_SEQUENCE_INVOICE);
 
     const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
     const variantId = product.variants[0].id;
@@ -183,7 +170,7 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     expect(invoices).toHaveLength(1);
     expect(invoices[0].sequentialId).toBe(`${INVOICE_PREFIX}${nextInvoiceSeq}`);
 
-    const configAfter = await connection.rawConnection.getRepository(InvoiceConfig).findOneByOrFail({});
-    expect(configAfter?.sequenceInvoice).toBe(nextInvoiceSeq);
+    const configAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({});
+    expect(configAfter?.sequence).toBe(nextInvoiceSeq);
   });
 });

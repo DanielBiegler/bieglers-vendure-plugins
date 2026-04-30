@@ -1,13 +1,21 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
-import { DefaultLogger, DefaultSearchPlugin, LogLevel, VendureConfig } from "@vendure/core";
+import { DefaultLogger, DefaultSearchPlugin, dummyPaymentHandler, LanguageCode, LogLevel, PaymentMethodEligibilityChecker, VendureConfig } from "@vendure/core";
+import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import "dotenv/config";
 import path from "path";
-import { InvoicesPlugin } from "../src";
 import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
-import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticInvoiceIdPrefixGenerationStrategy";
+import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
+import { InvoicesPlugin } from "../src/index";
 
 const apiPort = process.env.API_PORT || 3000;
+
+const dummyPaymentEligibilityChecker = new PaymentMethodEligibilityChecker({
+  code: "dummy-payment-eligibility-checker",
+  description: [{ languageCode: LanguageCode.en, value: "Dummy eligibility checker (always eligible)" }],
+  args: {},
+  check: () => true,
+});
 
 export const config: VendureConfig = {
   apiOptions: {
@@ -33,7 +41,8 @@ export const config: VendureConfig = {
     database: path.join(__dirname, "vendure.sqlite"),
   },
   paymentOptions: {
-    paymentMethodHandlers: [],
+    paymentMethodHandlers: [dummyPaymentHandler],
+    paymentMethodEligibilityCheckers: [dummyPaymentEligibilityChecker],
   },
   plugins: [
     AssetServerPlugin.init({
@@ -47,7 +56,12 @@ export const config: VendureConfig = {
       invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
       creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
       storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "invoices")),
+      subscribeToOrderPlacedEvent: true,
     }),
     DefaultSearchPlugin.init({}),
+    DashboardPlugin.init({
+      route: "dashboard",
+      appDir: path.join(__dirname, "dashboard"),
+    }),
   ],
 };

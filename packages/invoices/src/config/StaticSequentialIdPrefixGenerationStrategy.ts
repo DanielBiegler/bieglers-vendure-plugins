@@ -1,3 +1,4 @@
+import { Order, RequestContext } from "@vendure/core";
 import { SequentialIdPrefixGenerationStrategy } from "./SequentialIdPrefixGenerationStrategy";
 
 /**
@@ -10,7 +11,7 @@ export class StaticSequentialIdPrefixGenerationStrategy implements SequentialIdP
     if (prefix) this.prefix = prefix;
   }
 
-  async generate(): Promise<string> {
+  async generate(ctx: RequestContext, order: Order): Promise<string> {
     return this.prefix;
   }
 }

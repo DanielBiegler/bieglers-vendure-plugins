@@ -20,6 +20,11 @@ export type Scalars = {
 
 export type ActiveOrderResult = NoActiveOrderError | Order;
 
+export type AddItemInput = {
+  productVariantId: Scalars['ID']['input'];
+  quantity: Scalars['Int']['input'];
+};
+
 export type AddPaymentToOrderResult = IneligiblePaymentMethodError | NoActiveOrderError | Order | OrderPaymentStateError | OrderStateTransitionError | PaymentDeclinedError | PaymentFailedError;
 
 export type Address = Node & {
@@ -73,11 +78,13 @@ export type Asset = Node & {
   focalPoint?: Maybe<Coordinate>;
   height: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
+  languageCode: LanguageCode;
   mimeType: Scalars['String']['output'];
   name: Scalars['String']['output'];
   preview: Scalars['String']['output'];
   source: Scalars['String']['output'];
   tags: Array<Tag>;
+  translations: Array<AssetTranslation>;
   type: AssetType;
   updatedAt: Scalars['DateTime']['output'];
   width: Scalars['Int']['output'];
@@ -87,6 +94,15 @@ export type AssetList = PaginatedList & {
   __typename?: 'AssetList';
   items: Array<Asset>;
   totalItems: Scalars['Int']['output'];
+};
+
+export type AssetTranslation = {
+  __typename?: 'AssetTranslation';
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  languageCode: LanguageCode;
+  name: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export enum AssetType {
@@ -111,6 +127,8 @@ export type AuthenticationResult = CurrentUser | InvalidCredentialsError | NotVe
 
 export type BooleanCustomFieldConfig = CustomField & {
   __typename?: 'BooleanCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -184,6 +202,7 @@ export type Collection = Node & {
   parent?: Maybe<Collection>;
   parentId: Scalars['ID']['output'];
   position: Scalars['Int']['output'];
+  productVariantCount: Scalars['Int']['output'];
   productVariants: ProductVariantList;
   slug: Scalars['String']['output'];
   translations: Array<CollectionTranslation>;
@@ -212,6 +231,7 @@ export type CollectionFilterParameter = {
   name?: InputMaybe<StringOperators>;
   parentId?: InputMaybe<IdOperators>;
   position?: InputMaybe<NumberOperators>;
+  productVariantCount?: InputMaybe<NumberOperators>;
   slug?: InputMaybe<StringOperators>;
   updatedAt?: InputMaybe<DateOperators>;
 };
@@ -253,6 +273,7 @@ export type CollectionSortParameter = {
   name?: InputMaybe<SortOrder>;
   parentId?: InputMaybe<SortOrder>;
   position?: InputMaybe<SortOrder>;
+  productVariantCount?: InputMaybe<SortOrder>;
   slug?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
 };
@@ -739,6 +760,8 @@ export type CurrentUserChannel = {
 };
 
 export type CustomField = {
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -857,6 +880,8 @@ export type DateRange = {
  */
 export type DateTimeCustomFieldConfig = CustomField & {
   __typename?: 'DateTimeCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -1112,6 +1137,8 @@ export type FacetValueTranslation = {
 
 export type FloatCustomFieldConfig = CustomField & {
   __typename?: 'FloatCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -1239,6 +1266,7 @@ export enum HistoryEntryType {
   ORDER_CANCELLATION = 'ORDER_CANCELLATION',
   ORDER_COUPON_APPLIED = 'ORDER_COUPON_APPLIED',
   ORDER_COUPON_REMOVED = 'ORDER_COUPON_REMOVED',
+  ORDER_CURRENCY_UPDATED = 'ORDER_CURRENCY_UPDATED',
   ORDER_CUSTOMER_UPDATED = 'ORDER_CUSTOMER_UPDATED',
   ORDER_FULFILLMENT = 'ORDER_FULFILLMENT',
   ORDER_FULFILLMENT_TRANSITION = 'ORDER_FULFILLMENT_TRANSITION',
@@ -1309,6 +1337,8 @@ export type InsufficientStockError = ErrorResult & {
 
 export type IntCustomFieldConfig = CustomField & {
   __typename?: 'IntCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -1673,6 +1703,8 @@ export enum LanguageCode {
 
 export type LocaleStringCustomFieldConfig = CustomField & {
   __typename?: 'LocaleStringCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -1689,6 +1721,8 @@ export type LocaleStringCustomFieldConfig = CustomField & {
 
 export type LocaleTextCustomFieldConfig = CustomField & {
   __typename?: 'LocaleTextCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -1723,6 +1757,8 @@ export type Mutation = {
   __typename?: 'Mutation';
   /** Adds an item to the Order. If custom fields are defined on the OrderLine entity, a third argument 'customFields' will be available. */
   addItemToOrder: UpdateOrderItemsResult;
+  /** Adds mutliple items to the Order. Returns a list of errors for each item that failed to add. It will still add successful items. */
+  addItemsToOrder: UpdateMultipleOrderItemsResult;
   /** Add a Payment to the Order */
   addPaymentToOrder: AddPaymentToOrderResult;
   /** Adjusts an OrderLine. If custom fields are defined on the OrderLine entity, a third argument 'customFields' of type `OrderLineCustomFieldsInput` will be available. */
@@ -1780,6 +1816,8 @@ export type Mutation = {
   requestUpdateCustomerEmailAddress: RequestUpdateCustomerEmailAddressResult;
   /** Resets a Customer's password based on the provided token */
   resetPassword: ResetPasswordResult;
+  /** Sets the currency code for the active Order */
+  setCurrencyCodeForOrder: UpdateOrderItemsResult;
   /** Set the Customer for the Order. Required only if the Customer is not currently logged in */
   setCustomerForOrder: SetCustomerForOrderResult;
   /** Sets the billing address for the active Order */
@@ -1825,6 +1863,11 @@ export type Mutation = {
 export type MutationAddItemToOrderArgs = {
   productVariantId: Scalars['ID']['input'];
   quantity: Scalars['Int']['input'];
+};
+
+
+export type MutationAddItemsToOrderArgs = {
+  inputs: Array<AddItemInput>;
 };
 
 
@@ -1901,6 +1944,11 @@ export type MutationRequestUpdateCustomerEmailAddressArgs = {
 export type MutationResetPasswordArgs = {
   password: Scalars['String']['input'];
   token: Scalars['String']['input'];
+};
+
+
+export type MutationSetCurrencyCodeForOrderArgs = {
+  currencyCode: CurrencyCode;
 };
 
 
@@ -2442,6 +2490,8 @@ export enum Permission {
   Authenticated = 'Authenticated',
   /** Grants permission to create Administrator */
   CreateAdministrator = 'CreateAdministrator',
+  /** Grants permission to create ApiKey */
+  CreateApiKey = 'CreateApiKey',
   /** Grants permission to create Asset */
   CreateAsset = 'CreateAsset',
   /** Grants permission to create Products, Facets, Assets, Collections */
@@ -2486,6 +2536,8 @@ export enum Permission {
   CreateZone = 'CreateZone',
   /** Grants permission to delete Administrator */
   DeleteAdministrator = 'DeleteAdministrator',
+  /** Grants permission to delete ApiKey */
+  DeleteApiKey = 'DeleteApiKey',
   /** Grants permission to delete Asset */
   DeleteAsset = 'DeleteAsset',
   /** Grants permission to delete Products, Facets, Assets, Collections */
@@ -2534,6 +2586,8 @@ export enum Permission {
   Public = 'Public',
   /** Grants permission to read Administrator */
   ReadAdministrator = 'ReadAdministrator',
+  /** Grants permission to read ApiKey */
+  ReadApiKey = 'ReadApiKey',
   /** Grants permission to read Asset */
   ReadAsset = 'ReadAsset',
   /** Grants permission to read Products, Facets, Assets, Collections */
@@ -2580,6 +2634,8 @@ export enum Permission {
   SuperAdmin = 'SuperAdmin',
   /** Grants permission to update Administrator */
   UpdateAdministrator = 'UpdateAdministrator',
+  /** Grants permission to update ApiKey */
+  UpdateApiKey = 'UpdateApiKey',
   /** Grants permission to update Asset */
   UpdateAsset = 'UpdateAsset',
   /** Grants permission to update Products, Facets, Assets, Collections */
@@ -2716,6 +2772,8 @@ export type ProductOptionGroup = Node & {
   languageCode: LanguageCode;
   name: Scalars['String']['output'];
   options: Array<ProductOption>;
+  /** The number of products that use this option group */
+  productCount: Scalars['Int']['output'];
   translations: Array<ProductOptionGroupTranslation>;
   updatedAt: Scalars['DateTime']['output'];
 };
@@ -2898,6 +2956,7 @@ export type ProvinceList = PaginatedList & {
 export type PublicPaymentMethod = {
   __typename?: 'PublicPaymentMethod';
   code: Scalars['String']['output'];
+  customFields?: Maybe<Scalars['JSON']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
@@ -2907,6 +2966,7 @@ export type PublicPaymentMethod = {
 export type PublicShippingMethod = {
   __typename?: 'PublicShippingMethod';
   code: Scalars['String']['output'];
+  customFields?: Maybe<Scalars['JSON']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
@@ -3080,6 +3140,8 @@ export type RegisterCustomerInput = {
 
 export type RelationCustomFieldConfig = CustomField & {
   __typename?: 'RelationCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   entity: Scalars['String']['output'];
   internal?: Maybe<Scalars['Boolean']['output']>;
@@ -3121,7 +3183,9 @@ export type RoleList = PaginatedList & {
 
 export type SearchInput = {
   collectionId?: InputMaybe<Scalars['ID']['input']>;
+  collectionIds?: InputMaybe<Array<Scalars['ID']['input']>>;
   collectionSlug?: InputMaybe<Scalars['String']['input']>;
+  collectionSlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   facetValueFilters?: InputMaybe<Array<FacetValueFilterInput>>;
   /** @deprecated Use `facetValueFilters` instead */
   facetValueIds?: InputMaybe<Array<Scalars['ID']['input']>>;
@@ -3267,6 +3331,8 @@ export enum SortOrder {
 
 export type StringCustomFieldConfig = CustomField & {
   __typename?: 'StringCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -3320,6 +3386,8 @@ export type StringStructFieldConfig = StructField & {
 
 export type StructCustomFieldConfig = CustomField & {
   __typename?: 'StructCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   fields: Array<StructFieldConfig>;
   internal?: Maybe<Scalars['Boolean']['output']>;
@@ -3415,6 +3483,8 @@ export type TaxRateList = PaginatedList & {
 
 export type TextCustomFieldConfig = CustomField & {
   __typename?: 'TextCustomFieldConfig';
+  deprecated?: Maybe<Scalars['Boolean']['output']>;
+  deprecationReason?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Array<LocalizedString>>;
   internal?: Maybe<Scalars['Boolean']['output']>;
   label?: Maybe<Array<LocalizedString>>;
@@ -3474,9 +3544,22 @@ export type UpdateCustomerInput = {
 
 export type UpdateCustomerPasswordResult = InvalidCredentialsError | NativeAuthStrategyError | PasswordValidationError | Success;
 
+/**
+ * Returned when multiple items are added to an Order.
+ * The errorResults array contains the errors that occurred for each item, if any.
+ */
+export type UpdateMultipleOrderItemsResult = {
+  __typename?: 'UpdateMultipleOrderItemsResult';
+  errorResults: Array<UpdateOrderItemErrorResult>;
+  order: Order;
+};
+
 export type UpdateOrderInput = {
   customFields?: InputMaybe<Scalars['JSON']['input']>;
 };
+
+/** Union type of all possible errors that can occur when adding or removing items from an Order. */
+export type UpdateOrderItemErrorResult = InsufficientStockError | NegativeQuantityError | OrderInterceptorError | OrderLimitError | OrderModificationError;
 
 export type UpdateOrderItemsResult = InsufficientStockError | NegativeQuantityError | Order | OrderInterceptorError | OrderLimitError | OrderModificationError;
 

@@ -13,14 +13,30 @@ export interface InvoicesOptions {
 
   invoiceFileGenerationStrategy: InvoiceFileGenerationStrategy,
   creditNoteFileGenerationStrategy: InvoiceFileGenerationStrategy,
-  storageStrategy: AssetStorageStrategy,
-
-  invoiceSequenceLeftPadCount?: number,
-  creditNoteSequenceLeftPadCount?: number,
 
   /**
-   * By default, sequential IDs used in invoices/etc. get shared across {@link Channel}s through the default channel.
-   * By setting `perChannelConfig` to `true`, each Channel **requires** their own configuration row.
+   * Used to persist, check and read generated files.
+   * 
+   * You decide whether or not your invoices are publically readable,
+   * but this should be taken into careful consideration. Be cautious to not
+   * expose all your invoices in an easily enumerable, public bucket.
+   */
+  storageStrategy: AssetStorageStrategy,
+
+  /** If defined, left-pads the sequence with zeroes. */
+  invoiceSequenceLeftPadCount?: number,
+  /** If defined, left-pads the sequence with zeroes. */
+  creditNoteSequenceLeftPadCount?: number,
+
+  /** Starting value for the invoice sequence when a config is auto-created. @default 1 */
+  initialInvoiceSequence?: number,
+  /** Starting value for the credit note sequence when a config is auto-created. @default 1 */
+  initialCreditNoteSequence?: number,
+
+  /**
+   * By default, sequential IDs used in invoices/etc. get shared across {@link Channel}s
+   * through the default channel. By setting `perChannelConfig` to `true`, each Channel
+   * **requires** their own configuration row.
    * 
    * In other words, if your Vendure instance hosts multiple distinct vendors,
    * where each vendor is one Channel, you'll want to enable this in order to
@@ -31,7 +47,6 @@ export interface InvoicesOptions {
   perChannelConfig?: boolean,
 
   subscribeToOrderPlacedEvent?: boolean,
-  subscribeToOrderCancelledEvent?: boolean,
 }
 
 export type CreateInvoiceInput = {

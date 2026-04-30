@@ -1,6 +1,5 @@
 import { gql } from "graphql-tag";
 
-// TODO custom fields
 export const adminApiExtensions = gql`
 
   # In case you need a field resolver for result unions

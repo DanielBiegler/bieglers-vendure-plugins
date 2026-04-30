@@ -8,6 +8,7 @@ import {
   ListQueryBuilder,
   ListQueryOptions,
   Logger,
+  Order,
   OrderPlacedEvent,
   OrderService,
   PaginatedList,
@@ -17,16 +18,18 @@ import {
   TransactionalConnection
 } from "@vendure/core";
 import {
+  DEFAULT_SEQUENCE_CODE_CREDIT,
+  DEFAULT_SEQUENCE_CODE_INVOICE,
+  INVOICE_QUEUE_NAME,
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
   ROW_LOCK_COMPATIBLE_DATABASES
 } from "../constants";
-import { CreditNote } from "../entities/CreditNote.entity";
 import { Invoice } from "../entities/Invoice.entity";
-import { InvoiceConfig } from "../entities/InvoiceConfig.entity";
-import { CreditNoteEvent, InvoiceEvent } from "../events";
+import { InvoiceSequence } from "../entities/Sequence.entity";
+import { InvoiceEvent } from "../events";
 import { GetSingleInvoiceInput } from "../generated-admin-types";
-import { CreateCreditNoteInput, CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions, SequentialIdKind } from "../types";
+import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../types";
 
 /**
  * // TODO
@@ -74,60 +77,30 @@ export class InvoiceService implements OnModuleInit {
       Logger.info("Did not subscribe to OrderPlacedEvent due to subscribeToOrderPlacedEvent being false", loggerCtx);
     }
 
-    // TODO refund subscription for credit notes
-    // currently unsure how partial refunds/cancellations work exactly
+    // TODO refund subscription for credit notes (?)
+    // currently unsure how partial refunds/cancellations work exactly (?)
 
     this.jobQueue = await this.jobQueueService.createQueue({
-      name: "plugin-invoices",
+      name: INVOICE_QUEUE_NAME,
       process: async (job) => {
         const ctx = RequestContext.deserialize(job.data.ctx);
-        const result = await this.connection.withTransaction(ctx,
-          async (txCtx) => await this.createInvoice(txCtx, job.data.input)
-        );
+        const result = await this.connection.withTransaction(ctx, async (txCtx) => {
+          try {
+            return await this.createInvoice(txCtx, job.data.input);
+          } catch (e) {
+            if (e instanceof Error) {
+              Logger.error(e.message, loggerCtx, e.stack);
+            } else {
+              Logger.error(`Unknown throw from invoice creation: ${JSON.stringify(e)}`, loggerCtx)
+            }
+            throw e;
+          }
+        });
         return result;
       },
     });
   }
 
-  /** 
-   * Must be called inside an active transaction (ctx must carry one).
-   * The `pessimistic_write` lock serialises concurrent callers: the second
-   * caller blocks on `SELECT FOR UPDATE` until the first transaction commits
-   * or rolls back, then reads the already-updated (or reverted) sequence.
-   */
-  private async getNextSequentialId(ctx: RequestContext, kind: SequentialIdKind): Promise<string> {
-    const repo = this.connection.getRepository(ctx, InvoiceConfig);
-    const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
-    const channelId = this.options.perChannelConfig ? ctx.channelId : (await this.channelService.getDefaultChannel(ctx)).id;
-    const config = await repo.findOneOrFail({
-      where: { channels: { id: channelId } },
-      ...(supportsRowLock ? { lock: { mode: "pessimistic_write" as const } } : {}),
-    });
-
-    let prefix: string;
-    let sequence: string;
-
-    switch (kind) {
-      case SequentialIdKind.INVOICE: {
-        config.sequenceInvoice += 1;
-        prefix = await this.options.invoiceIdPrefixGenerationStrategy.generate();
-        sequence = config.sequenceInvoice.toString().padStart(this.options.invoiceSequenceLeftPadCount ?? 0, "0");
-        break;
-      }
-      case SequentialIdKind.CREDIT_NOTE: {
-        config.sequenceCreditNote += 1;
-        prefix = await this.options.creditNoteIdPrefixGenerationStrategy.generate();
-        sequence = config.sequenceCreditNote.toString().padStart(this.options.creditNoteSequenceLeftPadCount ?? 0, "0");
-        break;
-      }
-      default:
-        throw new Error("Unreachable: getNextSequentialId --> SequentialIdKind");
-    }
-
-    await repo.save(config);
-
-    return `${prefix}${sequence}`;
-  }
 
   // #region Find One
   /**
@@ -144,6 +117,7 @@ export class InvoiceService implements OnModuleInit {
     return this.connection.getRepository(ctx, Invoice).findOne({
       where: {
         channels: { id: ctx.channelId },
+        // TODO check if its ok to just query both
         id: input.id,
         sequentialId: input.sequentialId,
       },
@@ -179,55 +153,122 @@ export class InvoiceService implements OnModuleInit {
    * #TODO
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
-    const invoiceId = await this.getNextSequentialId(ctx, SequentialIdKind.INVOICE);
-
     // findOne scopes the query to ctx.channel, so an order from a different channel returns undefined
     const order = await this.orderService.findOne(ctx, input.orderId);
     if (!order) throw new EntityNotFoundError("Order", input.orderId);
 
-    // TODO what about custom fields on order and orderlines?
+    // TASK(2kjlijhf)
+    const sequentialId = await this.getNextSequentialId(ctx, order, DEFAULT_SEQUENCE_CODE_INVOICE);
 
     // TODO potentially add the snapshot to strategy param?
-    const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, invoiceId, input.orderId)
+    // TODO what about snapshotting custom fields on order and orderlines?
+    const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, sequentialId, input.orderId)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
-    const invoice = await this.channelService.assignToCurrentChannel(new Invoice({
-      sequentialId: invoiceId,
-      assetUrl,
-      order,
-    }), ctx);
-    await this.connection.getRepository(ctx, Invoice).save(invoice);
+    Logger.verbose(`Persisted file "${filename}" under "${assetUrl}"`, loggerCtx)
 
-    // TODO custom fields relations?
+    const invoice = await this.connection.getRepository(ctx, Invoice).save(
+      await this.channelService.assignToCurrentChannel(
+        new Invoice({
+          sequentialId: sequentialId,
+          assetUrl,
+          order,
+        }),
+        ctx
+      )
+    );
+    Logger.verbose(`Created new Invoice(${invoice.id})`);
+
+    // TODO custom fields & relations?
     await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", input));
-
-    return {
-      invoiceId,
-      assetUrl,
-    };
-  }
-
-  /**
-   * #TODO
-   */
-  public async createCreditNote(ctx: RequestContext, input: CreateCreditNoteInput): Promise<CreateInvoiceResult> {
-    const sequentialId = await this.getNextSequentialId(ctx, SequentialIdKind.CREDIT_NOTE);
-    // TODO potentially add the snapshot to strategy param?
-    const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, sequentialId, input.invoiceId)
-    const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
-
-    const creditNote = await this.channelService.assignToCurrentChannel(new CreditNote({
-      sequentialId,
-      assetUrl,
-      invoice: { id: input.invoiceId },
-    }), ctx);
-    await this.connection.getRepository(ctx, CreditNote).save(creditNote);
-
-    // TODO custom fields relations?
-    await this.eventBus.publish(new CreditNoteEvent(ctx, creditNote, "created", input));
 
     return {
       invoiceId: sequentialId,
       assetUrl,
     };
+  }
+
+  /** 
+ * Must be called inside an active transaction (ctx must carry one).
+ * The `pessimistic_write` lock serialises concurrent callers: the second
+ * caller blocks on `SELECT FOR UPDATE` until the first transaction commits
+ * or rolls back, then reads the already-updated (or reverted) sequence.
+ * 
+ * @param sequenceCode The `code` column of an {@link InvoiceSequence}
+ * 
+ * Current implementation lacks support for custom plugin authors to reuse this function.
+ * Lets make it work first and see then.
+ */
+  private async getNextSequentialId(
+    ctx: RequestContext,
+    order: Order,
+    sequenceCode: typeof DEFAULT_SEQUENCE_CODE_INVOICE | typeof DEFAULT_SEQUENCE_CODE_CREDIT,
+  ): Promise<string> {
+    const sequenceRepo = this.connection.getRepository(ctx, InvoiceSequence);
+    const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
+    const channelId = this.options.perChannelConfig ? ctx.channelId : (await this.channelService.getDefaultChannel(ctx)).id;
+
+    let sequenceRow = await sequenceRepo.findOne({
+      where: {
+        ownerChannelId: channelId,
+        code: sequenceCode,
+      },
+      ...(supportsRowLock ? { lock: { mode: "pessimistic_write" } } : {}),
+    });
+
+    // For default use cases we lazily recover from failures
+    if (!sequenceRow) {
+      let initialSequence: number | undefined;
+      switch (sequenceCode) {
+        case DEFAULT_SEQUENCE_CODE_INVOICE: {
+          initialSequence = this.options.initialInvoiceSequence;
+          break;
+        }
+        case DEFAULT_SEQUENCE_CODE_CREDIT: {
+          initialSequence = this.options.initialCreditNoteSequence;
+          break;
+        }
+        default: {
+          const error = new Error(`No InvoiceSequence found for channel "${channelId}" with code "${sequenceCode}"`);
+          Logger.error(error.message, loggerCtx, error.stack);
+          throw error;
+        }
+      }
+
+      Logger.warn(`No InvoiceSequence found for channel "${channelId}". Creating a default row with code "${sequenceCode}"`, loggerCtx);
+      const newSequence = await this.channelService.assignToCurrentChannel(
+        new InvoiceSequence({
+          ownerChannelId: channelId,
+          code: sequenceCode,
+          sequence: initialSequence,
+        }),
+        ctx
+      );
+
+      sequenceRow = await sequenceRepo.save(newSequence);
+    }
+
+    let prefix: string;
+    let paddedSequence: string;
+
+    switch (sequenceCode) {
+      case DEFAULT_SEQUENCE_CODE_INVOICE: {
+        prefix = await this.options.invoiceIdPrefixGenerationStrategy.generate(ctx, order);
+        paddedSequence = sequenceRow.sequence.toString().padStart(this.options.invoiceSequenceLeftPadCount ?? 0, "0");
+        break;
+      }
+      case DEFAULT_SEQUENCE_CODE_CREDIT: {
+        prefix = await this.options.creditNoteIdPrefixGenerationStrategy.generate(ctx, order);
+        paddedSequence = sequenceRow.sequence.toString().padStart(this.options.creditNoteSequenceLeftPadCount ?? 0, "0");
+        break;
+      }
+      default: {
+        throw new Error(`Unreachable - Unknown SequenceCode "${sequenceCode}" in Sequential ID generation`)
+      }
+    }
+
+    sequenceRow.sequence += 1;
+    await sequenceRepo.save(sequenceRow);
+
+    return `${prefix}${paddedSequence}`;
   }
 }

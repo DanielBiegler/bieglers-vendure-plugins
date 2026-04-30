@@ -11,12 +11,12 @@ export { InvoicesPlugin } from "./plugin";
 
 export * from "./entities/CreditNote.entity";
 export * from "./entities/Invoice.entity";
-export * from "./entities/InvoiceConfig.entity";
+export * from "./entities/Sequence.entity";
 
 export * from "./services/Invoice.service";
 
+export * from "./constants";
 export * from "./events";
-
 export * from "./types";
 
 export * from "./config/DebugFileGenerationStrategy";

@@ -86,7 +86,17 @@ The aim is to provide a sound foundation with some practical, generally useful i
 
 ### Guides
 
-- TODO
+#### Understanding invoice flows
+
+This is for a regular [order process][orderprocess], applicable to most Vendure instances.
+
+1. Order gets created and awaits payment
+2. Payment authorizes and or settles
+3. Due to state-change, the [`OrderPlacedStrategy`][orderplacedstrategy] gets called and publishes the [`OrderPlacedEvent`][events]
+   1. **# TODO what about additional payment?**
+4. `InvoiceService` reacts to this event and queues a job for the creation
+5. Asynchronously a worker will pick up this job and create and persist an invoice for this order
+6. **# TODO: think about email sending**
 
 ### Resources
 
@@ -100,18 +110,20 @@ The aim is to provide a sound foundation with some practical, generally useful i
 
 <!-- Link references -->
 
-[customfields]: https://docs.vendure.io/guides/developer-guide/custom-fields/
 [channelaware]: https://docs.vendure.io/guides/developer-guide/channel-aware/
 [channels]: https://docs.vendure.io/guides/core-concepts/channels/
-[migrations]: https://docs.vendure.io/guides/developer-guide/migrations/
 [configuration]: https://docs.vendure.io/guides/developer-guide/configuration/
-[plugins]: https://docs.vendure.io/guides/developer-guide/plugins/
+[customfields]: https://docs.vendure.io/guides/developer-guide/custom-fields/
 [custompermissions]: https://docs.vendure.io/guides/developer-guide/custom-permissions/
-[translatable]: https://docs.vendure.io/guides/developer-guide/translatable/
-[events]: https://docs.vendure.io/guides/developer-guide/events/
+[entity]: https://docs.vendure.io/guides/developer-guide/database-entity/
 [eventbus]: https://docs.vendure.io/reference/typescript-api/events/event-bus/
-[roles]: https://docs.vendure.io/guides/core-concepts/auth/#roles--permissions
+[events]: https://docs.vendure.io/guides/developer-guide/events/
 [extendapi]: https://docs.vendure.io/guides/developer-guide/extend-graphql-api/
 [jobqueue]: https://docs.vendure.io/guides/developer-guide/worker-job-queue/
-[entity]: https://docs.vendure.io/guides/developer-guide/database-entity/
+[migrations]: https://docs.vendure.io/guides/developer-guide/migrations/
+[orderplacedstrategy]: https://docs.vendure.io/current/core/reference/typescript-api/orders/order-placed-strategy
+[orderprocess]: https://docs.vendure.io/current/core/core-concepts/orders#the-order-process
+[plugins]: https://docs.vendure.io/guides/developer-guide/plugins/
+[roles]: https://docs.vendure.io/guides/core-concepts/auth/#roles--permissions
 [scheduledtasks]: https://docs.vendure.io/guides/developer-guide/scheduled-tasks/
+[translatable]: https://docs.vendure.io/guides/developer-guide/translatable/

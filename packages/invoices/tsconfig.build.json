@@ -3,8 +3,10 @@
   "compilerOptions": {
     "strictNullChecks": true,
     "skipLibCheck": true,
-    "outDir": "./dist"
+    "strict": false,
+    "outDir": "./dist",
+    "declaration": true
   },
   "files": ["./src/index.ts"],
-  "exclude": ["./src/ui/**/*"]
+  "exclude": ["./src/dashboard/**/*", "./src/gql/**/*"]
 }

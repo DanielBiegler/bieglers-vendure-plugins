@@ -6,7 +6,7 @@ import { adminApiExtensions } from "./api/api-extensions";
 import { PLUGIN_INIT_OPTIONS } from "./constants";
 import { CreditNote } from './entities/CreditNote.entity';
 import { Invoice } from "./entities/Invoice.entity";
-import { InvoiceConfig } from "./entities/InvoiceConfig.entity";
+import { InvoiceSequence } from "./entities/Sequence.entity";
 import { InvoiceService } from "./services/Invoice.service";
 import { InvoicesOptions } from "./types";
 
@@ -17,6 +17,8 @@ import { InvoicesOptions } from "./types";
  */
 @VendurePlugin({
   imports: [PluginCommonModule],
+  dashboard: './dashboard/index.tsx',
+  compatibility: ">=3.2.0",
   providers: [
     {
       provide: PLUGIN_INIT_OPTIONS,
@@ -25,7 +27,7 @@ import { InvoicesOptions } from "./types";
     InvoiceService,
   ],
   entities: [
-    InvoiceConfig,
+    InvoiceSequence,
     Invoice,
     CreditNote,
   ],
@@ -33,7 +35,6 @@ import { InvoicesOptions } from "./types";
     resolvers: [AdminResolver],
     schema: adminApiExtensions,
   },
-  compatibility: ">=3.0.0",
 })
 export class InvoicesPlugin implements OnApplicationBootstrap, OnApplicationShutdown {
   /** @internal */

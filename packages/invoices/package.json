@@ -5,8 +5,10 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
+    "dev:dashboard": "vite --clearScreen false",
+    "build": "rimraf dist && tsc -p ./tsconfig.build.json # TODO copy ui",
+    "build:dashboard": "vite build",
     "codegen": "ts-node generate-types.ts",
-    "build": "rimraf dist && tsc -p ./tsconfig.build.json",
     "e2e": "cross-env PACKAGE=invoices vitest -c ../../utils/e2e/vitest.config.mts"
   },
   "author": {
