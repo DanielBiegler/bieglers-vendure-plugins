@@ -9,7 +9,7 @@ import {
   RequestContext,
   TransactionalConnection
 } from "@vendure/core";
-import { createTestEnvironment } from "@vendure/testing";
+import { createTestEnvironment, E2E_DEFAULT_CHANNEL_TOKEN } from "@vendure/testing";
 import path from "path";
 import { Stream } from "stream";
 import { afterAll, beforeAll, describe, test } from "vitest";
@@ -88,10 +88,10 @@ class TestStorageStrategy implements AssetStorageStrategy {
   }
 }
 
-describe("InvoicesPlugin", { concurrent: true }, () => {
+describe("InvoicesPlugin", { sequential: true }, () => {
 
-  const INITIAL_SEQUENCE_INVOICE = 1336;
-  const INITIAL_SEQUENCE_CREDITNOTE = 68;
+  const INITIAL_SEQUENCE_INVOICE = 1337;
+  const INITIAL_SEQUENCE_CREDITNOTE = 69;
   const INVOICE_PREFIX = "SINGLE-VENDOR-INVOICE";
   const CREDITNOTE_PREFIX = "SINGLE-VENDOR-CREDIT";
 
@@ -251,6 +251,57 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
       });
 
       expect(seqAfter.sequence).toBe(INITIAL_SEQUENCE_INVOICE + 1);
+    });
+
+    test("invoice sequence on the default channel is incremented when an order is placed on the default channel", async ({ expect }) => {
+      const channelService = server.app.get(ChannelService);
+      const connection = server.app.get(TransactionalConnection);
+      const defaultChannel = await channelService.getDefaultChannel();
+
+      shopClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
+
+      const seqBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
+        ownerChannelId: defaultChannel.id,
+        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+      });
+
+      const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
+      const variantId = product.variants[0].id;
+
+      const { addItemToOrder } = await shopClient.query(ADD_ITEM_TO_ORDER, { productVariantId: variantId, quantity: 1 });
+      expect(addItemToOrder.errorCode, `ADD_ITEM_TO_ORDER failed: ${JSON.stringify(addItemToOrder)}`).toBeUndefined();
+
+      await shopClient.query(SET_CUSTOMER_FOR_ORDER, {
+        input: { firstName: "Test", lastName: "User", emailAddress: "test@example.com" },
+      });
+      await shopClient.query(SET_ORDER_SHIPPING_ADDRESS, {
+        input: { streetLine1: "Example Street 123", countryCode: "GB" },
+      });
+
+      const { eligibleShippingMethods } = await shopClient.query(GET_ELIGIBLE_SHIPPING_METHODS);
+      expect(eligibleShippingMethods.length, "No eligible shipping methods found for default channel").toBeGreaterThan(0);
+
+      await shopClient.query(SET_ORDER_SHIPPING_METHOD, {
+        shippingMethodId: [eligibleShippingMethods[0].id],
+      });
+
+      const { transitionOrderToState } = await shopClient.query(TRANSITION_ORDER_TO_STATE, { state: "ArrangingPayment" });
+      expect(transitionOrderToState.state, `TRANSITION_ORDER_TO_STATE failed: ${JSON.stringify(transitionOrderToState)}`).toBe("ArrangingPayment");
+
+      const { addPaymentToOrder } = await shopClient.query(ADD_PAYMENT_TO_ORDER, {
+        input: { method: TEST_PAYMENT_METHOD_CODE, metadata: {} },
+      });
+      expect(addPaymentToOrder.state, `ADD_PAYMENT_TO_ORDER failed: ${JSON.stringify(addPaymentToOrder)}`).toBe("PaymentSettled");
+
+      await awaitRunningJobs(adminClient);
+      await assertNoFailedJobs(adminClient);
+
+      const seqAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
+        ownerChannelId: defaultChannel.id,
+        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+      });
+
+      expect(seqAfter.sequence).toBe(seqBefore.sequence + 1);
     });
   });
 });
