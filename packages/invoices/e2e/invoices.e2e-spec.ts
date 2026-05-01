@@ -182,7 +182,6 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     expect(invoices).toHaveLength(1);
     expect(invoices[0].sequentialId).toBe(`${INVOICE_PREFIX}${INITIAL_SEQUENCE_INVOICE}`);
 
-    console.log("-----", await connection.rawConnection.getRepository(InvoiceSequence).find())
     const configAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
       ownerChannelId: defaultChannel.id,
       code: DEFAULT_SEQUENCE_CODE_INVOICE,
