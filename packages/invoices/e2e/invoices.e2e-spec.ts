@@ -2,6 +2,7 @@ import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
 import {
   AssetStorageStrategy,
+  ChannelService,
   ID,
   LanguageCode,
   PaymentMethodHandler,
@@ -15,6 +16,7 @@ import { afterAll, beforeAll, describe, test } from "vitest";
 import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
+import { DEFAULT_SEQUENCE_CODE_INVOICE } from "../src";
 import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
 import { InvoiceFileGenerationResult, InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
 import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
@@ -97,12 +99,15 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
       }),
       InvoicesPlugin.init({
         invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy(INVOICE_PREFIX),
-        creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("CREDIT"),
+        creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy(CREDITNOTE_PREFIX),
         invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
         creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
         storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "test-invoices")),
         invoiceSequenceLeftPadCount: 4,
+        creditNoteSequenceLeftPadCount: 4,
         subscribeToOrderPlacedEvent: true,
+        initialInvoiceSequence: INITIAL_SEQUENCE_INVOICE,
+        initialCreditNoteSequence: INITIAL_SEQUENCE_CREDITNOTE,
       }),
     ],
   });
@@ -136,9 +141,17 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
   // then this e2e should test sequence sharing over channels
 
   test("creates an invoice when an order is placed", async ({ expect }) => {
+    const channelService = server.app.get(ChannelService);
     const connection = server.app.get(TransactionalConnection);
-    const configBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({});
-    expect(configBefore?.sequence).toBe(INITIAL_SEQUENCE_INVOICE);
+    const defaultChannel = await channelService.getDefaultChannel();
+
+    const configBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneBy({
+      ownerChannelId: defaultChannel.id,
+      code: DEFAULT_SEQUENCE_CODE_INVOICE,
+    });
+    // Should be null because this is the first time for this Channel, the sequences
+    // are supposed to self-heal when not existing!
+    expect(configBefore).toBeNull();
 
     const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
     const variantId = product.variants[0].id;
@@ -165,12 +178,15 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     await awaitRunningJobs(adminClient);
     await assertNoFailedJobs(adminClient);
 
-    const nextInvoiceSeq = INITIAL_SEQUENCE_INVOICE + 1;
     const invoices = await connection.rawConnection.getRepository(Invoice).find();
     expect(invoices).toHaveLength(1);
-    expect(invoices[0].sequentialId).toBe(`${INVOICE_PREFIX}${nextInvoiceSeq}`);
+    expect(invoices[0].sequentialId).toBe(`${INVOICE_PREFIX}${INITIAL_SEQUENCE_INVOICE}`);
 
-    const configAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({});
-    expect(configAfter?.sequence).toBe(nextInvoiceSeq);
+    console.log("-----", await connection.rawConnection.getRepository(InvoiceSequence).find())
+    const configAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
+      ownerChannelId: defaultChannel.id,
+      code: DEFAULT_SEQUENCE_CODE_INVOICE,
+    });
+    expect(configAfter?.sequence).toBe(INITIAL_SEQUENCE_INVOICE + 1);
   });
 });
