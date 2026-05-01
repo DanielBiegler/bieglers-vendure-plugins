@@ -10,3 +10,101 @@ export const CREATE_PAYMENT_METHOD = gql`
     }
   }
 `;
+
+export const GET_ACTIVE_CHANNEL = gql`
+  query GetActiveChannel {
+    activeChannel {
+      id
+      defaultCurrencyCode
+    }
+  }
+`;
+
+export const GET_ZONES = gql`
+  query GetZones {
+    zones {
+      items {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const GET_SHIPPING_METHODS = gql`
+  query GetShippingMethods {
+    shippingMethods {
+      items {
+        id
+      }
+    }
+  }
+`;
+
+export const GET_PAYMENT_METHODS = gql`
+  query GetPaymentMethods {
+    paymentMethods {
+      items {
+        id
+      }
+    }
+  }
+`;
+
+export const CREATE_CHANNEL = gql`
+  mutation CreateChannel($input: CreateChannelInput!) {
+    createChannel(input: $input) {
+      ... on Channel {
+        id
+        code
+        token
+      }
+      ... on LanguageNotAvailableError {
+        errorCode
+        message
+      }
+    }
+  }
+`;
+
+export const ASSIGN_SHIPPING_METHODS_TO_CHANNEL = gql`
+  mutation AssignShippingMethodsToChannel($input: AssignShippingMethodsToChannelInput!) {
+    assignShippingMethodsToChannel(input: $input) {
+      id
+    }
+  }
+`;
+
+export const ASSIGN_PAYMENT_METHODS_TO_CHANNEL = gql`
+  mutation AssignPaymentMethodsToChannel($input: AssignPaymentMethodsToChannelInput!) {
+    assignPaymentMethodsToChannel(input: $input) {
+      id
+    }
+  }
+`;
+
+export const ASSIGN_PRODUCTS_TO_CHANNEL = gql`
+  mutation AssignProductsToChannel($input: AssignProductsToChannelInput!) {
+    assignProductsToChannel(input: $input) {
+      id
+    }
+  }
+`;
+
+export const GET_STOCK_LOCATIONS = gql`
+  query GetStockLocations {
+    stockLocations {
+      items {
+        id
+      }
+    }
+  }
+`;
+
+export const ASSIGN_STOCK_LOCATIONS_TO_CHANNEL = gql`
+  mutation AssignStockLocationsToChannel($input: AssignStockLocationsToChannelInput!) {
+    assignStockLocationsToChannel(input: $input) {
+      id
+    }
+  }
+`;

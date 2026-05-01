@@ -20,10 +20,21 @@ import { DEFAULT_SEQUENCE_CODE_INVOICE } from "../src";
 import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
 import { InvoiceFileGenerationResult, InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
 import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
-import { Invoice } from "../src/entities/Invoice.entity";
 import { InvoiceSequence } from "../src/entities/Sequence.entity";
 import { InvoicesPlugin } from "../src/plugin";
-import { CREATE_PAYMENT_METHOD } from "./graphql/admin-e2e-definitions";
+import {
+  ASSIGN_PAYMENT_METHODS_TO_CHANNEL,
+  ASSIGN_PRODUCTS_TO_CHANNEL,
+  ASSIGN_SHIPPING_METHODS_TO_CHANNEL,
+  ASSIGN_STOCK_LOCATIONS_TO_CHANNEL,
+  CREATE_CHANNEL,
+  CREATE_PAYMENT_METHOD,
+  GET_ACTIVE_CHANNEL,
+  GET_PAYMENT_METHODS,
+  GET_SHIPPING_METHODS,
+  GET_STOCK_LOCATIONS,
+  GET_ZONES,
+} from "./graphql/admin-e2e-definitions";
 import {
   ADD_ITEM_TO_ORDER,
   ADD_PAYMENT_TO_ORDER,
@@ -81,8 +92,8 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
 
   const INITIAL_SEQUENCE_INVOICE = 1336;
   const INITIAL_SEQUENCE_CREDITNOTE = 68;
-  const INVOICE_PREFIX = "INVOICE";
-  const CREDITNOTE_PREFIX = "CREDIT";
+  const INVOICE_PREFIX = "SINGLE-VENDOR-INVOICE";
+  const CREDITNOTE_PREFIX = "SINGLE-VENDOR-CREDIT";
 
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
@@ -108,6 +119,9 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
         subscribeToOrderPlacedEvent: true,
         initialInvoiceSequence: INITIAL_SEQUENCE_INVOICE,
         initialCreditNoteSequence: INITIAL_SEQUENCE_CREDITNOTE,
+
+        // IMPORTANT - This e2e suite specifically tests sharing the sequence across channels!
+        perChannelConfig: false,
       }),
     ],
   });
@@ -137,55 +151,106 @@ describe("InvoicesPlugin", { concurrent: true }, () => {
     await server.destroy();
   });
 
-  // TODO multi vendor test with perChannelConfig, probably own file
-  // then this e2e should test sequence sharing over channels
+  describe("sequence sharing across channels", () => {
+    let newChannelToken: string;
 
-  test("creates an invoice when an order is placed", async ({ expect }) => {
-    const channelService = server.app.get(ChannelService);
-    const connection = server.app.get(TransactionalConnection);
-    const defaultChannel = await channelService.getDefaultChannel();
+    beforeAll(async () => {
+      const [{ zones }, { shippingMethods }, { paymentMethods }, { activeChannel }, { stockLocations }] = await Promise.all([
+        adminClient.query(GET_ZONES),
+        adminClient.query(GET_SHIPPING_METHODS),
+        adminClient.query(GET_PAYMENT_METHODS),
+        adminClient.query(GET_ACTIVE_CHANNEL),
+        adminClient.query(GET_STOCK_LOCATIONS),
+      ]);
 
-    const configBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneBy({
-      ownerChannelId: defaultChannel.id,
-      code: DEFAULT_SEQUENCE_CODE_INVOICE,
+      const europeZone = zones.items.find((z: any) => z.name === "Europe");
+
+      const { createChannel } = await adminClient.query(CREATE_CHANNEL, {
+        input: {
+          code: "seq-sharing-channel",
+          token: "seq-sharing-channel-token",
+          defaultLanguageCode: "en",
+          defaultCurrencyCode: activeChannel.defaultCurrencyCode,
+          pricesIncludeTax: false,
+          defaultTaxZoneId: europeZone.id,
+          defaultShippingZoneId: europeZone.id,
+        },
+      });
+
+      if (!createChannel.token) {
+        throw new Error(`createChannel failed: ${JSON.stringify(createChannel)}`);
+      }
+      newChannelToken = createChannel.token;
+
+      await adminClient.query(ASSIGN_SHIPPING_METHODS_TO_CHANNEL, {
+        input: { channelId: createChannel.id, shippingMethodIds: shippingMethods.items.map((s: any) => s.id) },
+      });
+      await adminClient.query(ASSIGN_PAYMENT_METHODS_TO_CHANNEL, {
+        input: { channelId: createChannel.id, paymentMethodIds: paymentMethods.items.map((p: any) => p.id) },
+      });
+      await adminClient.query(ASSIGN_PRODUCTS_TO_CHANNEL, {
+        input: { channelId: createChannel.id, productIds: ["T_1"] },
+      });
+      await adminClient.query(ASSIGN_STOCK_LOCATIONS_TO_CHANNEL, {
+        input: { channelId: createChannel.id, stockLocationIds: stockLocations.items.map((s: any) => s.id) },
+      });
     });
-    // Should be null because this is the first time for this Channel, the sequences
-    // are supposed to self-heal when not existing!
-    expect(configBefore).toBeNull();
 
-    const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
-    const variantId = product.variants[0].id;
-
-    await shopClient.query(ADD_ITEM_TO_ORDER, { productVariantId: variantId, quantity: 1 });
-    await shopClient.query(SET_CUSTOMER_FOR_ORDER, {
-      input: { firstName: "Test", lastName: "User", emailAddress: "test@example.com" },
-    });
-    await shopClient.query(SET_ORDER_SHIPPING_ADDRESS, {
-      input: { streetLine1: "Example Street 123", countryCode: "GB" },
+    afterAll(() => {
+      shopClient.setChannelToken(null);
     });
 
-    const { eligibleShippingMethods } = await shopClient.query(GET_ELIGIBLE_SHIPPING_METHODS);
-    await shopClient.query(SET_ORDER_SHIPPING_METHOD, {
-      shippingMethodId: [eligibleShippingMethods[0].id],
+    test("invoice sequence on the default channel is incremented when an order is placed on a different channel", async ({ expect }) => {
+      const channelService = server.app.get(ChannelService);
+      const connection = server.app.get(TransactionalConnection);
+      const defaultChannel = await channelService.getDefaultChannel();
+
+      const seqBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneBy({
+        ownerChannelId: defaultChannel.id,
+        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+      });
+      // Should be null because this is the first time for this Channel, the sequences are supposed to self-heal when not existing!
+      expect(seqBefore).toBeNull();
+
+      shopClient.setChannelToken(newChannelToken);
+
+      const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
+      const variantId = product.variants[0].id;
+
+      const { addItemToOrder } = await shopClient.query(ADD_ITEM_TO_ORDER, { productVariantId: variantId, quantity: 1 });
+      expect(addItemToOrder.errorCode, `ADD_ITEM_TO_ORDER failed: ${JSON.stringify(addItemToOrder)}`).toBeUndefined();
+
+      await shopClient.query(SET_CUSTOMER_FOR_ORDER, {
+        input: { firstName: "Test", lastName: "User", emailAddress: "test@example.com" },
+      });
+      await shopClient.query(SET_ORDER_SHIPPING_ADDRESS, {
+        input: { streetLine1: "Example Street 123", countryCode: "GB" },
+      });
+
+      const { eligibleShippingMethods } = await shopClient.query(GET_ELIGIBLE_SHIPPING_METHODS);
+      expect(eligibleShippingMethods.length, "No eligible shipping methods found for new channel").toBeGreaterThan(0);
+
+      await shopClient.query(SET_ORDER_SHIPPING_METHOD, {
+        shippingMethodId: [eligibleShippingMethods[0].id],
+      });
+
+      const { transitionOrderToState } = await shopClient.query(TRANSITION_ORDER_TO_STATE, { state: "ArrangingPayment" });
+      expect(transitionOrderToState.state, `TRANSITION_ORDER_TO_STATE failed: ${JSON.stringify(transitionOrderToState)}`).toBe("ArrangingPayment");
+
+      const { addPaymentToOrder } = await shopClient.query(ADD_PAYMENT_TO_ORDER, {
+        input: { method: TEST_PAYMENT_METHOD_CODE, metadata: {} },
+      });
+      expect(addPaymentToOrder.state, `ADD_PAYMENT_TO_ORDER failed: ${JSON.stringify(addPaymentToOrder)}`).toBe("PaymentSettled");
+
+      await awaitRunningJobs(adminClient);
+      await assertNoFailedJobs(adminClient);
+
+      const seqAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
+        ownerChannelId: defaultChannel.id,
+        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+      });
+
+      expect(seqAfter.sequence).toBe(INITIAL_SEQUENCE_INVOICE + 1);
     });
-
-    await shopClient.query(TRANSITION_ORDER_TO_STATE, { state: "ArrangingPayment" });
-    const { addPaymentToOrder } = await shopClient.query(ADD_PAYMENT_TO_ORDER, {
-      input: { method: TEST_PAYMENT_METHOD_CODE, metadata: {} },
-    });
-    expect(addPaymentToOrder.state).toBe("PaymentSettled");
-
-    await awaitRunningJobs(adminClient);
-    await assertNoFailedJobs(adminClient);
-
-    const invoices = await connection.rawConnection.getRepository(Invoice).find();
-    expect(invoices).toHaveLength(1);
-    expect(invoices[0].sequentialId).toBe(`${INVOICE_PREFIX}${INITIAL_SEQUENCE_INVOICE}`);
-
-    const configAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
-      ownerChannelId: defaultChannel.id,
-      code: DEFAULT_SEQUENCE_CODE_INVOICE,
-    });
-    expect(configAfter?.sequence).toBe(INITIAL_SEQUENCE_INVOICE + 1);
   });
 });
