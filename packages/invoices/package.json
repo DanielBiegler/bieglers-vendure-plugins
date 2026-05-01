@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
     "dev:dashboard": "vite --clearScreen false",
+    "preview": "vite preview",
     "build": "rimraf dist && tsc -p ./tsconfig.build.json # TODO copy ui",
     "build:dashboard": "vite build",
     "codegen": "ts-node generate-types.ts",
