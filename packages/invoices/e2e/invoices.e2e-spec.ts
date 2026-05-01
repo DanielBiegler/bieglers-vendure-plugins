@@ -1,24 +1,19 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
 import {
-  AssetStorageStrategy,
   ChannelService,
-  ID,
   LanguageCode,
   PaymentMethodHandler,
-  RequestContext,
   TransactionalConnection
 } from "@vendure/core";
 import { createTestEnvironment, E2E_DEFAULT_CHANNEL_TOKEN } from "@vendure/testing";
 import path from "path";
-import { Stream } from "stream";
 import { afterAll, beforeAll, describe, test } from "vitest";
 import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { DEFAULT_SEQUENCE_CODE_INVOICE } from "../src";
 import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
-import { InvoiceFileGenerationResult, InvoiceFileGenerationStrategy } from "../src/config/InvoiceFileGenerationStrategy";
 import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
 import { InvoiceSequence } from "../src/entities/Sequence.entity";
 import { InvoicesPlugin } from "../src/plugin";
@@ -60,33 +55,6 @@ const testPaymentHandler = new PaymentMethodHandler({
   }),
   settlePayment: () => ({ success: true }),
 });
-
-class TestPdfGenerationStrategy implements InvoiceFileGenerationStrategy {
-  generate(_ctx: RequestContext, _invoiceNumber: string, _orderId: ID): Promise<InvoiceFileGenerationResult> {
-    return Promise.resolve({ filename: "testfile", buffer: Buffer.from("testfile") });
-  }
-}
-
-class TestStorageStrategy implements AssetStorageStrategy {
-  writeFileFromBuffer(fileName: string, _data: Buffer): Promise<string> {
-    return Promise.resolve(`https://cdn.test/${fileName}`);
-  }
-  writeFileFromStream(fileName: string, _data: Stream): Promise<string> {
-    return Promise.resolve(`https://cdn.test/${fileName}`);
-  }
-  readFileToBuffer(_identifier: string): Promise<Buffer> {
-    return Promise.resolve(Buffer.alloc(0));
-  }
-  readFileToStream(_identifier: string): Promise<Stream> {
-    throw new Error("Not needed in tests");
-  }
-  deleteFile(_identifier: string): Promise<void> {
-    return Promise.resolve();
-  }
-  fileExists(_fileName: string): Promise<boolean> {
-    return Promise.resolve(false);
-  }
-}
 
 describe("InvoicesPlugin", { sequential: true }, () => {
 
