@@ -12,16 +12,18 @@ export interface SnapshotStrategy<Snapshot = any> extends InjectableStrategy {
    */
   generate(
     ctx: RequestContext,
+    sequentialId: string,
     order: Order,
   ): Promise<Snapshot>;
 }
 
 export class DebugSnapshotStrategy implements SnapshotStrategy<DebugSnapshot> {
-  async generate(ctx: RequestContext, order: Order): Promise<DebugSnapshot> {
-    return { order }
+  async generate(ctx: RequestContext, sequentialId: string, order: Order): Promise<DebugSnapshot> {
+    return { sequentialId, order }
   }
 }
 
 export type DebugSnapshot = {
+  sequentialId: string,
   order: Order,
 }

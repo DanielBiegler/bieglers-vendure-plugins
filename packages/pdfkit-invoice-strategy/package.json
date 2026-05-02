@@ -1,0 +1,51 @@
+{
+  "name": "@danielbiegler/vendure-pdfkit-invoice-strategy",
+  "description": "PDF generation via PDFKit for @danielbiegler/vendure-plugin-invoices",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "ts-node dev-server/index.ts",
+    "build": "rimraf dist && tsc",
+    "dashboard:build": "vite build",
+    "dashboard:start": "vite start"
+  },
+  "author": {
+    "name": "Daniel Biegler",
+    "url": "https://www.danielbiegler.de"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanielBiegler/bieglers-vendure-plugins/"
+  },
+  "keywords": [
+    "invoices",
+    "credit notes",
+    "pdf",
+    "strategy",
+    "vendure",
+    "plugin",
+    "vendure-plugin",
+    "ecommerce",
+    "headless",
+    "graphql",
+    "typescript"
+  ],
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "LICENSE.txt",
+    "CHANGELOG.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@danielbiegler/vendure-plugin-invoices": "file:../invoices",
+    "pdfkit": "0.18.0"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "0.17.6"
+  }
+}

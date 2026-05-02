@@ -9,7 +9,7 @@ import { SnapshotStrategy } from "./config/SnapshotStrategy";
  * @category Plugin
  */
 export interface InvoicesOptions<Snapshot = unknown> {
-  prefixStrategy: SequentialIdStrategy<Snapshot>,
+  prefixStrategy: SequentialIdStrategy,
   snapshotStrategy: SnapshotStrategy<Snapshot>,
   fileStrategy: FileStrategy<Snapshot>,
 
@@ -51,11 +51,6 @@ export type CreateInvoiceInput = {
 export type CreateCreditNoteInput = {
   invoiceId: ID;
   // Order relation already exists on the invoice itself
-}
-
-export enum SequentialIdKind {
-  INVOICE = "invoice",
-  CREDIT_NOTE = "creditNote",
 }
 
 export type CreateInvoiceResult = {

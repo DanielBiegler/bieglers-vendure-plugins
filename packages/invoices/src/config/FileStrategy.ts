@@ -1,7 +1,7 @@
 import { InjectableStrategy, RequestContext } from "@vendure/core";
 
 export type FileGenerationResult = { filename: string; buffer: Buffer };
-export interface FileStrategy<Snapshot = any> extends InjectableStrategy {
+export interface FileStrategy<Snapshot = unknown> extends InjectableStrategy {
   /**
    * #TODO: parameters are WIP, just exploring implementation details
    * @returns Raw bytes of the generated PDF file
@@ -20,7 +20,7 @@ export class DebugFileStrategy implements FileStrategy {
   async generate(
     ctx: RequestContext,
     sequentialId: string,
-    snapshot: any
+    snapshot: unknown
   ): Promise<FileGenerationResult> {
     const filename = `${sequentialId}.json`;
     const buffer = Buffer.from(JSON.stringify(snapshot, null, 2));

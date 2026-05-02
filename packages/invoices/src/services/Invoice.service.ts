@@ -8,6 +8,7 @@ import {
   ListQueryBuilder,
   ListQueryOptions,
   Logger,
+  Order,
   OrderPlacedEvent,
   OrderService,
   PaginatedList,
@@ -155,8 +156,8 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const order = await this.orderService.findOne(ctx, input.orderId);
     if (!order) throw new EntityNotFoundError("Order", input.orderId);
 
-    const snapshot = await this.options.snapshotStrategy.generate(ctx, order);
-    const sequentialId = await this.getNextSequentialId(ctx, snapshot, DEFAULT_SEQUENCE_CODE);
+    const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, order);
+    const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, order);
 
     const { filename, buffer } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
@@ -199,8 +200,8 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
  */
   private async getNextSequentialId(
     ctx: RequestContext,
-    snapshot: Snapshot,
     sequenceCode: typeof DEFAULT_SEQUENCE_CODE | (string & {}),
+    order: Order,
   ): Promise<string> {
     const sequenceRepo = this.connection.getRepository(ctx, InvoiceSequence);
     const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
@@ -235,7 +236,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
       }
     }
 
-    const prefix = await this.options.prefixStrategy.generatePrefix(ctx, snapshot);
+    const prefix = await this.options.prefixStrategy.generatePrefix(ctx, order);
     const paddedSequence = sequenceRow.sequence.toString().padStart(this.options.sequenceLeftPadCount ?? 0, "0");
     sequenceRow.sequence += 1;
     await sequenceRepo.save(sequenceRow);
