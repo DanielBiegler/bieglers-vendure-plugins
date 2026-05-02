@@ -1,5 +1,7 @@
 # Must
 
+- [ ] Order History Entry für invoice events
+- [ ] File generation braucht kontext für file generation z.b. "invoice" | "cancel" ?
 - [ ] Entity: Invoice, CreditNote, Config(?)
   - Research: Immutibility for compliance - are snapshots needed, reference to Order might not be good enough
   - Research: Sync config lines with channel creations, is event enough?

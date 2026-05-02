@@ -1,5 +1,6 @@
 import { Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, VendureEntity } from "@vendure/core";
 import { Column, Entity, JoinTable, ManyToMany, Unique } from "typeorm";
+import { DEFAULT_SEQUENCE_CODE } from "../constants";
 
 export class CustomInvoiceSequenceFields { }
 
@@ -30,15 +31,9 @@ export class InvoiceSequence extends VendureEntity implements ChannelAware, HasC
    * One example scenario is that in B2B setups you may give a larger client their own
    * separate sequence for long term projects/partnerships.
    * 
-   * TASK(2kjlijhf)
+   * For the basic default usecase, we expect a `"__default"` code.
    * 
-   * For the basic default usecase, we expect two internal codes, namely:
-   * 
-   * - `__default_invoice`
-   * - `__default_credit`
-   * 
-   * @see {@link DEFAULT_CONFIG_CODE_INVOICE}
-   * @see {@link DEFAULT_CONFIG_CODE_CREDIT}
+   * @see {@link DEFAULT_SEQUENCE_CODE}
    */
   @Column({ nullable: false })
   code: string;

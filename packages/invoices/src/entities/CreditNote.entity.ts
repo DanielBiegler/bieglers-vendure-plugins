@@ -5,12 +5,12 @@ import { Invoice } from "./Invoice.entity";
 export class CustomCreditNoteFields { }
 
 @Entity()
-export class CreditNote extends VendureEntity implements ChannelAware, HasCustomFields {
-  constructor(input?: DeepPartial<CreditNote>) {
+export class CreditNote<Snapshot = any> extends VendureEntity implements ChannelAware, HasCustomFields {
+  constructor(input?: DeepPartial<CreditNote<Snapshot>>) {
     super(input);
   }
 
-  @ManyToOne(() => Invoice, base => base.creditNotes)
+  @ManyToOne(() => Invoice, base => base.creditNotes, { nullable: false })
   invoice: Invoice;
 
   /**
@@ -18,13 +18,20 @@ export class CreditNote extends VendureEntity implements ChannelAware, HasCustom
    * 
    * Format: Optional prefix, followed by a gapless sequential number
    * 
-   * @example "CREDIT123"
+   * @example "EXAMPLE0123"
    */
   @Column({ nullable: false, unique: true })
   sequentialId: string;
 
   @Column({ nullable: false, unique: true })
   assetUrl: string;
+
+  /**
+   * Customizable payload that shall serve as readonly snapshot with all the data
+   * needed to generate the accompanying legal document.
+   */
+  @Column("simple-json", { nullable: false })
+  snapshot: Snapshot;
 
   @ManyToMany(() => Channel)
   @JoinTable()

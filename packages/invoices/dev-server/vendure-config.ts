@@ -4,9 +4,9 @@ import { DefaultLogger, DefaultSearchPlugin, dummyPaymentHandler, LanguageCode, 
 import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import "dotenv/config";
 import path from "path";
-import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
-import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
-import { InvoicesPlugin } from "../src/index";
+import { DebugFileStrategy } from "../src/config/FileStrategy";
+import { StaticSequentialIdStrategy } from "../src/config/SequentialIdStrategy";
+import { DebugSnapshotStrategy, InvoicesPlugin } from "../src/index";
 
 const apiPort = process.env.API_PORT || 3000;
 
@@ -50,13 +50,12 @@ export const config: VendureConfig = {
       assetUploadDir: path.join(__dirname, "assets"),
       storageStrategyFactory: undefined,
     }),
-    InvoicesPlugin.init({
-      invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("INVOICE"),
-      creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy("CREDIT"),
-      invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
-      creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
+    InvoicesPlugin.init<TMP_TEST_Snapshot>({
+      prefixStrategy: new StaticSequentialIdStrategy("INVOICE"),
+      fileStrategy: new DebugFileStrategy(),
       storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "invoices")),
       subscribeToOrderPlacedEvent: true,
+      snapshotStrategy: new DebugSnapshotStrategy()
     }),
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({
@@ -65,3 +64,5 @@ export const config: VendureConfig = {
     }),
   ],
 };
+
+type TMP_TEST_Snapshot = {}

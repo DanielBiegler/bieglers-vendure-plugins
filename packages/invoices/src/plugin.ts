@@ -8,7 +8,7 @@ import { CreditNote } from './entities/CreditNote.entity';
 import { Invoice } from "./entities/Invoice.entity";
 import { InvoiceSequence } from "./entities/Sequence.entity";
 import { InvoiceService } from "./services/Invoice.service";
-import { InvoicesOptions } from "./types";
+import { InvoicesOptions } from './types';
 
 /**
  * // TODO
@@ -37,8 +37,9 @@ import { InvoicesOptions } from "./types";
   },
 })
 export class InvoicesPlugin implements OnApplicationBootstrap, OnApplicationShutdown {
-  /** @internal */
-  static options: InvoicesOptions;
+  // Cannot use class-generic here due to options being static! Error: TS2302
+  static options: InvoicesOptions<unknown>;
+
   constructor(private moduleRef: ModuleRef) { }
 
   /**
@@ -49,7 +50,7 @@ export class InvoicesPlugin implements OnApplicationBootstrap, OnApplicationShut
    * InvoicesPlugin.init({}),
    * ```
    */
-  static init(options: InvoicesOptions) {
+  static init<Snapshot = unknown>(options: InvoicesOptions<Snapshot>) {
     this.options = options;
     return InvoicesPlugin;
   }

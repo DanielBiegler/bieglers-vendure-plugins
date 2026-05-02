@@ -5,7 +5,7 @@ import { CreditNote } from "./CreditNote.entity";
 export class CustomInvoiceFields { }
 
 @Entity()
-export class Invoice extends VendureEntity implements ChannelAware, HasCustomFields {
+export class Invoice<Snapshot = any> extends VendureEntity implements ChannelAware, HasCustomFields {
   constructor(input?: DeepPartial<Invoice>) {
     super(input);
   }
@@ -15,6 +15,13 @@ export class Invoice extends VendureEntity implements ChannelAware, HasCustomFie
 
   @ManyToOne(() => Order, { nullable: false })
   order: Order;
+
+  /**
+   * Customizable payload that shall serve as readonly snapshot with all the data
+   * needed to generate the accompanying legal document.
+   */
+  @Column("simple-json", { nullable: false })
+  snapshot: Snapshot;
 
   /**
    * Unique identifier used for accounting

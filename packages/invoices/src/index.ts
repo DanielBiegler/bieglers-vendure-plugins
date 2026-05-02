@@ -19,8 +19,6 @@ export * from "./constants";
 export * from "./events";
 export * from "./types";
 
-export * from "./config/DebugFileGenerationStrategy";
-export * from "./config/InvoiceFileGenerationStrategy";
-export * from "./config/SequentialIdPrefixGenerationStrategy";
-export * from "./config/StaticSequentialIdPrefixGenerationStrategy";
-
+export * from "./config/FileStrategy";
+export * from "./config/SequentialIdStrategy";
+export * from "./config/SnapshotStrategy";

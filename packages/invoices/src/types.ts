@@ -1,18 +1,17 @@
 import { AssetStorageStrategy, ID } from "@vendure/core";
-import { InvoiceFileGenerationStrategy } from "./config/InvoiceFileGenerationStrategy";
-import { SequentialIdPrefixGenerationStrategy } from "./config/SequentialIdPrefixGenerationStrategy";
+import { FileStrategy } from "./config/FileStrategy";
+import { SequentialIdStrategy } from "./config/SequentialIdStrategy";
+import { SnapshotStrategy } from "./config/SnapshotStrategy";
 
 /**
  * These are the configuration options for the plugin.
  * 
  * @category Plugin
  */
-export interface InvoicesOptions {
-  invoiceIdPrefixGenerationStrategy: SequentialIdPrefixGenerationStrategy,
-  creditNoteIdPrefixGenerationStrategy: SequentialIdPrefixGenerationStrategy,
-
-  invoiceFileGenerationStrategy: InvoiceFileGenerationStrategy,
-  creditNoteFileGenerationStrategy: InvoiceFileGenerationStrategy,
+export interface InvoicesOptions<Snapshot = unknown> {
+  prefixStrategy: SequentialIdStrategy<Snapshot>,
+  snapshotStrategy: SnapshotStrategy<Snapshot>,
+  fileStrategy: FileStrategy<Snapshot>,
 
   /**
    * Used to persist, check and read generated files.
@@ -24,14 +23,10 @@ export interface InvoicesOptions {
   storageStrategy: AssetStorageStrategy,
 
   /** If defined, left-pads the sequence with zeroes. */
-  invoiceSequenceLeftPadCount?: number,
-  /** If defined, left-pads the sequence with zeroes. */
-  creditNoteSequenceLeftPadCount?: number,
+  sequenceLeftPadCount?: number,
 
   /** Starting value for the invoice sequence when a config is auto-created. @default 1 */
-  initialInvoiceSequence?: number,
-  /** Starting value for the credit note sequence when a config is auto-created. @default 1 */
-  initialCreditNoteSequence?: number,
+  initialSequence?: number,
 
   /**
    * By default, sequential IDs used in invoices/etc. get shared across {@link Channel}s
@@ -64,7 +59,8 @@ export enum SequentialIdKind {
 }
 
 export type CreateInvoiceResult = {
-  invoiceId: string;
+  invoiceId: ID;
+  sequentialId: string;
   assetUrl: string;
 }
 

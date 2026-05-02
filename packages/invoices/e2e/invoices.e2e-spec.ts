@@ -12,9 +12,9 @@ import { afterAll, beforeAll, describe, test } from "vitest";
 import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { DEFAULT_SEQUENCE_CODE_INVOICE } from "../src";
-import { DebugFileGenerationStrategy } from "../src/config/DebugFileGenerationStrategy";
-import { StaticSequentialIdPrefixGenerationStrategy } from "../src/config/StaticSequentialIdPrefixGenerationStrategy";
+import { DebugSnapshotStrategy, DEFAULT_SEQUENCE_CODE } from "../src";
+import { DebugFileStrategy } from "../src/config/FileStrategy";
+import { StaticSequentialIdStrategy } from "../src/config/SequentialIdStrategy";
 import { InvoiceSequence } from "../src/entities/Sequence.entity";
 import { InvoicesPlugin } from "../src/plugin";
 import {
@@ -77,16 +77,13 @@ describe("InvoicesPlugin", { sequential: true }, () => {
         assetUploadDir: path.join(__dirname, "fixtures"),
       }),
       InvoicesPlugin.init({
-        invoiceIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy(INVOICE_PREFIX),
-        creditNoteIdPrefixGenerationStrategy: new StaticSequentialIdPrefixGenerationStrategy(CREDITNOTE_PREFIX),
-        invoiceFileGenerationStrategy: new DebugFileGenerationStrategy(),
-        creditNoteFileGenerationStrategy: new DebugFileGenerationStrategy(),
+        prefixStrategy: new StaticSequentialIdStrategy(INVOICE_PREFIX),
+        fileStrategy: new DebugFileStrategy(),
         storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "test-invoices")),
-        invoiceSequenceLeftPadCount: 4,
-        creditNoteSequenceLeftPadCount: 4,
+        sequenceLeftPadCount: 4,
         subscribeToOrderPlacedEvent: true,
-        initialInvoiceSequence: INITIAL_SEQUENCE_INVOICE,
-        initialCreditNoteSequence: INITIAL_SEQUENCE_CREDITNOTE,
+        initialSequence: INITIAL_SEQUENCE_INVOICE,
+        snapshotStrategy: new DebugSnapshotStrategy(),
 
         // IMPORTANT - This e2e suite specifically tests sharing the sequence across channels!
         perChannelConfig: false,
@@ -175,7 +172,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
       const seqBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneBy({
         ownerChannelId: defaultChannel.id,
-        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+        code: DEFAULT_SEQUENCE_CODE,
       });
       // Should be null because this is the first time for this Channel, the sequences are supposed to self-heal when not existing!
       expect(seqBefore).toBeNull();
@@ -215,7 +212,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
       const seqAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
         ownerChannelId: defaultChannel.id,
-        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+        code: DEFAULT_SEQUENCE_CODE,
       });
 
       expect(seqAfter.sequence).toBe(INITIAL_SEQUENCE_INVOICE + 1);
@@ -230,7 +227,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
       const seqBefore = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
         ownerChannelId: defaultChannel.id,
-        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+        code: DEFAULT_SEQUENCE_CODE,
       });
 
       const { product } = await shopClient.query(GET_PRODUCT_WITH_VARIANTS, { id: "T_1" });
@@ -266,7 +263,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
       const seqAfter = await connection.rawConnection.getRepository(InvoiceSequence).findOneByOrFail({
         ownerChannelId: defaultChannel.id,
-        code: DEFAULT_SEQUENCE_CODE_INVOICE,
+        code: DEFAULT_SEQUENCE_CODE,
       });
 
       expect(seqAfter.sequence).toBe(seqBefore.sequence + 1);

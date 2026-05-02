@@ -8,7 +8,6 @@ import {
   ListQueryBuilder,
   ListQueryOptions,
   Logger,
-  Order,
   OrderPlacedEvent,
   OrderService,
   PaginatedList,
@@ -18,8 +17,7 @@ import {
   TransactionalConnection
 } from "@vendure/core";
 import {
-  DEFAULT_SEQUENCE_CODE_CREDIT,
-  DEFAULT_SEQUENCE_CODE_INVOICE,
+  DEFAULT_SEQUENCE_CODE,
   INVOICE_QUEUE_NAME,
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
@@ -37,7 +35,7 @@ import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../typ
  * @category Services
  */
 @Injectable()
-export class InvoiceService implements OnModuleInit {
+export class InvoiceService<Snapshot = any> implements OnModuleInit {
   /** @internal */
   constructor(
     private channelService: ChannelService,
@@ -47,7 +45,7 @@ export class InvoiceService implements OnModuleInit {
     private jobQueueService: JobQueueService,
     private orderService: OrderService,
     @Inject(PLUGIN_INIT_OPTIONS)
-    private options: InvoicesOptions,
+    private options: InvoicesOptions<Snapshot>,
   ) { }
 
   private jobQueue: JobQueue<{
@@ -109,12 +107,12 @@ export class InvoiceService implements OnModuleInit {
   public async findOne(
     ctx: RequestContext,
     input: GetSingleInvoiceInput,
-    relations?: RelationPaths<Invoice>
-  ): Promise<Invoice | null> {
+    relations?: RelationPaths<Invoice<Snapshot>>
+  ): Promise<Invoice<Snapshot> | null> {
     if (!input.id && !input.sequentialId)
       throw new Error("You must specify either ID or sequential ID");
 
-    return this.connection.getRepository(ctx, Invoice).findOne({
+    return this.connection.getRepository(ctx, Invoice<Snapshot>).findOne({
       where: {
         channels: { id: ctx.channelId },
         // TODO check if its ok to just query both
@@ -131,12 +129,12 @@ export class InvoiceService implements OnModuleInit {
    */
   public async findAll(
     ctx: RequestContext,
-    options?: ListQueryOptions<Invoice>,
-    relations?: RelationPaths<Invoice>
-  ): Promise<PaginatedList<Invoice>> {
+    options?: ListQueryOptions<Invoice<Snapshot>>,
+    relations?: RelationPaths<Invoice<Snapshot>>
+  ): Promise<PaginatedList<Invoice<Snapshot>>> {
     return this.listQueryBuilder
       .build(
-        Invoice,
+        Invoice<Snapshot>,
         options,
         {
           relations,
@@ -150,19 +148,17 @@ export class InvoiceService implements OnModuleInit {
   }
 
   /**
-   * #TODO
+   * #TODO could pass in sequence code for reuse?
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
     // findOne scopes the query to ctx.channel, so an order from a different channel returns undefined
     const order = await this.orderService.findOne(ctx, input.orderId);
     if (!order) throw new EntityNotFoundError("Order", input.orderId);
 
-    // TASK(2kjlijhf)
-    const sequentialId = await this.getNextSequentialId(ctx, order, DEFAULT_SEQUENCE_CODE_INVOICE);
+    const snapshot = await this.options.snapshotStrategy.generate(ctx, order);
+    const sequentialId = await this.getNextSequentialId(ctx, snapshot, DEFAULT_SEQUENCE_CODE);
 
-    // TODO potentially add the snapshot to strategy param?
-    // TODO what about snapshotting custom fields on order and orderlines?
-    const { filename, buffer } = await this.options.invoiceFileGenerationStrategy.generate(ctx, sequentialId, input.orderId)
+    const { filename, buffer } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
     Logger.verbose(`Persisted file "${filename}" under "${assetUrl}"`, loggerCtx)
 
@@ -172,6 +168,8 @@ export class InvoiceService implements OnModuleInit {
           sequentialId: sequentialId,
           assetUrl,
           order,
+          // @ts-expect-error Generic doesnt play well with deep-partial
+          snapshot,
         }),
         ctx
       )
@@ -182,7 +180,8 @@ export class InvoiceService implements OnModuleInit {
     await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", input));
 
     return {
-      invoiceId: sequentialId,
+      invoiceId: invoice.id,
+      sequentialId,
       assetUrl,
     };
   }
@@ -200,8 +199,8 @@ export class InvoiceService implements OnModuleInit {
  */
   private async getNextSequentialId(
     ctx: RequestContext,
-    order: Order,
-    sequenceCode: typeof DEFAULT_SEQUENCE_CODE_INVOICE | typeof DEFAULT_SEQUENCE_CODE_CREDIT,
+    snapshot: Snapshot,
+    sequenceCode: typeof DEFAULT_SEQUENCE_CODE | (string & {}),
   ): Promise<string> {
     const sequenceRepo = this.connection.getRepository(ctx, InvoiceSequence);
     const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
@@ -215,57 +214,29 @@ export class InvoiceService implements OnModuleInit {
       ...(supportsRowLock ? { lock: { mode: "pessimistic_write" } } : {}),
     });
 
-    // For default use cases we lazily recover from failures
     if (!sequenceRow) {
-      let initialSequence: number | undefined;
-      switch (sequenceCode) {
-        case DEFAULT_SEQUENCE_CODE_INVOICE: {
-          initialSequence = this.options.initialInvoiceSequence;
-          break;
-        }
-        case DEFAULT_SEQUENCE_CODE_CREDIT: {
-          initialSequence = this.options.initialCreditNoteSequence;
-          break;
-        }
-        default: {
-          const error = new Error(`No InvoiceSequence found for channel "${channelId}" with code "${sequenceCode}"`);
-          Logger.error(error.message, loggerCtx, error.stack);
-          throw error;
-        }
-      }
+      // For the default case we can recover lazily
+      if (sequenceCode === DEFAULT_SEQUENCE_CODE) {
+        Logger.warn(`No InvoiceSequence found for channel "${channelId}". Creating a default row with code "${sequenceCode}"`, loggerCtx);
+        const newSequence = await this.channelService.assignToCurrentChannel(
+          new InvoiceSequence({
+            ownerChannelId: channelId,
+            code: sequenceCode,
+            sequence: this.options.initialSequence,
+          }),
+          ctx
+        );
 
-      Logger.warn(`No InvoiceSequence found for channel "${channelId}". Creating a default row with code "${sequenceCode}"`, loggerCtx);
-      const newSequence = await this.channelService.assignToCurrentChannel(
-        new InvoiceSequence({
-          ownerChannelId: channelId,
-          code: sequenceCode,
-          sequence: initialSequence,
-        }),
-        ctx
-      );
-
-      sequenceRow = await sequenceRepo.save(newSequence);
-    }
-
-    let prefix: string;
-    let paddedSequence: string;
-
-    switch (sequenceCode) {
-      case DEFAULT_SEQUENCE_CODE_INVOICE: {
-        prefix = await this.options.invoiceIdPrefixGenerationStrategy.generate(ctx, order);
-        paddedSequence = sequenceRow.sequence.toString().padStart(this.options.invoiceSequenceLeftPadCount ?? 0, "0");
-        break;
-      }
-      case DEFAULT_SEQUENCE_CODE_CREDIT: {
-        prefix = await this.options.creditNoteIdPrefixGenerationStrategy.generate(ctx, order);
-        paddedSequence = sequenceRow.sequence.toString().padStart(this.options.creditNoteSequenceLeftPadCount ?? 0, "0");
-        break;
-      }
-      default: {
-        throw new Error(`Unreachable - Unknown SequenceCode "${sequenceCode}" in Sequential ID generation`)
+        sequenceRow = await sequenceRepo.save(newSequence);
+      } else {
+        const error = new Error(`No InvoiceSequence found for channel "${channelId}" with code "${sequenceCode}"`);
+        Logger.error(error.message, loggerCtx, error.stack);
+        throw error;
       }
     }
 
+    const prefix = await this.options.prefixStrategy.generatePrefix(ctx, snapshot);
+    const paddedSequence = sequenceRow.sequence.toString().padStart(this.options.sequenceLeftPadCount ?? 0, "0");
     sequenceRow.sequence += 1;
     await sequenceRepo.save(sequenceRow);
 
