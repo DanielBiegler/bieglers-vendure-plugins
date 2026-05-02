@@ -93,10 +93,28 @@ This is for a regular [order process][orderprocess], applicable to most Vendure 
 1. Order gets created and awaits payment
 2. Payment authorizes and or settles
 3. Due to state-change, the [`OrderPlacedStrategy`][orderplacedstrategy] gets called and publishes the [`OrderPlacedEvent`][events]
-   1. **# TODO what about additional payment?**
-4. `InvoiceService` reacts to this event and queues a job for the creation
-5. Asynchronously a worker will pick up this job and create and persist an invoice for this order
-6. **# TODO: think about email sending**
+4. `InvoiceService` reacts to this [event][events] *(you can disable this)* and queues a [job][jobqueue] for the invoice-creation
+5. A worker will asynchronously pick up this job, create and persist an invoice for this order
+    - Every step is customizable but conceptionally speaking the following happens:
+    1. The next unique sequential ID gets generated, making use of the `SequentialIdStrategy`
+    2. `SnapshotStrategy` creates a readonly snapshot containing necessary data for file generation
+    3. `FileStrategy` generates a file and provides a name
+    4. `StorageStrategy` persists said file
+6. `InvoiceService` publishes an `InvoiceEvent` which you can react to, for example to send the customer an email containing the generated file
+
+For example sake, let's modify this existing order.
+
+Due to accounting/compliance reasons, invoices are forbidden from being mutated, so a corrective invoice must be issued. Often referred to as "Credit note", "Credit memo" or "Stornorechnung" in german.
+
+This credit note inverses the previously issued invoice, i.e. you credit the customer the paid amount back and record it in your sequential invoice identifiers for accounting purposes.
+
+Afterwards you can issue the new invoice for the modified order with a new amount. Practically speaking, you now issued three distinct documents like so:
+
+1. `INVOICE001` - the initial order
+2. `INVOICE002` - the credit note, specifically inverting `INVOICE001`
+3. `INVOICE003` - the new modified order
+
+This way the accountant/tax office has a clear sequence of transactions.
 
 ### Resources
 
