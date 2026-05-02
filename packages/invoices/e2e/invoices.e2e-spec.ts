@@ -59,9 +59,7 @@ const testPaymentHandler = new PaymentMethodHandler({
 describe("InvoicesPlugin", { sequential: true }, () => {
 
   const INITIAL_SEQUENCE_INVOICE = 1337;
-  const INITIAL_SEQUENCE_CREDITNOTE = 69;
   const INVOICE_PREFIX = "SINGLE-VENDOR-INVOICE";
-  const CREDITNOTE_PREFIX = "SINGLE-VENDOR-CREDIT";
 
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
