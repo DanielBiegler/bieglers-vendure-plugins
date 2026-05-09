@@ -82,6 +82,16 @@ This is why this plugin only defines the interface and actual implementation det
 
 The aim is to provide a sound foundation with some practical, generally useful implementations to choose from, but if your specific business needs custom data in the PDF you ought to roll your own implementation.
 
+#### Legal documents and mutability
+
+Another relevant detail regarding file generation: invoice data is to be treated as read-only and should ideally be reproducible.
+
+Vendures [Order][order] entity by design is mutable and its state is supposed to change over time. This clashes with the legal requirement of immutable invoices, because generating an invoice for a given Order at two or more different points in time will yield different results.
+
+A realistic scenario where this matters: Let's say your S3 bucket got breached, attackers delete your backed up invoices and the tax man audits you. Now you're in trouble because Order entities may or may not have changed over time and you can't reproduce the original documents.
+
+That's where the `SnapshotStrategy` comes in and saves the day. At the time of creation, it shall create a read-only snapshot with all the needed datapoints like sender, recipient, order details, meta data for the document, custom fields, etc. and `FileStrategy` shall solely rely on this snapshot as source of truth, this makes the output deterministically reproducible.
+
 ## Practical Guides and Resources
 
 ### Guides
@@ -141,6 +151,7 @@ This way the accountant/tax office has a clear sequence of transactions.
 [migrations]: https://docs.vendure.io/guides/developer-guide/migrations/
 [orderplacedstrategy]: https://docs.vendure.io/current/core/reference/typescript-api/orders/order-placed-strategy
 [orderprocess]: https://docs.vendure.io/current/core/core-concepts/orders#the-order-process
+[order]: https://docs.vendure.io/current/core/reference/typescript-api/entities/order
 [plugins]: https://docs.vendure.io/guides/developer-guide/plugins/
 [roles]: https://docs.vendure.io/guides/core-concepts/auth/#roles--permissions
 [scheduledtasks]: https://docs.vendure.io/guides/developer-guide/scheduled-tasks/

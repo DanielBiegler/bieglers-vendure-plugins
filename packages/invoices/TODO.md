@@ -3,17 +3,14 @@
 - [ ] Order History Entry für invoice events
 - [ ] File generation braucht kontext für file generation z.b. "invoice" | "cancel" ?
 - [ ] Entity: Invoice, CreditNote, Config(?)
-  - Research: Immutibility for compliance - are snapshots needed, reference to Order might not be good enough
-  - Research: Sync config lines with channel creations, is event enough?
-  - Config: Add critical alert to changing sequence number, could break entire generation
+  - [ ] Research: Should creditnote be a separate entity or rather a derived state via self-reference cancel
 - [ ] Research: What about translations? I dont think thats a thing but lets see
 - [ ] Permission: Entity-CRUD, Dedicated Config-Permission
   - Update only for metadata/customfields, invoices must be immutable for compliance
-  - There is no delete for compliance?
 - [ ] Storage
   - Research: Exposing publically
     - Gut reaction: sounds more like an implementation detail, public REST endpoint could use service to read buffer and stream response, this would allow custom setups 
-  - Research: Storage per Channel? Needed?
+  - Research: Storage per Channel? Needed? Can the storage strategy inject custom logic?
 - [ ] Default invoice template
   - Research: Images, Fonts
   - Research: Hardening generation function due to multi vendor exploiting JS?
@@ -33,8 +30,7 @@
 
 ### Could
 
-- [ ] Plugin Options: Allow disabling of custom templates, hides UI, prevents API mutation
-- [ ] Plugin Options: Nummernkreise per channel vs. global single
+-
 
 #### Ideas
 
