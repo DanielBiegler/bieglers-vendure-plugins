@@ -149,7 +149,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
   }
 
   /**
-   * #TODO could pass in sequence code for reuse?
+   * #TODO
    */
   public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
     // findOne scopes the query to ctx.channel, so an order from a different channel returns undefined
