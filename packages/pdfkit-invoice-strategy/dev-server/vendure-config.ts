@@ -60,12 +60,8 @@ export const config: VendureConfig = {
     }),
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({
-      // The route should correspond to the `base` setting
-      // in the vite.config.mts file
       route: 'dashboard',
-      // This appDir should correspond to the `build.outDir`
-      // setting in the vite.config.mts file
-      appDir: './dist/dashboard',
+      appDir: path.join(__dirname, 'dashboard'),
     }),
 
   ],

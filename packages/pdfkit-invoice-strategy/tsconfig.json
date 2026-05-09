@@ -6,7 +6,10 @@
     "strict": false,
     "rootDir": "./src",
     "outDir": "./dist",
-    "declaration": true
+    "declaration": true,
+    "paths": {
+      "@danielbiegler/vendure-plugin-invoices": ["../invoices/src/index.ts"]
+    }
   },
   "files": ["./src/index.ts"]
 }
