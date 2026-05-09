@@ -3,7 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 import { Injector, PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
-import { PLUGIN_INIT_OPTIONS } from "./constants";
+import { InvoicePermissions, PLUGIN_INIT_OPTIONS } from "./constants";
 import { CreditNote } from './entities/CreditNote.entity';
 import { Invoice } from "./entities/Invoice.entity";
 import { InvoiceSequence } from "./entities/Sequence.entity";
@@ -31,6 +31,10 @@ import { InvoicesOptions } from './types';
     Invoice,
     CreditNote,
   ],
+  configuration(config) {
+    config.authOptions.customPermissions.push(InvoicePermissions);
+    return config;
+  },
   adminApiExtensions: {
     resolvers: [AdminResolver],
     schema: adminApiExtensions,
