@@ -14,6 +14,7 @@ import {
   OrderPlacedEvent,
   OrderService,
   PaginatedList,
+  patchEntity,
   RelationPaths,
   RequestContext,
   SerializedRequestContext,
@@ -211,7 +212,13 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const invoice = await this.findOne(ctx, { id: input.id });
     if (!invoice) throw new EntityNotFoundError("Invoice", input.id);
 
-    // TODO update the entity and update custom field relations
+    await this.connection.getRepository(ctx, Invoice).save(patchEntity(invoice, input), { reload: false })
+    await this.customFieldRelationService.updateRelations(ctx, Invoice, input, invoice);
+
+    Logger.verbose(`Updated existing Invoice(${input.id})`);
+
+    const event = invoice.cancelsId ? CreditNoteEvent : InvoiceEvent;
+    await this.eventBus.publish(new event(ctx, invoice, "updated", input));
 
     return assertFound(this.findOne(ctx, { id: input.id }, relations));
   }

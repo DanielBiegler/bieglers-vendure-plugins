@@ -1,9 +1,10 @@
 import { RequestContext, VendureEntityEvent } from "@vendure/core";
 import { Invoice } from "./entities/Invoice.entity";
-import { CreateInvoiceInput } from "./generated-admin-types";
+import { CreateInvoiceInput, UpdateInvoiceInput } from "./generated-admin-types";
 
 export type InvoiceEventInput =
-  | CreateInvoiceInput;
+  | CreateInvoiceInput
+  | UpdateInvoiceInput;
 
 /**
  * This event is fired whenever an invoice is added, updated or deleted.
