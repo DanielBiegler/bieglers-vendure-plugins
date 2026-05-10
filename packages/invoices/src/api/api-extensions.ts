@@ -17,29 +17,11 @@ export const adminApiExtensions = gql`
     orderId: ID!
     order: Order!
 
-    sequentialId: String!
-    assetUrl: String!
-    creditNotes: [CreditNote]!
-  }
-
-  type CreditNote implements Node {
-    id: ID!
-    createdAt: DateTime!
-    updatedAt: DateTime!
-
-    invoice: Invoice!
+    cancelsId: ID
+    cancels: Invoice
 
     sequentialId: String!
     assetUrl: String!
-  }
-
-  type InvoiceConfig implements Node {
-    id: ID!
-    createdAt: DateTime!
-    updatedAt: DateTime!
-
-    sequenceInvoice: Int!
-    sequenceCreditNote: Int!
   }
 
   type InvoiceList implements PaginatedList {
