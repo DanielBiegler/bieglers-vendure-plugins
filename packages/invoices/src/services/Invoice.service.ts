@@ -159,6 +159,11 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const invoiceToCancel = input.cancels ? await this.findOne(ctx, { id: input.cancels }) : null;
     if (input.cancels && !invoiceToCancel) throw new EntityNotFoundError("Invoice", input.cancels);
 
+    // TODO check docs for custom errors?
+    // TODO can make an e2e test for this
+    if (invoiceToCancel?.cancelsId)
+      throw new Error(`The cancellation ID "${input.cancels}" points to a credit note. You can't cancel a cancellation.`)
+
     const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, order);
     const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, order, invoiceToCancel);
 
