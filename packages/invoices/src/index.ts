@@ -9,7 +9,6 @@
  */
 export { InvoicesPlugin } from "./plugin";
 
-export * from "./entities/CreditNote.entity";
 export * from "./entities/Invoice.entity";
 export * from "./entities/Sequence.entity";
 
@@ -22,3 +21,4 @@ export * from "./types";
 export * from "./config/FileStrategy";
 export * from "./config/SequentialIdStrategy";
 export * from "./config/SnapshotStrategy";
+
