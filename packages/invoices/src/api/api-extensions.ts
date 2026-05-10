@@ -35,6 +35,21 @@ export const adminApiExtensions = gql`
     sequentialId: String
   }
 
+  input CreateInvoiceInput {
+    "The order which this invoice relates to"
+    orderId: ID!
+    """
+    An invoice ID.
+    When defined, will create a credit note relating to this invoice.
+    """
+    cancels: ID
+  }
+
+  input UpdateInvoiceInput {
+    "ID of the invoice to update"
+    id: ID!
+  }
+
   extend type Query {
     """
     Get a single invoice either by its entity ID or by its sequential ID.
@@ -44,5 +59,15 @@ export const adminApiExtensions = gql`
     
     "Paginate through all invoices"
     invoiceList(options: InvoiceListOptions): InvoiceList!
+  }
+
+  extend type Mutation {
+    """
+    """
+    createInvoice(input: CreateInvoiceInput!): Invoice!
+
+    """
+    """
+    updateInvoice(input: UpdateInvoiceInput!): Invoice!
   }
 `;

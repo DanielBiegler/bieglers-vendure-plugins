@@ -1,6 +1,8 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import {
+  assertFound,
   ChannelService,
+  CustomFieldRelationService,
   EntityNotFoundError,
   EventBus,
   JobQueue,
@@ -27,8 +29,8 @@ import {
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
-import { GetSingleInvoiceInput } from "../generated-admin-types";
-import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../types";
+import { CreateInvoiceInput, GetSingleInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
+import { InvoicesOptions } from "../types";
 
 /**
  * // TODO
@@ -40,6 +42,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
   /** @internal */
   constructor(
     private channelService: ChannelService,
+    private customFieldRelationService: CustomFieldRelationService,
     private connection: TransactionalConnection,
     private eventBus: EventBus,
     private listQueryBuilder: ListQueryBuilder,
@@ -151,7 +154,11 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
   /**
    * #TODO
    */
-  public async createInvoice(ctx: RequestContext, input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
+  public async createInvoice(
+    ctx: RequestContext,
+    input: CreateInvoiceInput,
+    relations?: RelationPaths<Invoice<Snapshot>>
+  ): Promise<Invoice> {
     // findOne scopes the query to ctx.channel, so an order from a different channel returns undefined
     const order = await this.orderService.findOne(ctx, input.orderId);
     if (!order) throw new EntityNotFoundError("Order", input.orderId);
@@ -184,19 +191,29 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
         ctx
       )
     );
+
+    await this.customFieldRelationService.updateRelations(ctx, Invoice, input, invoice);
+
     Logger.verbose(`Created new Invoice(${invoice.id})`);
 
-    const result: CreateInvoiceResult = {
-      invoiceId: invoice.id,
-      sequentialId,
-      assetUrl,
-    }
-
-    await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", result));
+    await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", input));
     if (input.cancels && invoiceToCancel)
-      await this.eventBus.publish(new CreditNoteEvent(ctx, invoice, "created", result))
+      await this.eventBus.publish(new CreditNoteEvent(ctx, invoice, "created", input))
 
-    return result;
+    return assertFound(this.findOne(ctx, { id: invoice.id }, relations));
+  }
+
+  public async updateInvoice(
+    ctx: RequestContext,
+    input: UpdateInvoiceInput,
+    relations?: RelationPaths<Invoice<Snapshot>>
+  ): Promise<Invoice> {
+    const invoice = await this.findOne(ctx, { id: input.id });
+    if (!invoice) throw new EntityNotFoundError("Invoice", input.id);
+
+    // TODO update the entity and update custom field relations
+
+    return assertFound(this.findOne(ctx, { id: input.id }, relations));
   }
 
   /** 

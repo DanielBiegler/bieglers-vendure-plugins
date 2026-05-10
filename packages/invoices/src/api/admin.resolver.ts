@@ -1,8 +1,8 @@
-import { Args, Query, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, PaginatedList, RelationPaths, Relations, RequestContext } from "@vendure/core";
+import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
+import { Allow, Ctx, PaginatedList, RelationPaths, Relations, RequestContext, Transaction } from "@vendure/core";
 import { InvoicePermissions } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
-import { QueryInvoiceArgs, QueryInvoiceListArgs } from "../generated-admin-types";
+import { MutationCreateInvoiceArgs, MutationUpdateInvoiceArgs, QueryInvoiceArgs, QueryInvoiceListArgs } from "../generated-admin-types";
 import { InvoiceService } from "../services/Invoice.service";
 
 @Resolver()
@@ -27,6 +27,28 @@ export class AdminResolver {
     @Relations({ entity: Invoice }) relations: RelationPaths<Invoice>,
   ): Promise<PaginatedList<Invoice>> {
     return this.service.findAll(ctx, args.options, relations);
+  }
+
+  @Mutation()
+  @Transaction()
+  @Allow(InvoicePermissions.Create)
+  async createInvoice(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationCreateInvoiceArgs,
+    @Relations({ entity: Invoice }) relations: RelationPaths<Invoice>,
+  ): Promise<Invoice> {
+    return this.service.createInvoice(ctx, args.input, relations);
+  }
+
+  @Mutation()
+  @Transaction()
+  @Allow(InvoicePermissions.Update)
+  async updateInvoice(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationUpdateInvoiceArgs,
+    @Relations({ entity: Invoice }) relations: RelationPaths<Invoice>,
+  ): Promise<Invoice> {
+    return this.service.updateInvoice(ctx, args.input, relations);
   }
 }
 

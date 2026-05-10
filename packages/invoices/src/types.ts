@@ -1,4 +1,4 @@
-import { AssetStorageStrategy, ID } from "@vendure/core";
+import { AssetStorageStrategy } from "@vendure/core";
 import { FileStrategy } from "./config/FileStrategy";
 import { SequentialIdStrategy } from "./config/SequentialIdStrategy";
 import { SnapshotStrategy } from "./config/SnapshotStrategy";
@@ -42,22 +42,6 @@ export interface InvoicesOptions<Snapshot = unknown> {
   perChannelConfig?: boolean,
 
   subscribeToOrderPlacedEvent?: boolean,
-}
-
-export type CreateInvoiceInput = {
-  orderId: ID;
-  cancels?: ID | null;
-}
-
-export type CreateCreditNoteInput = {
-  invoiceId: ID;
-  // Order relation already exists on the invoice itself
-}
-
-export type CreateInvoiceResult = {
-  invoiceId: ID;
-  sequentialId: string;
-  assetUrl: string;
 }
 
 // In case you need customfields

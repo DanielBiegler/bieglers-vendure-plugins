@@ -1,16 +1,19 @@
 import { RequestContext, VendureEntityEvent } from "@vendure/core";
 import { Invoice } from "./entities/Invoice.entity";
-import { CreateInvoiceResult } from "./types";
+import { CreateInvoiceInput } from "./generated-admin-types";
+
+export type InvoiceEventInput =
+  | CreateInvoiceInput;
 
 /**
  * This event is fired whenever an invoice is added, updated or deleted.
  */
-export class InvoiceEvent extends VendureEntityEvent<Invoice, CreateInvoiceResult> {
+export class InvoiceEvent extends VendureEntityEvent<Invoice, InvoiceEventInput> {
   constructor(
     ctx: RequestContext,
     entity: Invoice,
     type: 'created' | 'updated' | 'deleted',
-    input?: CreateInvoiceResult,
+    input?: InvoiceEventInput,
   ) {
     super(entity, type, ctx, input);
   }
@@ -19,12 +22,12 @@ export class InvoiceEvent extends VendureEntityEvent<Invoice, CreateInvoiceResul
 /**
  * This event is fired whenever a credit note is added, updated or deleted.
  */
-export class CreditNoteEvent extends VendureEntityEvent<Invoice, CreateInvoiceResult> {
+export class CreditNoteEvent extends VendureEntityEvent<Invoice, InvoiceEventInput> {
   constructor(
     ctx: RequestContext,
     entity: Invoice,
     type: 'created' | 'updated' | 'deleted',
-    input?: CreateInvoiceResult,
+    input?: InvoiceEventInput,
   ) {
     super(entity, type, ctx, input);
   }
