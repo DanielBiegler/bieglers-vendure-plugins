@@ -26,7 +26,7 @@ import {
 } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
-import { InvoiceEvent } from "../events";
+import { CreditNoteEvent, InvoiceEvent } from "../events";
 import { GetSingleInvoiceInput } from "../generated-admin-types";
 import { CreateInvoiceInput, CreateInvoiceResult, InvoicesOptions } from "../types";
 
@@ -156,8 +156,11 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const order = await this.orderService.findOne(ctx, input.orderId);
     if (!order) throw new EntityNotFoundError("Order", input.orderId);
 
+    const invoiceToCancel = input.cancels ? await this.findOne(ctx, { id: input.cancels }) : null;
+    if (input.cancels && !invoiceToCancel) throw new EntityNotFoundError("Invoice", input.cancels);
+
     const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, order);
-    const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, order);
+    const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, order, invoiceToCancel);
 
     const { filename, buffer } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
@@ -168,6 +171,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
         new Invoice({
           sequentialId: sequentialId,
           assetUrl,
+          cancelsId: invoiceToCancel?.id,
           order,
           // @ts-expect-error Generic doesnt play well with deep-partial
           snapshot,
@@ -177,14 +181,17 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     );
     Logger.verbose(`Created new Invoice(${invoice.id})`);
 
-    // TODO custom fields & relations?
-    await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", input));
-
-    return {
+    const result: CreateInvoiceResult = {
       invoiceId: invoice.id,
       sequentialId,
       assetUrl,
-    };
+    }
+
+    await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", result));
+    if (input.cancels && invoiceToCancel)
+      await this.eventBus.publish(new CreditNoteEvent(ctx, invoice, "created", result))
+
+    return result;
   }
 
   /** 

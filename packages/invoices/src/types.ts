@@ -46,6 +46,7 @@ export interface InvoicesOptions<Snapshot = unknown> {
 
 export type CreateInvoiceInput = {
   orderId: ID;
+  cancels?: ID | null;
 }
 
 export type CreateCreditNoteInput = {

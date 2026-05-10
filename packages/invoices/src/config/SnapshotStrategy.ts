@@ -1,4 +1,5 @@
 import { InjectableStrategy, Order, RequestContext } from "@vendure/core";
+import { Invoice } from "../entities/Invoice.entity";
 
 export interface SnapshotStrategy<Snapshot = any> extends InjectableStrategy {
   /**
@@ -14,6 +15,7 @@ export interface SnapshotStrategy<Snapshot = any> extends InjectableStrategy {
     ctx: RequestContext,
     sequentialId: string,
     order: Order,
+    cancels?: Invoice | null,
   ): Promise<Snapshot>;
 }
 

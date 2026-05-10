@@ -92,6 +92,43 @@ A realistic scenario where this matters: Let's say your S3 bucket got breached, 
 
 That's where the `SnapshotStrategy` comes in and saves the day. At the time of creation, it shall create a read-only snapshot with all the needed datapoints like sender, recipient, order details, meta data for the document, custom fields, etc. and `FileStrategy` shall solely rely on this snapshot as source of truth, this makes the output deterministically reproducible.
 
+Additionally, we as plugin can't know what everyone needs in their invoice, some users need the basics, some need custom fields, etc. The `SnapshotStrategy` lets us abstract that fact and anyone can decide for themselves.
+
+### Should invoices be a single entity?
+
+Yes - invoices and credit notes share the same structure (sequential ID, snapshot, file, storage metadata, channel, order reference) and occupy the same legal ledger. The gapless sequence counter can span both document types because both are accounting records.
+
+A credit note is therefore modelled as a regular invoice row with a `cancels` foreign key set. If `cancels` is `null` the document is a plain invoice; if it is set, the document is a credit note. This makes the type fully derivable and keeps all documents for a given order queryable in a single table without unions.
+
+#### Full inversion vs. partial credit notes
+
+When a customer returns only part of an order, two approaches are legally valid:
+
+**Approach 1 - Full inversion + reissue (3 documents)**
+
+1. Cancel the original invoice with a credit note for the full amount
+2. Issue a new invoice for only the remaining items
+
+Every invoice is always in an unambiguous state: fully active or fully cancelled. The `cancels` relation stays 1:1 and a unique constraint prevents an invoice from being cancelled twice.
+
+**Approach 2 - Partial credit note (2 documents)**
+
+1. Keep the original invoice valid
+2. Issue a credit note that credits only the returned item(s)
+
+The net financial position is the original minus the sum of all credit notes against it. Multiple partial credit notes can reference the same invoice, so the `cancels` relation becomes 1:many and the unique constraint must be dropped.
+
+This plugin supports Approach 2, which is the standard e-commerce practice and strictly more general: a full-inversion workflow is just a partial credit note that credits 100% followed by a new invoice. Approach 1 is achievable on top without extra model complexity.
+
+The trade-off: DB-level uniqueness cannot prevent over-crediting (total credited exceeding the original amount). This guard moves to the service layer.
+
+#### Constraints to keep in mind
+
+1. `cancels` must point to a row where `cancels IS NULL`. You cannot cancel a cancellation.
+2. A row may not reference itself.
+
+Nullable foreign keys as type discriminators sacrifice compile-time type safety, and self-referential ORM relations require care around eager-loading cycles. Both costs are lower than the alternative of cross-entity sequence coupling or duplicated schema.
+
 ## Practical Guides and Resources
 
 ### Guides

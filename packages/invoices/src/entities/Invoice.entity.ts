@@ -1,6 +1,5 @@
 import { Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, Order, VendureEntity } from "@vendure/core";
 import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from "typeorm";
-import { CreditNote } from "./CreditNote.entity";
 
 export class CustomInvoiceFields { }
 
@@ -36,8 +35,19 @@ export class Invoice<Snapshot = any> extends VendureEntity implements ChannelAwa
   @Column({ nullable: false, unique: true })
   assetUrl: string;
 
-  @OneToMany(() => CreditNote, entity => entity.invoice)
-  creditNotes: CreditNote[];
+  /**
+   * If set, this document is a credit note cancelling the referenced invoice.
+   * `null` means this is a regular invoice.
+   */
+  @EntityId({ nullable: true })
+  cancelsId: ID | null;
+
+  @ManyToOne(() => Invoice, (invoice) => invoice.cancelledBy, { nullable: true })
+  cancels: Invoice | null;
+
+  /** Credit notes issued against this invoice. */
+  @OneToMany(() => Invoice, (invoice) => invoice.cancels)
+  cancelledBy: Invoice[];
 
   @ManyToMany(() => Channel)
   @JoinTable()
