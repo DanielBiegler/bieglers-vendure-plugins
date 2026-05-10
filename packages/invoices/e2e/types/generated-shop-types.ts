@@ -2535,6 +2535,8 @@ export enum Permission {
   CreateTaxRate = 'CreateTaxRate',
   /** Grants permission to create Zone */
   CreateZone = 'CreateZone',
+  /** Grants permission to create invoice */
+  Createinvoice = 'Createinvoice',
   /** Grants permission to delete Administrator */
   DeleteAdministrator = 'DeleteAdministrator',
   /** Grants permission to delete ApiKey */
@@ -2581,6 +2583,8 @@ export enum Permission {
   DeleteTaxRate = 'DeleteTaxRate',
   /** Grants permission to delete Zone */
   DeleteZone = 'DeleteZone',
+  /** Grants permission to delete invoice */
+  Deleteinvoice = 'Deleteinvoice',
   /** Owner means the user owns this entity, e.g. a Customer's own Order */
   Owner = 'Owner',
   /** Public means any unauthenticated user may perform the operation */
@@ -2631,6 +2635,8 @@ export enum Permission {
   ReadTaxRate = 'ReadTaxRate',
   /** Grants permission to read Zone */
   ReadZone = 'ReadZone',
+  /** Grants permission to read invoice */
+  Readinvoice = 'Readinvoice',
   /** SuperAdmin has unrestricted access to all operations */
   SuperAdmin = 'SuperAdmin',
   /** Grants permission to update Administrator */
@@ -2680,7 +2686,9 @@ export enum Permission {
   /** Grants permission to update TaxRate */
   UpdateTaxRate = 'UpdateTaxRate',
   /** Grants permission to update Zone */
-  UpdateZone = 'UpdateZone'
+  UpdateZone = 'UpdateZone',
+  /** Grants permission to update invoice */
+  Updateinvoice = 'Updateinvoice'
 }
 
 /** The price range where the result has more than one price */

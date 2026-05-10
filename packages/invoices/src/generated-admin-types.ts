@@ -986,6 +986,17 @@ export type CreateGroupOptionInput = {
   translations: Array<ProductOptionGroupTranslationInput>;
 };
 
+export type CreateInvoiceInput = {
+  /**
+   * An invoice ID.
+   * When defined, will create a credit note relating to this invoice.
+   */
+  cancels?: InputMaybe<Scalars['ID']['input']>;
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  /** The order which this invoice relates to */
+  orderId: Scalars['ID']['input'];
+};
+
 export type CreatePaymentMethodInput = {
   checker?: InputMaybe<ConfigurableOperationInput>;
   code: Scalars['String']['input'];
@@ -1123,17 +1134,6 @@ export type CreateZoneInput = {
   customFields?: InputMaybe<Scalars['JSON']['input']>;
   memberIds?: InputMaybe<Array<Scalars['ID']['input']>>;
   name: Scalars['String']['input'];
-};
-
-export type CreditNote = Node & {
-  __typename?: 'CreditNote';
-  assetUrl: Scalars['String']['output'];
-  createdAt: Scalars['DateTime']['output'];
-  customFields?: Maybe<Scalars['JSON']['output']>;
-  id: Scalars['ID']['output'];
-  invoice: Invoice;
-  sequentialId: Scalars['String']['output'];
-  updatedAt: Scalars['DateTime']['output'];
 };
 
 /**
@@ -1503,7 +1503,6 @@ export type CustomFields = {
   Asset: Array<CustomFieldConfig>;
   Channel: Array<CustomFieldConfig>;
   Collection: Array<CustomFieldConfig>;
-  CreditNote: Array<CustomFieldConfig>;
   Customer: Array<CustomFieldConfig>;
   CustomerGroup: Array<CustomFieldConfig>;
   Facet: Array<CustomFieldConfig>;
@@ -2318,8 +2317,9 @@ export type InvalidFulfillmentHandlerError = ErrorResult & {
 export type Invoice = Node & {
   __typename?: 'Invoice';
   assetUrl: Scalars['String']['output'];
+  cancels?: Maybe<Invoice>;
+  cancelsId?: Maybe<Scalars['ID']['output']>;
   createdAt: Scalars['DateTime']['output'];
-  creditNotes: Array<Maybe<CreditNote>>;
   customFields?: Maybe<Scalars['JSON']['output']>;
   id: Scalars['ID']['output'];
   order: Order;
@@ -2328,19 +2328,11 @@ export type Invoice = Node & {
   updatedAt: Scalars['DateTime']['output'];
 };
 
-export type InvoiceConfig = Node & {
-  __typename?: 'InvoiceConfig';
-  createdAt: Scalars['DateTime']['output'];
-  id: Scalars['ID']['output'];
-  sequenceCreditNote: Scalars['Int']['output'];
-  sequenceInvoice: Scalars['Int']['output'];
-  updatedAt: Scalars['DateTime']['output'];
-};
-
 export type InvoiceFilterParameter = {
   _and?: InputMaybe<Array<InvoiceFilterParameter>>;
   _or?: InputMaybe<Array<InvoiceFilterParameter>>;
   assetUrl?: InputMaybe<StringOperators>;
+  cancelsId?: InputMaybe<IdOperators>;
   createdAt?: InputMaybe<DateOperators>;
   id?: InputMaybe<IdOperators>;
   orderId?: InputMaybe<IdOperators>;
@@ -2369,6 +2361,7 @@ export type InvoiceListOptions = {
 
 export type InvoiceSortParameter = {
   assetUrl?: InputMaybe<SortOrder>;
+  cancelsId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   orderId?: InputMaybe<SortOrder>;
@@ -3011,6 +3004,7 @@ export type Mutation = {
   createFacetValue: FacetValue;
   /** Create one or more FacetValues */
   createFacetValues: Array<FacetValue>;
+  createInvoice: Invoice;
   /** Create existing PaymentMethod */
   createPaymentMethod: PaymentMethod;
   /** Create a new Product */
@@ -3251,6 +3245,7 @@ export type Mutation = {
   /** Update one or more FacetValues */
   updateFacetValues: Array<FacetValue>;
   updateGlobalSettings: UpdateGlobalSettingsResult;
+  updateInvoice: Invoice;
   updateOrderNote: HistoryEntry;
   /** Update an existing PaymentMethod */
   updatePaymentMethod: PaymentMethod;
@@ -3480,6 +3475,11 @@ export type MutationCreateFacetValueArgs = {
 
 export type MutationCreateFacetValuesArgs = {
   input: Array<CreateFacetValueInput>;
+};
+
+
+export type MutationCreateInvoiceArgs = {
+  input: CreateInvoiceInput;
 };
 
 
@@ -4100,6 +4100,11 @@ export type MutationUpdateFacetValuesArgs = {
 
 export type MutationUpdateGlobalSettingsArgs = {
   input: UpdateGlobalSettingsInput;
+};
+
+
+export type MutationUpdateInvoiceArgs = {
+  input: UpdateInvoiceInput;
 };
 
 
@@ -4786,6 +4791,8 @@ export enum Permission {
   CreateTaxRate = 'CreateTaxRate',
   /** Grants permission to create Zone */
   CreateZone = 'CreateZone',
+  /** Grants permission to create invoice */
+  Createinvoice = 'Createinvoice',
   /** Grants permission to delete Administrator */
   DeleteAdministrator = 'DeleteAdministrator',
   /** Grants permission to delete ApiKey */
@@ -4832,6 +4839,8 @@ export enum Permission {
   DeleteTaxRate = 'DeleteTaxRate',
   /** Grants permission to delete Zone */
   DeleteZone = 'DeleteZone',
+  /** Grants permission to delete invoice */
+  Deleteinvoice = 'Deleteinvoice',
   /** Owner means the user owns this entity, e.g. a Customer's own Order */
   Owner = 'Owner',
   /** Public means any unauthenticated user may perform the operation */
@@ -4882,6 +4891,8 @@ export enum Permission {
   ReadTaxRate = 'ReadTaxRate',
   /** Grants permission to read Zone */
   ReadZone = 'ReadZone',
+  /** Grants permission to read invoice */
+  Readinvoice = 'Readinvoice',
   /** SuperAdmin has unrestricted access to all operations */
   SuperAdmin = 'SuperAdmin',
   /** Grants permission to update Administrator */
@@ -4931,7 +4942,9 @@ export enum Permission {
   /** Grants permission to update TaxRate */
   UpdateTaxRate = 'UpdateTaxRate',
   /** Grants permission to update Zone */
-  UpdateZone = 'UpdateZone'
+  UpdateZone = 'UpdateZone',
+  /** Grants permission to update invoice */
+  Updateinvoice = 'Updateinvoice'
 }
 
 export type PermissionDefinition = {
@@ -7101,6 +7114,12 @@ export type UpdateGlobalSettingsInput = {
 };
 
 export type UpdateGlobalSettingsResult = ChannelDefaultLanguageError | GlobalSettings;
+
+export type UpdateInvoiceInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  /** ID of the invoice to update */
+  id: Scalars['ID']['input'];
+};
 
 export type UpdateOrderAddressInput = {
   city?: InputMaybe<Scalars['String']['input']>;
