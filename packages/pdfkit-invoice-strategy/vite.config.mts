@@ -13,7 +13,7 @@ export default defineConfig({
       vendureConfigPath: pathToFileURL('./dev-server/vendure-config.ts'),
       api: { host: 'http://localhost', port: 3000 },
       gqlOutputPath: './src/gql',
-
+      useExperimentalBundle: true,
       pathAdapter: {
         sourceRoot: resolve(__dirname, '../..'),
         getCompiledConfigPath: ({ outputPath, configFileName }) => {
