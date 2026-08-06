@@ -54,6 +54,20 @@ This plugin adds // TODO, which requires you to generate a database migration. S
 
 ### 3. // TODO
 
+## Roadmap
+
+- Dashboard
+  - [ ] List Page
+  - [ ] Detail Page
+  - [ ] Order Detail Page "Related Invoices" Section. Should show issued date, type (invoice / credit note), link to detail page.
+
+- Extensions
+  - [ ] Custom Fields: Kleinunternehmer&shy;regelung
+
+- Strategies
+  - [ ] PDFKit (ZUGFeRD?)
+  - [ ] Typst
+
 ## Design Reasons and Decisions
 
 ### Gapless invoice sequences via row level transaction locks
@@ -86,7 +100,7 @@ The aim is to provide a sound foundation with some practical, generally useful i
 
 Another relevant detail regarding file generation: invoice data is to be treated as read-only and should ideally be reproducible.
 
-Vendures [Order][order] entity by design is mutable and its state is supposed to change over time. This clashes with the legal requirement of immutable invoices, because generating an invoice for a given Order at two or more different points in time will yield different results.
+Vendures [Order][order] entity by design is mutable and its state is supposed to change over time. This clashes with the legal requirement of immutable invoices, because generating an invoice for a given Order at two or more different points in time may or may not yield different results.
 
 A realistic scenario where this matters: Let's say your S3 bucket got breached, attackers delete your backed up invoices and the tax man audits you. Now you're in trouble because Order entities may or may not have changed over time and you can't reproduce the original documents.
 
