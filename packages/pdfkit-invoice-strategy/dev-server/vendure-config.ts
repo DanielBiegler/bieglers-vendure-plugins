@@ -57,6 +57,9 @@ export const config: VendureConfig = {
       subscribeToOrderPlacedEvent: true,
       initialSequence: 1000,
       sequenceLeftPadCount: 5,
+      download: {
+        signingSecret: "test",
+      },
     }),
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({

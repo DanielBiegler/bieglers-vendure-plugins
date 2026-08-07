@@ -5,6 +5,7 @@ import {
   CustomFieldRelationService,
   EntityNotFoundError,
   EventBus,
+  ID,
   JobQueue,
   JobQueueService,
   ListQueryBuilder,
@@ -20,8 +21,14 @@ import {
   SerializedRequestContext,
   TransactionalConnection
 } from "@vendure/core";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { extname } from "node:path";
+import { Stream } from "node:stream";
 import {
+  DEFAULT_DOWNLOAD_EXPIRES_IN,
   DEFAULT_SEQUENCE_CODE,
+  DOWNLOAD_NEVER_EXPIRES,
+  INVOICE_DOWNLOAD_ROUTE,
   INVOICE_QUEUE_NAME,
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
@@ -31,7 +38,7 @@ import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
 import { CreateInvoiceInput, GetSingleInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
-import { InvoicesOptions } from "../types";
+import { InvoiceDownloadOptions, InvoicesOptions } from "../types";
 
 /**
  * // TODO
@@ -223,7 +230,123 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     return assertFound(this.findOne(ctx, { id: input.id }, relations));
   }
 
-  /** 
+  /**
+   * Creates an absolute URL which streams the invoice file through
+   * {@link INVOICE_DOWNLOAD_ROUTE}. The signature *is* the authorization, so the
+   * endpoint needs no session and the URL must be treated as a secret.
+   *
+   * Pass `expiresIn: Infinity` (or `neverExpires`) for a URL that keeps working
+   * indefinitely, e.g. one you hand to the customer the invoice belongs to.
+   *
+   * Is Channel-Aware
+   */
+  public async createDownloadUrl(
+    ctx: RequestContext,
+    invoiceId: ID,
+    expiresIn?: number | null,
+  ): Promise<string> {
+    const options = this.assertDownloadEnabled();
+
+    const invoice = await this.findOne(ctx, { id: invoiceId });
+    if (!invoice) throw new EntityNotFoundError("Invoice", invoiceId);
+
+    const requested = expiresIn ?? options.defaultExpiresIn ?? DEFAULT_DOWNLOAD_EXPIRES_IN;
+    // Signing the literal sentinel rather than a far future timestamp keeps a forged
+    // "expires=never" from validating against a signature minted for a finite window
+    const expires: number | typeof DOWNLOAD_NEVER_EXPIRES =
+      Number.isFinite(requested) ? Math.floor(Date.now() / 1000) + requested : DOWNLOAD_NEVER_EXPIRES;
+
+    const signature = this.signDownload(invoice.id, expires, options.signingSecret);
+    const baseUrl = (options.baseUrl ?? this.originOfRequest(ctx)).replace(/\/+$/, "");
+    const query = new URLSearchParams({ expires: String(expires), signature });
+
+    return `${baseUrl}/${INVOICE_DOWNLOAD_ROUTE}/${invoice.id}/download?${query.toString()}`;
+  }
+
+  /**
+   * Recomputes the signature of a download request and reports why it is unusable,
+   * so that callers can distinguish a link that merely aged out from a forged one.
+   */
+  public verifyDownloadSignature(
+    invoiceId: ID,
+    expires: unknown,
+    signature: unknown,
+  ): "valid" | "expired" | "invalid" {
+    const options = this.assertDownloadEnabled();
+
+    if (typeof signature !== "string") return "invalid";
+
+    const neverExpires = expires === DOWNLOAD_NEVER_EXPIRES;
+    const expiresAt = neverExpires ? DOWNLOAD_NEVER_EXPIRES : Number(expires);
+    if (!neverExpires && !Number.isSafeInteger(expiresAt)) return "invalid";
+
+    const expected = Buffer.from(this.signDownload(invoiceId, expiresAt, options.signingSecret));
+    const received = Buffer.from(signature);
+    // timingSafeEqual throws on differing lengths, which would leak via the exception
+    if (expected.length !== received.length) return "invalid";
+    if (!timingSafeEqual(expected, received)) return "invalid";
+
+    if (neverExpires) return "valid";
+
+    return (expiresAt as number) < Math.floor(Date.now() / 1000) ? "expired" : "valid";
+  }
+
+  /**
+   * Reads a file back out of the configured {@link AssetStorageStrategy}.
+   *
+   * Deliberately *not* Channel-Aware: callers reach this through a signed URL which
+   * carries no session, and the signature was minted inside a channel-scoped lookup.
+   */
+  public async readFileForDownload(
+    ctx: RequestContext,
+    invoiceId: ID,
+  ): Promise<{ filename: string; stream: Stream } | null> {
+    const invoice = await this.connection.getRepository(ctx, Invoice).findOne({ where: { id: invoiceId } });
+    if (!invoice) return null;
+
+    const stream = await this.options.storageStrategy.readFileToStream(invoice.assetUrl);
+
+    // The stored identifier can be a bucket key with prefixes, so the sequential ID
+    // makes for a friendlier filename than its basename would. Quotes get dropped
+    // because the value lands inside a quoted Content-Disposition parameter.
+    const filename = `${invoice.sequentialId}${extname(invoice.assetUrl)}`.replace(/["\\]/g, "");
+
+    return { filename, stream };
+  }
+
+  private assertDownloadEnabled(): InvoiceDownloadOptions {
+    if (!this.options.download?.signingSecret) {
+      const error = new Error(
+        "Invoice downloads require the `download.signingSecret` option to be configured",
+      );
+      Logger.error(error.message, loggerCtx, error.stack);
+      throw error;
+    }
+
+    return this.options.download;
+  }
+
+  private signDownload(invoiceId: ID, expires: number | typeof DOWNLOAD_NEVER_EXPIRES, secret: string): string {
+    return createHmac("sha256", secret)
+      .update(`${invoiceId}:${expires}`)
+      .digest("base64url");
+  }
+
+  private originOfRequest(ctx: RequestContext): string {
+    const req = ctx.req;
+    const host = req?.get?.("host");
+    if (!req || !host) {
+      const error = new Error(
+        "Could not derive the origin for a download URL. Configure `download.baseUrl` instead",
+      );
+      Logger.error(error.message, loggerCtx, error.stack);
+      throw error;
+    }
+
+    return `${req.protocol}://${host}`;
+  }
+
+  /**
  * Must be called inside an active transaction (ctx must carry one).
  * The `pessimistic_write` lock serialises concurrent callers: the second
  * caller blocks on `SELECT FOR UPDATE` until the first transaction commits

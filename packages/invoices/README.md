@@ -168,6 +168,62 @@ The trade-off: DB-level uniqueness cannot prevent over-crediting (total credited
 
 Nullable foreign keys as type discriminators sacrifice compile-time type safety, and self-referential ORM relations require care around eager-loading cycles. Both costs are lower than the alternative of cross-entity sequence coupling or duplicated schema.
 
+## Downloading invoice files
+
+An [`AssetStorageStrategy`][assetstorage] identifier is opaque: depending on the strategy it is a
+filesystem path, a bucket key or an actual URL, so a browser generally cannot fetch it and the
+`assetUrl` field must not be treated as a link. Files are therefore streamed through your instance,
+guarded by a signed, expiring URL:
+
+```graphql
+mutation {
+  createInvoiceDownloadUrl(id: "1", expiresIn: 300)
+  # -> "https://api.example.com/invoices/1/download?expires=1786095410&signature=Ux_ZGU2M..."
+}
+```
+
+Minting a URL requires the `ReadInvoice` permission and is scoped to the current channel. The
+returned URL is not: the HMAC signature *is* the authorization, which is what lets a browser, an
+email client or a customer follow it without a session. **Treat such a URL as a secret.**
+
+Enable it by configuring a signing secret:
+
+```ts
+InvoicesPlugin.init({
+  // ...
+  download: {
+    signingSecret: process.env.INVOICE_DOWNLOAD_SECRET!,
+    // Defaults to the origin of the request that asked for the URL, which guesses
+    // wrong behind proxies that don't set `X-Forwarded-*`
+    baseUrl: "https://api.example.com",
+    defaultExpiresIn: 300,
+  },
+}),
+```
+
+Without it, the mutation and the endpoint both refuse to work.
+
+The endpoint lives at `/invoices/:id/download` and answers with `410` for an expired URL, `403` for a
+forged one and `404` when the invoice does not exist. It sends `Content-Disposition: attachment` plus
+a generic `application/octet-stream`, because your `FileStrategy` decides the actual format.
+
+### Permanent URLs for customers
+
+Shops that mail invoices to their customers need links that still work next tax season, which
+`neverExpires` (or `defaultExpiresIn: Infinity`) provides:
+
+```graphql
+mutation {
+  createInvoiceDownloadUrl(id: "1", neverExpires: true)
+  # -> "https://api.example.com/invoices/1/download?expires=never&signature=..."
+}
+```
+
+Be deliberate about it: a URL that never expires is a permanent bearer capability, and the only way
+to retract one afterwards is rotating `signingSecret` — which invalidates every URL you ever handed
+out, your customers' included. Prefer a finite lifetime whenever the recipient is able to ask for a
+fresh link, i.e. for everything that goes through a dashboard or download page.
+
 ## Practical Guides and Resources
 
 ### Guides
@@ -182,7 +238,7 @@ This is for a regular [order process][orderprocess], applicable to most Vendure 
 4. `InvoiceService` reacts to this [event][events] *(you can disable this)* and queues a [job][jobqueue] for the invoice-creation
 5. A worker will asynchronously pick up this job, create and persist an invoice for this order
     - Every step is customizable but conceptionally speaking the following happens:
-    1. The next unique sequential ID gets generated, making use of the `SequentialIdStrategy`
+    1. `SequentialIdStrategy` claims the next unique sequential ID
     2. `SnapshotStrategy` creates a readonly snapshot containing necessary data for file generation
     3. `FileStrategy` generates a file and provides a name
     4. `StorageStrategy` persists said file
@@ -214,6 +270,7 @@ This way the accountant/tax office has a clear sequence of transactions.
 
 <!-- Link references -->
 
+[assetstorage]: https://docs.vendure.io/reference/typescript-api/assets/asset-storage-strategy/
 [channelaware]: https://docs.vendure.io/guides/developer-guide/channel-aware/
 [channels]: https://docs.vendure.io/guides/core-concepts/channels/
 [configuration]: https://docs.vendure.io/guides/developer-guide/configuration/

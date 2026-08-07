@@ -3005,6 +3005,26 @@ export type Mutation = {
   /** Create one or more FacetValues */
   createFacetValues: Array<FacetValue>;
   createInvoice: Invoice;
+  /**
+   * Creates a short lived, signed URL which downloads the invoice file.
+   *
+   * The file gets streamed through this instance, because storage strategies hand out
+   * opaque identifiers that a browser generally cannot resolve on its own.
+   *
+   * Anyone holding the URL can download the file until it expires, so treat it as a
+   * secret and keep the lifetime short. Requires the plugins' "download" option.
+   *
+   * "expiresIn" is the validity in seconds and is taken at face value, so a value in
+   * the past yields a URL which is already dead. Defaults to the configured
+   * "download.defaultExpiresIn".
+   *
+   * "neverExpires" mints a URL that stays valid forever, for cases like handing
+   * customers a permanent link to their own invoice. Such a URL can only be retracted
+   * by rotating the signing secret, which invalidates every other URL as well, so
+   * prefer a finite lifetime whenever the recipient can ask for a fresh link.
+   * Specifying it together with "expiresIn" is an error.
+   */
+  createInvoiceDownloadUrl: Scalars['String']['output'];
   /** Create existing PaymentMethod */
   createPaymentMethod: PaymentMethod;
   /** Create a new Product */
@@ -3480,6 +3500,13 @@ export type MutationCreateFacetValuesArgs = {
 
 export type MutationCreateInvoiceArgs = {
   input: CreateInvoiceInput;
+};
+
+
+export type MutationCreateInvoiceDownloadUrlArgs = {
+  expiresIn?: InputMaybe<Scalars['Int']['input']>;
+  id: Scalars['ID']['input'];
+  neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 

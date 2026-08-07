@@ -108,3 +108,21 @@ export const ASSIGN_STOCK_LOCATIONS_TO_CHANNEL = gql`
     }
   }
 `;
+
+export const GET_INVOICE_LIST = gql`
+  query GetInvoiceList($options: InvoiceListOptions) {
+    invoiceList(options: $options) {
+      totalItems
+      items {
+        id
+        sequentialId
+      }
+    }
+  }
+`;
+
+export const CREATE_INVOICE_DOWNLOAD_URL = gql`
+  mutation CreateInvoiceDownloadUrl($id: ID!, $expiresIn: Int, $neverExpires: Boolean) {
+    createInvoiceDownloadUrl(id: $id, expiresIn: $expiresIn, neverExpires: $neverExpires)
+  }
+`;

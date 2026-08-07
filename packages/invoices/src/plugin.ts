@@ -3,6 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 import { Injector, PluginCommonModule, VendurePlugin } from "@vendure/core";
 import { AdminResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
+import { InvoiceDownloadController } from "./api/invoice-download.controller";
 import { InvoicePermissions, PLUGIN_INIT_OPTIONS } from "./constants";
 import { Invoice } from "./entities/Invoice.entity";
 import { InvoiceSequence } from "./entities/Sequence.entity";
@@ -18,6 +19,9 @@ import { InvoicesOptions } from './types';
   imports: [PluginCommonModule],
   dashboard: './dashboard/index.tsx',
   compatibility: ">=3.2.0",
+  controllers: [
+    InvoiceDownloadController,
+  ],
   providers: [
     {
       provide: PLUGIN_INIT_OPTIONS,

@@ -7,11 +7,13 @@ import {
   DateTime,
   DetailPageButton,
   Page,
+  PageActionBar,
   PageBlock,
   PageLayout,
   PageTitle
 } from '@vendure/dashboard';
 import gql from 'graphql-tag';
+import { InvoiceDownloadButton } from './invoice-download-button';
 
 type InvoiceDetail = {
   id: string;
@@ -88,7 +90,7 @@ function InvoiceDetailPage({ route }: { route: any }) {
   return (
     <Page pageId="invoice-detail">
       <PageTitle>{invoice?.sequentialId ?? <Trans>Invoice</Trans>}</PageTitle>
-      {/* <PageActionBar></PageActionBar> */}
+      <PageActionBar>{invoice && <InvoiceDownloadButton invoiceId={invoice.id} />}</PageActionBar>
       <PageLayout>
         <PageBlock column="main" blockId="invoice-info" title={<Trans>Invoice Details</Trans>}>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -115,6 +117,7 @@ function InvoiceDetailPage({ route }: { route: any }) {
                 <li key={cn.id} className="flex items-center justify-between gap-2">
                   <span>{cn.sequentialId}</span>
                   <DateTime value={cn.createdAt} />
+                  <InvoiceDownloadButton invoiceId={cn.id} size="sm" />
                 </li>
               ))}
             </ul>

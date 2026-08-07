@@ -7,8 +7,9 @@ import {
   TransactionalConnection
 } from "@vendure/core";
 import { createTestEnvironment, E2E_DEFAULT_CHANNEL_TOKEN } from "@vendure/testing";
+import { createHmac } from "node:crypto";
 import path from "path";
-import { afterAll, beforeAll, describe, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
@@ -23,7 +24,9 @@ import {
   ASSIGN_SHIPPING_METHODS_TO_CHANNEL,
   ASSIGN_STOCK_LOCATIONS_TO_CHANNEL,
   CREATE_CHANNEL,
+  CREATE_INVOICE_DOWNLOAD_URL,
   CREATE_PAYMENT_METHOD,
+  GET_INVOICE_LIST,
   GET_ACTIVE_CHANNEL,
   GET_PAYMENT_METHODS,
   GET_SHIPPING_METHODS,
@@ -60,6 +63,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
   const INITIAL_SEQUENCE_INVOICE = 1337;
   const INVOICE_PREFIX = "SINGLE-VENDOR-INVOICE";
+  const DOWNLOAD_SIGNING_SECRET = "e2e-download-signing-secret";
 
   const { server, adminClient, shopClient } = createTestEnvironment({
     ...testConfig(8001),
@@ -82,6 +86,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
         subscribeToOrderPlacedEvent: true,
         initialSequence: INITIAL_SEQUENCE_INVOICE,
         snapshotStrategy: new DebugSnapshotStrategy(),
+        download: { signingSecret: DOWNLOAD_SIGNING_SECRET },
 
         // IMPORTANT - This e2e suite specifically tests sharing the sequence across channels!
         perChannelConfig: false,
@@ -265,6 +270,136 @@ describe("InvoicesPlugin", { sequential: true }, () => {
       });
 
       expect(seqAfter.sequence).toBe(seqBefore.sequence + 1);
+    });
+  });
+
+  describe("signed download URLs", () => {
+    let invoiceId: string;
+    let sequentialId: string;
+    let downloadOrigin: string;
+
+    beforeAll(async () => {
+      // Relies on the invoices created by the preceding suites, hence `sequential: true`
+      const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 1 } });
+      expect(invoiceList.totalItems, "Expected the earlier suites to have created invoices").toBeGreaterThan(0);
+      invoiceId = invoiceList.items[0].id;
+      sequentialId = invoiceList.items[0].sequentialId;
+
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId });
+      downloadOrigin = new URL(createInvoiceDownloadUrl).origin;
+    });
+
+    /** Mirrors the servers' scheme so that forged and stale links can be crafted here */
+    function craftUrl(id: string, expires: number): URL {
+      const signature = createHmac("sha256", DOWNLOAD_SIGNING_SECRET)
+        .update(`${id}:${expires}`)
+        .digest("base64url");
+
+      const url = new URL(`/invoices/${id}/download`, downloadOrigin);
+      url.search = new URLSearchParams({ expires: String(expires), signature }).toString();
+      return url;
+    }
+
+    test("downloads the file without carrying a session", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId });
+
+      const response = await fetch(createInvoiceDownloadUrl);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-disposition")).toBe(`attachment; filename="${sequentialId}.json"`);
+      // The DebugFileStrategy writes the snapshot as JSON, so the bytes are assertable
+      expect(await response.json()).toMatchObject({ sequentialId });
+    });
+
+    test("rejects a tampered signature", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId });
+
+      const url = new URL(createInvoiceDownloadUrl);
+      const signature = url.searchParams.get("signature")!;
+      url.searchParams.set("signature", `${signature.slice(0, -1)}${signature.at(-1) === "A" ? "B" : "A"}`);
+
+      expect((await fetch(url)).status).toBe(403);
+    });
+
+    test("rejects a missing signature", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId });
+
+      const url = new URL(createInvoiceDownloadUrl);
+      url.searchParams.delete("signature");
+
+      expect((await fetch(url)).status).toBe(403);
+    });
+
+    test("rejects a correctly signed but expired link", async ({ expect }) => {
+      const url = craftUrl(invoiceId, Math.floor(Date.now() / 1000) - 1);
+
+      expect((await fetch(url)).status).toBe(410);
+    });
+
+    test("honours the requested expiry verbatim, including one in the past", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, {
+        id: invoiceId,
+        expiresIn: -60,
+      });
+
+      expect((await fetch(createInvoiceDownloadUrl)).status).toBe(410);
+    });
+
+    test("returns 404 for a validly signed but unknown invoice", async ({ expect }) => {
+      const url = craftUrl("999999", Math.floor(Date.now() / 1000) + 60);
+
+      expect((await fetch(url)).status).toBe(404);
+    });
+
+    test("mints a URL that never expires", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, {
+        id: invoiceId,
+        neverExpires: true,
+      });
+
+      expect(new URL(createInvoiceDownloadUrl).searchParams.get("expires")).toBe("never");
+      expect((await fetch(createInvoiceDownloadUrl)).status).toBe(200);
+    });
+
+    test("rejects upgrading a finite link into an eternal one", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, {
+        id: invoiceId,
+        expiresIn: 60,
+      });
+
+      // Keeping the signature but claiming no expiry must not validate
+      const url = new URL(createInvoiceDownloadUrl);
+      url.searchParams.set("expires", "never");
+
+      expect((await fetch(url)).status).toBe(403);
+    });
+
+    test("refuses to combine expiresIn with neverExpires", async ({ expect }) => {
+      await expect(
+        adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId, expiresIn: 60, neverExpires: true }),
+      ).rejects.toThrow();
+    });
+
+    test("refuses to mint a URL for an unknown invoice", async ({ expect }) => {
+      await expect(adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: "999999" })).rejects.toThrow();
+    });
+
+    test("refuses to mint a URL for an invoice of a foreign channel", async ({ expect }) => {
+      // `assignToCurrentChannel` puts every invoice into its own channel *and* the default
+      // one, so the only invoices a sub channel must not reach are the default-only ones.
+      const { invoiceList: visibleEverywhere } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+
+      adminClient.setChannelToken("seq-sharing-channel-token");
+      try {
+        const { invoiceList: visibleInSubChannel } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+        const reachable = new Set(visibleInSubChannel.items.map((i: any) => i.id));
+        const foreign = visibleEverywhere.items.find((i: any) => !reachable.has(i.id));
+
+        expect(foreign, "Expected an invoice that the sub channel cannot see").toBeDefined();
+        await expect(adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: foreign.id })).rejects.toThrow();
+      } finally {
+        adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
+      }
     });
   });
 });

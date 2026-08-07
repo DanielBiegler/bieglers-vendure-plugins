@@ -55,7 +55,10 @@ export const config: VendureConfig = {
       fileStrategy: new DebugFileStrategy(),
       storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "invoices")),
       subscribeToOrderPlacedEvent: true,
-      snapshotStrategy: new DebugSnapshotStrategy()
+      snapshotStrategy: new DebugSnapshotStrategy(),
+      download: {
+        signingSecret: process.env.INVOICE_DOWNLOAD_SECRET || "dev-only-insecure-secret",
+      },
     }),
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({

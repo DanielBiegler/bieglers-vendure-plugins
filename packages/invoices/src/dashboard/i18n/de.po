@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/dashboard/invoice-download-button.tsx
+msgid "Could not create a download link"
+msgstr "Download-Link konnte nicht erstellt werden"
+
 #: src/dashboard/page-blocks.tsx
 msgid "Could not load invoices: {reason}"
 msgstr "Rechnungen konnten nicht geladen werden: {reason}"
@@ -24,6 +28,10 @@ msgstr "Gutschrift"
 #: src/dashboard/invoice-detail.tsx
 msgid "Credit Notes"
 msgstr "Gutschriften"
+
+#: src/dashboard/invoice-download-button.tsx
+msgid "Download"
+msgstr "Herunterladen"
 
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx

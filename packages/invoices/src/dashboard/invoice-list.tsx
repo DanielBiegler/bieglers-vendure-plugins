@@ -11,7 +11,6 @@ type InvoiceListItem = {
   sequentialId: string;
   orderId: string;
   order: { id: string; code: string };
-  assetUrl: string;
 };
 
 type GetInvoiceListQuery = {
@@ -35,7 +34,6 @@ const invoiceListDocument = gql`
           id
           code
         }
-        assetUrl
       }
       totalItems
     }

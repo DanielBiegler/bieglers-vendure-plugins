@@ -9,6 +9,23 @@ export const PLUGIN_INIT_OPTIONS = Symbol("PLUGIN_INIT_OPTIONS");
 export const INVOICE_QUEUE_NAME = "plugin-invoices";
 export const DEFAULT_SEQUENCE_CODE = "__default";
 
+/**
+ * Base path of the endpoint that streams invoice files, i.e. `/invoices/:id/download`.
+ *
+ * Not configurable, because Nest reads controller paths at decoration time, which
+ * happens before `InvoicesPlugin.init()` ever runs.
+ */
+export const INVOICE_DOWNLOAD_ROUTE = "invoices";
+export const DEFAULT_DOWNLOAD_EXPIRES_IN = 300;
+
+/**
+ * Stands in for the expiry timestamp of URLs that never expire.
+ *
+ * Signed alongside the invoice ID, so swapping a finite timestamp for this sentinel
+ * invalidates the signature instead of granting an eternal URL.
+ */
+export const DOWNLOAD_NEVER_EXPIRES = "never";
+
 export const InvoicePermissions = new CrudPermissionDefinition("Invoice")
 export const InvoiceConfigPermissions = new PermissionDefinition({ name: "invoice-config" }) // TODO description?
 
