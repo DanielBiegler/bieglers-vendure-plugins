@@ -1,0 +1,72 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-08-07 00:31+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/dashboard/page-blocks.tsx
+msgid "Could not load invoices: {reason}"
+msgstr "Rechnungen konnten nicht geladen werden: {reason}"
+
+#: src/dashboard/page-blocks.tsx
+msgid "Credit note"
+msgstr "Gutschrift"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Credit Notes"
+msgstr "Gutschriften"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/invoice-detail.tsx
+msgid "Download"
+msgstr "Herunterladen"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Invoice"
+msgstr "Rechnung"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Invoice Details"
+msgstr "Rechnungsdetails"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Invoice file"
+msgstr "Rechnungsdatei"
+
+#: src/dashboard/invoice-list.tsx
+#: src/dashboard/invoice-list.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Invoices"
+msgstr "Rechnungen"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Issued"
+msgstr "Ausgestellt"
+
+#: src/dashboard/page-blocks.tsx
+msgid "No invoices"
+msgstr "Keine Rechnungen"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Order ID"
+msgstr "Bestell-ID"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Sequential ID"
+msgstr "Fortlaufende Nummer"
+
+#: src/dashboard/page-blocks.tsx
+msgid "Type"
+msgstr "Typ"

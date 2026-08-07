@@ -59,7 +59,7 @@ This plugin adds // TODO, which requires you to generate a database migration. S
 - Dashboard
   - [ ] List Page
   - [ ] Detail Page
-  - [ ] Order Detail Page "Related Invoices" Section. Should show issued date, type (invoice / credit note), link to detail page.
+  - [x] Order Detail Page "Related Invoices" Section
 
 - Extensions
   - [ ] Custom Fields: Kleinunternehmer&shy;regelung
@@ -67,6 +67,31 @@ This plugin adds // TODO, which requires you to generate a database migration. S
 - Strategies
   - [ ] PDFKit (ZUGFeRD?)
   - [ ] Typst
+
+## Localization
+
+Every user facing string of the dashboard extension goes through [Lingui][lingui], which the Vendure
+dashboard itself uses. English is the source language, translations live in
+[`src/dashboard/i18n`](./src/dashboard/i18n) as one `.po` file per locale and get compiled into the
+dashboard bundle automatically, no registration needed.
+
+Currently shipped: `en`, `de`.
+
+### Contributing a translation
+
+1. Add your locale to `locales` in [`lingui.config.js`](./lingui.config.js). It must be a valid
+   Vendure [`LanguageCode`][languagecode], which uses underscores for region variants, e.g. `pt_BR`.
+2. Generate the catalog:
+
+   ```bash
+   npm run i18n:extract
+   ```
+
+3. Fill in the `msgstr` values in the new `src/dashboard/i18n/{locale}.po`. Untranslated strings fall
+   back to English, so partial translations are fine.
+
+Run `npm run i18n:extract` as well whenever you add or change a string in the dashboard extension,
+otherwise the catalogs go stale.
 
 ## Design Reasons and Decisions
 
@@ -199,6 +224,8 @@ This way the accountant/tax office has a clear sequence of transactions.
 [events]: https://docs.vendure.io/guides/developer-guide/events/
 [extendapi]: https://docs.vendure.io/guides/developer-guide/extend-graphql-api/
 [jobqueue]: https://docs.vendure.io/guides/developer-guide/worker-job-queue/
+[languagecode]: https://docs.vendure.io/reference/typescript-api/common/language-code/
+[lingui]: https://lingui.dev/
 [migrations]: https://docs.vendure.io/guides/developer-guide/migrations/
 [orderplacedstrategy]: https://docs.vendure.io/current/core/reference/typescript-api/orders/order-placed-strategy
 [orderprocess]: https://docs.vendure.io/current/core/core-concepts/orders#the-order-process

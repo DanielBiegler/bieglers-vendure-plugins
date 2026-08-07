@@ -1,0 +1,72 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-08-07 00:31+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/dashboard/page-blocks.tsx
+msgid "Could not load invoices: {reason}"
+msgstr "Could not load invoices: {reason}"
+
+#: src/dashboard/page-blocks.tsx
+msgid "Credit note"
+msgstr "Credit note"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Credit Notes"
+msgstr "Credit Notes"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/invoice-detail.tsx
+msgid "Download"
+msgstr "Download"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Invoice"
+msgstr "Invoice"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Invoice Details"
+msgstr "Invoice Details"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Invoice file"
+msgstr "Invoice file"
+
+#: src/dashboard/invoice-list.tsx
+#: src/dashboard/invoice-list.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Invoices"
+msgstr "Invoices"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Issued"
+msgstr "Issued"
+
+#: src/dashboard/page-blocks.tsx
+msgid "No invoices"
+msgstr "No invoices"
+
+#: src/dashboard/invoice-detail.tsx
+msgid "Order ID"
+msgstr "Order ID"
+
+#: src/dashboard/invoice-detail.tsx
+#: src/dashboard/page-blocks.tsx
+msgid "Sequential ID"
+msgstr "Sequential ID"
+
+#: src/dashboard/page-blocks.tsx
+msgid "Type"
+msgstr "Type"

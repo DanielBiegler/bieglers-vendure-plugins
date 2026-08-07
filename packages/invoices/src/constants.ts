@@ -9,7 +9,7 @@ export const PLUGIN_INIT_OPTIONS = Symbol("PLUGIN_INIT_OPTIONS");
 export const INVOICE_QUEUE_NAME = "plugin-invoices";
 export const DEFAULT_SEQUENCE_CODE = "__default";
 
-export const InvoicePermissions = new CrudPermissionDefinition("invoice")
+export const InvoicePermissions = new CrudPermissionDefinition("Invoice")
 export const InvoiceConfigPermissions = new PermissionDefinition({ name: "invoice-config" }) // TODO description?
 
 /**

@@ -10,6 +10,7 @@
     "build": "rimraf dist && tsc -p ./tsconfig.build.json && cp -r src/dashboard dist/dashboard",
     "build:dashboard": "vite build",
     "codegen": "ts-node generate-types.ts",
+    "i18n:extract": "lingui extract",
     "e2e": "cross-env PACKAGE=invoices vitest -c ../../utils/e2e/vitest.config.mts"
   },
   "author": {

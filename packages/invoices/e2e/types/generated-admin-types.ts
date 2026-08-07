@@ -4766,6 +4766,8 @@ export enum Permission {
   CreateCustomerGroup = 'CreateCustomerGroup',
   /** Grants permission to create Facet */
   CreateFacet = 'CreateFacet',
+  /** Grants permission to create Invoice */
+  CreateInvoice = 'CreateInvoice',
   /** Grants permission to create Order */
   CreateOrder = 'CreateOrder',
   /** Grants permission to create PaymentMethod */
@@ -4792,8 +4794,6 @@ export enum Permission {
   CreateTaxRate = 'CreateTaxRate',
   /** Grants permission to create Zone */
   CreateZone = 'CreateZone',
-  /** Grants permission to create invoice */
-  Createinvoice = 'Createinvoice',
   /** Grants permission to delete Administrator */
   DeleteAdministrator = 'DeleteAdministrator',
   /** Grants permission to delete ApiKey */
@@ -4814,6 +4814,8 @@ export enum Permission {
   DeleteCustomerGroup = 'DeleteCustomerGroup',
   /** Grants permission to delete Facet */
   DeleteFacet = 'DeleteFacet',
+  /** Grants permission to delete Invoice */
+  DeleteInvoice = 'DeleteInvoice',
   /** Grants permission to delete Order */
   DeleteOrder = 'DeleteOrder',
   /** Grants permission to delete PaymentMethod */
@@ -4840,8 +4842,6 @@ export enum Permission {
   DeleteTaxRate = 'DeleteTaxRate',
   /** Grants permission to delete Zone */
   DeleteZone = 'DeleteZone',
-  /** Grants permission to delete invoice */
-  Deleteinvoice = 'Deleteinvoice',
   /** Owner means the user owns this entity, e.g. a Customer's own Order */
   Owner = 'Owner',
   /** Public means any unauthenticated user may perform the operation */
@@ -4866,6 +4866,8 @@ export enum Permission {
   ReadCustomerGroup = 'ReadCustomerGroup',
   /** Grants permission to read Facet */
   ReadFacet = 'ReadFacet',
+  /** Grants permission to read Invoice */
+  ReadInvoice = 'ReadInvoice',
   /** Grants permission to read Order */
   ReadOrder = 'ReadOrder',
   /** Grants permission to read PaymentMethod */
@@ -4892,8 +4894,6 @@ export enum Permission {
   ReadTaxRate = 'ReadTaxRate',
   /** Grants permission to read Zone */
   ReadZone = 'ReadZone',
-  /** Grants permission to read invoice */
-  Readinvoice = 'Readinvoice',
   /** SuperAdmin has unrestricted access to all operations */
   SuperAdmin = 'SuperAdmin',
   /** Grants permission to update Administrator */
@@ -4918,6 +4918,8 @@ export enum Permission {
   UpdateFacet = 'UpdateFacet',
   /** Grants permission to update GlobalSettings */
   UpdateGlobalSettings = 'UpdateGlobalSettings',
+  /** Grants permission to update Invoice */
+  UpdateInvoice = 'UpdateInvoice',
   /** Grants permission to update Order */
   UpdateOrder = 'UpdateOrder',
   /** Grants permission to update PaymentMethod */
@@ -4943,9 +4945,7 @@ export enum Permission {
   /** Grants permission to update TaxRate */
   UpdateTaxRate = 'UpdateTaxRate',
   /** Grants permission to update Zone */
-  UpdateZone = 'UpdateZone',
-  /** Grants permission to update invoice */
-  Updateinvoice = 'Updateinvoice'
+  UpdateZone = 'UpdateZone'
 }
 
 export type PermissionDefinition = {

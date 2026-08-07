@@ -1,20 +1,16 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { Trans } from '@lingui/react/macro';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import {
+  api,
   DashboardRouteDefinition,
-  getDetailQueryOptions,
+  DateTime,
   Page,
   PageBlock,
   PageLayout,
   PageTitle
 } from '@vendure/dashboard';
 import gql from 'graphql-tag';
-
-type CreditNoteDetail = {
-  id: string;
-  sequentialId: string;
-  assetUrl: string;
-};
 
 type InvoiceDetail = {
   id: string;
@@ -23,7 +19,6 @@ type InvoiceDetail = {
   sequentialId: string;
   orderId: string;
   assetUrl: string;
-  creditNotes: CreditNoteDetail[];
 } | null;
 
 type GetInvoiceQuery = { invoice: InvoiceDetail };
@@ -38,36 +33,72 @@ const invoiceDetailDocument = gql`
       sequentialId
       orderId
       assetUrl
-      creditNotes {
+    }
+  }
+` as TypedDocumentNode<GetInvoiceQuery, GetInvoiceQueryVariables>;
+
+type CreditNoteItem = {
+  id: string;
+  createdAt: string;
+  sequentialId: string;
+  assetUrl: string;
+};
+
+type GetCreditNotesQuery = { invoiceList: { items: CreditNoteItem[] } };
+type GetCreditNotesQueryVariables = { invoiceId: string };
+
+/**
+ * Credit notes are the invoices whose `cancels` reference points back at this invoice.
+ * `IdOperators` takes a String, not an ID, hence the seemingly odd variable type.
+ */
+const creditNotesDocument = gql`
+  query GetCreditNotesForInvoice($invoiceId: String!) {
+    invoiceList(
+      options: { filter: { cancelsId: { eq: $invoiceId } }, sort: { createdAt: ASC }, take: 100 }
+    ) {
+      items {
         id
+        createdAt
         sequentialId
         assetUrl
       }
     }
   }
-` as TypedDocumentNode<GetInvoiceQuery, GetInvoiceQueryVariables>;
+` as TypedDocumentNode<GetCreditNotesQuery, GetCreditNotesQueryVariables>;
 
 function InvoiceDetailPage({ route }: { route: any }) {
   const { id } = route.useParams() as { id: string };
-  const { data } = useSuspenseQuery(
-    getDetailQueryOptions(invoiceDetailDocument, { input: { id } }),
-  );
-  const invoice = (data as GetInvoiceQuery).invoice;
+  // `getDetailQueryOptions` is not usable here, because it insists on a plain
+  // `{ id }` variable while this query takes a `GetSingleInvoiceInput`.
+  const { data } = useSuspenseQuery({
+    queryKey: ['GetInvoice', id],
+    queryFn: () => api.query(invoiceDetailDocument, { input: { id } }),
+  });
+  const invoice = data.invoice;
+
+  // PageLayout only picks up PageBlocks that are its direct children, so this
+  // cannot be extracted into a component of its own.
+  const { data: creditNotesData } = useQuery({
+    queryKey: ['GetCreditNotesForInvoice', invoice?.id],
+    queryFn: () => api.query(creditNotesDocument, { invoiceId: invoice!.id }),
+    enabled: !!invoice?.id,
+  });
+  const creditNotes = creditNotesData?.invoiceList.items ?? [];
 
   return (
     <Page pageId="invoice-detail">
-      <PageTitle>{invoice?.sequentialId ?? 'Invoice'}</PageTitle>
+      <PageTitle>{invoice?.sequentialId ?? <Trans>Invoice</Trans>}</PageTitle>
       {/* <PageActionBar></PageActionBar> */}
       <PageLayout>
-        <PageBlock column="main" blockId="invoice-info" title="Invoice Details">
+        <PageBlock column="main" blockId="invoice-info" title={<Trans>Invoice Details</Trans>}>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="font-medium text-muted-foreground">Sequential ID</dt>
+            <dt className="font-medium text-muted-foreground"><Trans>Sequential ID</Trans></dt>
             <dd>{invoice?.sequentialId}</dd>
-            <dt className="font-medium text-muted-foreground">Order ID</dt>
+            <dt className="font-medium text-muted-foreground"><Trans>Order ID</Trans></dt>
             <dd>{invoice?.orderId}</dd>
-            <dt className="font-medium text-muted-foreground">Created</dt>
-            <dd>{invoice?.createdAt ? new Date(invoice.createdAt).toLocaleDateString() : '—'}</dd>
-            <dt className="font-medium text-muted-foreground">Download</dt>
+            <dt className="font-medium text-muted-foreground"><Trans>Issued</Trans></dt>
+            <dd>{invoice?.createdAt ? <DateTime value={invoice.createdAt} /> : '—'}</dd>
+            <dt className="font-medium text-muted-foreground"><Trans>Download</Trans></dt>
             <dd>
               <a
                 href={invoice?.assetUrl}
@@ -75,24 +106,25 @@ function InvoiceDetailPage({ route }: { route: any }) {
                 rel="noopener noreferrer"
                 className="text-primary underline"
               >
-                Invoice file
+                <Trans>Invoice file</Trans>
               </a>
             </dd>
           </dl>
         </PageBlock>
-        {(invoice?.creditNotes?.length ?? 0) > 0 && (
-          <PageBlock column="main" blockId="credit-notes" title="Credit Notes">
+        {creditNotes.length > 0 && (
+          <PageBlock column="main" blockId="credit-notes" title={<Trans>Credit Notes</Trans>}>
             <ul className="space-y-2 text-sm">
-              {invoice!.creditNotes.map(cn => (
-                <li key={cn.id} className="flex items-center justify-between">
+              {creditNotes.map(cn => (
+                <li key={cn.id} className="flex items-center justify-between gap-2">
                   <span>{cn.sequentialId}</span>
+                  <DateTime value={cn.createdAt} />
                   <a
                     href={cn.assetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary underline"
                   >
-                    Download
+                    <Trans>Download</Trans>
                   </a>
                 </li>
               ))}
