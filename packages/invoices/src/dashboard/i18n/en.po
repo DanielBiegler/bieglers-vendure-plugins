@@ -26,11 +26,6 @@ msgid "Credit Notes"
 msgstr "Credit Notes"
 
 #: src/dashboard/invoice-detail.tsx
-#: src/dashboard/invoice-detail.tsx
-msgid "Download"
-msgstr "Download"
-
-#: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Invoice"
 msgstr "Invoice"
@@ -38,10 +33,6 @@ msgstr "Invoice"
 #: src/dashboard/invoice-detail.tsx
 msgid "Invoice Details"
 msgstr "Invoice Details"
-
-#: src/dashboard/invoice-detail.tsx
-msgid "Invoice file"
-msgstr "Invoice file"
 
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
@@ -59,8 +50,9 @@ msgid "No invoices"
 msgstr "No invoices"
 
 #: src/dashboard/invoice-detail.tsx
-msgid "Order ID"
-msgstr "Order ID"
+#: src/dashboard/invoice-list.tsx
+msgid "Order"
+msgstr "Order"
 
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx

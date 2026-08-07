@@ -26,11 +26,6 @@ msgid "Credit Notes"
 msgstr "Gutschriften"
 
 #: src/dashboard/invoice-detail.tsx
-#: src/dashboard/invoice-detail.tsx
-msgid "Download"
-msgstr "Herunterladen"
-
-#: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Invoice"
 msgstr "Rechnung"
@@ -38,10 +33,6 @@ msgstr "Rechnung"
 #: src/dashboard/invoice-detail.tsx
 msgid "Invoice Details"
 msgstr "Rechnungsdetails"
-
-#: src/dashboard/invoice-detail.tsx
-msgid "Invoice file"
-msgstr "Rechnungsdatei"
 
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
@@ -59,8 +50,9 @@ msgid "No invoices"
 msgstr "Keine Rechnungen"
 
 #: src/dashboard/invoice-detail.tsx
-msgid "Order ID"
-msgstr "Bestell-ID"
+#: src/dashboard/invoice-list.tsx
+msgid "Order"
+msgstr "Bestellung"
 
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx

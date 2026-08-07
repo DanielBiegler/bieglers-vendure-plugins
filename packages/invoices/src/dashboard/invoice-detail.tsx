@@ -5,6 +5,7 @@ import {
   api,
   DashboardRouteDefinition,
   DateTime,
+  DetailPageButton,
   Page,
   PageBlock,
   PageLayout,
@@ -17,8 +18,7 @@ type InvoiceDetail = {
   createdAt: string;
   updatedAt: string;
   sequentialId: string;
-  orderId: string;
-  assetUrl: string;
+  order: { id: string; code: string };
 } | null;
 
 type GetInvoiceQuery = { invoice: InvoiceDetail };
@@ -31,8 +31,10 @@ const invoiceDetailDocument = gql`
       createdAt
       updatedAt
       sequentialId
-      orderId
-      assetUrl
+      order {
+        id
+        code
+      }
     }
   }
 ` as TypedDocumentNode<GetInvoiceQuery, GetInvoiceQueryVariables>;
@@ -41,7 +43,6 @@ type CreditNoteItem = {
   id: string;
   createdAt: string;
   sequentialId: string;
-  assetUrl: string;
 };
 
 type GetCreditNotesQuery = { invoiceList: { items: CreditNoteItem[] } };
@@ -60,7 +61,6 @@ const creditNotesDocument = gql`
         id
         createdAt
         sequentialId
-        assetUrl
       }
     }
   }
@@ -94,21 +94,18 @@ function InvoiceDetailPage({ route }: { route: any }) {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <dt className="font-medium text-muted-foreground"><Trans>Sequential ID</Trans></dt>
             <dd>{invoice?.sequentialId}</dd>
-            <dt className="font-medium text-muted-foreground"><Trans>Order ID</Trans></dt>
-            <dd>{invoice?.orderId}</dd>
+            <dt className="font-medium text-muted-foreground"><Trans>Order</Trans></dt>
+            <dd>
+              {invoice?.order && (
+                <DetailPageButton
+                  href={`/orders/${invoice.order.id}`}
+                  label={invoice.order.code}
+                  className="px-0 h-auto"
+                />
+              )}
+            </dd>
             <dt className="font-medium text-muted-foreground"><Trans>Issued</Trans></dt>
             <dd>{invoice?.createdAt ? <DateTime value={invoice.createdAt} /> : '—'}</dd>
-            <dt className="font-medium text-muted-foreground"><Trans>Download</Trans></dt>
-            <dd>
-              <a
-                href={invoice?.assetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline"
-              >
-                <Trans>Invoice file</Trans>
-              </a>
-            </dd>
           </dl>
         </PageBlock>
         {creditNotes.length > 0 && (
@@ -118,14 +115,6 @@ function InvoiceDetailPage({ route }: { route: any }) {
                 <li key={cn.id} className="flex items-center justify-between gap-2">
                   <span>{cn.sequentialId}</span>
                   <DateTime value={cn.createdAt} />
-                  <a
-                    href={cn.assetUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline"
-                  >
-                    <Trans>Download</Trans>
-                  </a>
                 </li>
               ))}
             </ul>

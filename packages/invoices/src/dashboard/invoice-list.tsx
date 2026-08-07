@@ -10,6 +10,7 @@ type InvoiceListItem = {
   updatedAt: string;
   sequentialId: string;
   orderId: string;
+  order: { id: string; code: string };
   assetUrl: string;
 };
 
@@ -30,6 +31,10 @@ const invoiceListDocument = gql`
         updatedAt
         sequentialId
         orderId
+        order {
+          id
+          code
+        }
         assetUrl
       }
       totalItems
@@ -55,6 +60,23 @@ export const invoiceList: DashboardRouteDefinition = {
         sequentialId: {
           cell: ({ row }) => (
             <DetailPageButton id={row.original.id} label={row.original.sequentialId} />
+          ),
+        },
+        // Only fetched to label the "Order" column, so it gets no column of its own
+        order: {
+          meta: { disabled: true },
+        },
+        orderId: {
+          header: () => <Trans>Order</Trans>,
+          // The list query only selects fields of visible columns, so the code has to
+          // be declared as a dependency of this column to survive that optimization.
+          meta: { dependencies: ['order'] },
+          // `id` would navigate relative to this list, so the order route needs a full href
+          cell: ({ row }) => (
+            <DetailPageButton
+              href={`/orders/${row.original.orderId}`}
+              label={row.original.order.code}
+            />
           ),
         },
       }}
