@@ -5,7 +5,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
-    "build": "rimraf dist && tsc",
+    "build": "rimraf dist && tsc -p ./tsconfig.build.json",
+    "preview": "ts-node test/preview.ts",
+    "e2e": "cross-env PACKAGE=pdfkit-invoice-strategy vitest -c ../../utils/e2e/vitest.config.mts",
     "dashboard:build": "vite build",
     "dashboard:start": "vite start"
   },

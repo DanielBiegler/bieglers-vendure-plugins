@@ -5,9 +5,31 @@ import { DefaultLogger, DefaultSearchPlugin, dummyPaymentHandler, LanguageCode, 
 import { DashboardPlugin } from "@vendure/dashboard/plugin";
 import "dotenv/config";
 import path from "path";
-import { PdfkitFileStrategy, PdfkitSnapshotStrategy } from "../src";
+import { MerchantDetails, PdfkitFileStrategy, PdfkitSnapshotStrategy } from "../src";
 
 const apiPort = process.env.API_PORT || 3000;
+
+const DEV_MERCHANT: MerchantDetails = {
+  name: "Musterhandel GmbH",
+  address: {
+    streetLine1: "Beispielstraße 12",
+    postalCode: "50667",
+    city: "Köln",
+    country: "Deutschland",
+  },
+  email: "rechnung@musterhandel.example",
+  phoneNumber: "+49 221 1234567",
+  website: "www.musterhandel.example",
+  vatId: "DE123456789",
+  taxNumber: "214/5678/9012",
+  registrationNumber: "HRB 12345, Amtsgericht Köln",
+  footerColumns: [
+    { heading: "Musterhandel GmbH", lines: ["Beispielstraße 12", "50667 Köln", "Deutschland"] },
+    { heading: "Kontakt", lines: ["+49 221 1234567", "rechnung@musterhandel.example"] },
+    { heading: "Bankverbindung", lines: ["Musterbank Köln", "IBAN DE02 1001 0010 0000 0123 45", "BIC PBNKDEFFXXX"] },
+    { heading: "Registergericht", lines: ["HRB 12345, Amtsgericht Köln", "USt-IdNr. DE123456789", "GF: Erika Mustermann"] },
+  ],
+};
 
 const dummyPaymentEligibilityChecker = new PaymentMethodEligibilityChecker({
   code: "dummy-payment-eligibility-checker",
@@ -53,7 +75,14 @@ export const config: VendureConfig = {
       prefixStrategy: new StaticSequentialIdStrategy("INVOICE"),
       fileStrategy: new PdfkitFileStrategy(),
       storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "invoices")),
-      snapshotStrategy: new PdfkitSnapshotStrategy(),
+      snapshotStrategy: new PdfkitSnapshotStrategy({
+        merchant: DEV_MERCHANT,
+        locale: "de-DE",
+        texts: {
+          intro: "Vielen Dank für Ihre Bestellung. Wir stellen Ihnen die folgenden Leistungen in Rechnung.",
+          outro: "Zahlbar ohne Abzug innerhalb von 14 Tagen nach Rechnungserhalt.",
+        },
+      }),
       subscribeToOrderPlacedEvent: true,
       initialSequence: 1000,
       sequenceLeftPadCount: 5,

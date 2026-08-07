@@ -1,0 +1,5 @@
+dist
+node_modules
+preview
+e2e/generated-invoices
+e2e/fixtures
