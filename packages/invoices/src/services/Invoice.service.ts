@@ -5,6 +5,7 @@ import {
   CustomFieldRelationService,
   EntityNotFoundError,
   EventBus,
+  HistoryService,
   ID,
   JobQueue,
   JobQueueService,
@@ -32,6 +33,7 @@ import {
   INVOICE_QUEUE_NAME,
   loggerCtx,
   PLUGIN_INIT_OPTIONS,
+  PLUGIN_INVOICE_CREATED,
   ROW_LOCK_COMPATIBLE_DATABASES
 } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
@@ -53,6 +55,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     private customFieldRelationService: CustomFieldRelationService,
     private connection: TransactionalConnection,
     private eventBus: EventBus,
+    private historyService: HistoryService,
     private listQueryBuilder: ListQueryBuilder,
     private jobQueueService: JobQueueService,
     private orderService: OrderService,
@@ -201,6 +204,17 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     );
 
     await this.customFieldRelationService.updateRelations(ctx, Invoice, input, invoice);
+
+    await this.historyService.createHistoryEntryForOrder({
+      ctx,
+      orderId: order.id,
+      type: PLUGIN_INVOICE_CREATED,
+      data: {
+        invoiceId: invoice.id,
+        sequentialId: invoice.sequentialId,
+        cancelsSequentialId: invoiceToCancel?.sequentialId,
+      },
+    }, false);
 
     Logger.verbose(`Created new Invoice(${invoice.id})`);
 

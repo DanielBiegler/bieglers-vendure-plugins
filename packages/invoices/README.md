@@ -54,20 +54,6 @@ This plugin adds // TODO, which requires you to generate a database migration. S
 
 ### 3. // TODO
 
-## Roadmap
-
-- Dashboard
-  - [ ] List Page
-  - [ ] Detail Page
-  - [x] Order Detail Page "Related Invoices" Section
-
-- Extensions
-  - [ ] Custom Fields: Kleinunternehmer&shy;regelung
-
-- Strategies
-  - [ ] PDFKit (ZUGFeRD?)
-  - [ ] Typst
-
 ## Localization
 
 Every user facing string of the dashboard extension goes through [Lingui][lingui], which the Vendure
@@ -167,6 +153,25 @@ The trade-off: DB-level uniqueness cannot prevent over-crediting (total credited
 2. A row may not reference itself.
 
 Nullable foreign keys as type discriminators sacrifice compile-time type safety, and self-referential ORM relations require care around eager-loading cycles. Both costs are lower than the alternative of cross-entity sequence coupling or duplicated schema.
+
+## Order history
+
+Issuing a document writes a `PLUGIN_INVOICE_CREATED` entry into the orders' history timeline, so
+administrators can see when an invoice or credit note was created and jump straight to it. The entry
+is **not** public, i.e. it is invisible to the Shop API, because it carries internal accounting
+identifiers:
+
+```json
+{
+  "invoiceId": "1",
+  "sequentialId": "INVOICE01000",
+  "cancelsSequentialId": "INVOICE00999"
+}
+```
+
+`cancelsSequentialId` is only present for credit notes and is what the dashboard uses to tell the
+two apart. The type is exported as `PLUGIN_INVOICE_CREATED` and the payload is declared on Vendure's
+`OrderHistoryEntryData`, so your own code gets it type-checked too.
 
 ## Downloading invoice files
 

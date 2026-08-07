@@ -10,6 +10,14 @@ export const INVOICE_QUEUE_NAME = "plugin-invoices";
 export const DEFAULT_SEQUENCE_CODE = "__default";
 
 /**
+ * Type of the order history entry written whenever a document is issued.
+ *
+ * Values of the `HistoryEntryType` enum share one namespace across all plugins and a
+ * duplicate breaks schema merging at bootstrap, hence the prefix.
+ */
+export const PLUGIN_INVOICE_CREATED = "PLUGIN_INVOICE_CREATED";
+
+/**
  * Base path of the endpoint that streams invoice files, i.e. `/invoices/:id/download`.
  *
  * Not configurable, because Nest reads controller paths at decoration time, which

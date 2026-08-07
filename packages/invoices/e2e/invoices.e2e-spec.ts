@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
-import { DebugSnapshotStrategy, DEFAULT_SEQUENCE_CODE } from "../src";
+import { DebugSnapshotStrategy, DEFAULT_SEQUENCE_CODE, PLUGIN_INVOICE_CREATED } from "../src";
 import { DebugFileStrategy } from "../src/config/FileStrategy";
 import { StaticSequentialIdStrategy } from "../src/config/SequentialIdStrategy";
 import { InvoiceSequence } from "../src/entities/Sequence.entity";
@@ -27,6 +27,8 @@ import {
   CREATE_INVOICE_DOWNLOAD_URL,
   CREATE_PAYMENT_METHOD,
   GET_INVOICE_LIST,
+  GET_ORDER_HISTORY,
+  GET_ORDERS,
   GET_ACTIVE_CHANNEL,
   GET_PAYMENT_METHODS,
   GET_SHIPPING_METHODS,
@@ -270,6 +272,33 @@ describe("InvoicesPlugin", { sequential: true }, () => {
       });
 
       expect(seqAfter.sequence).toBe(seqBefore.sequence + 1);
+    });
+  });
+
+  describe("order history", () => {
+    test("records an entry for every issued invoice", async ({ expect }) => {
+      const { orders } = await adminClient.query(GET_ORDERS);
+      expect(orders.items.length, "Expected the earlier suites to have placed orders").toBeGreaterThan(0);
+
+      const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+      const invoicesByOrder = new Map<string, any>();
+      for (const order of orders.items) {
+        const { order: withHistory } = await adminClient.query(GET_ORDER_HISTORY, { id: order.id });
+        const entries = withHistory.history.items.filter((i: any) => i.type === PLUGIN_INVOICE_CREATED);
+        expect(entries.length, `Order ${order.code} has no invoice history entry`).toBe(1);
+        invoicesByOrder.set(order.id, entries[0]);
+
+        // Internal accounting identifiers have no business in the Shop API
+        expect(entries[0].isPublic).toBe(false);
+        expect(entries[0].data.cancelsSequentialId).toBeUndefined();
+      }
+
+      // Every entry points at an invoice that actually exists
+      const knownSequentialIds = new Set(invoiceList.items.map((i: any) => i.sequentialId));
+      for (const entry of invoicesByOrder.values()) {
+        expect(knownSequentialIds).toContain(entry.data.sequentialId);
+        expect(entry.data.invoiceId).toBeDefined();
+      }
     });
   });
 

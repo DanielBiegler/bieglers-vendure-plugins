@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/dashboard/history-entries.tsx
+msgid "cancels {cancelled}"
+msgstr "storniert {cancelled}"
+
 #: src/dashboard/invoice-download-button.tsx
 msgid "Could not create a download link"
 msgstr "Download-Link konnte nicht erstellt werden"
@@ -24,6 +28,10 @@ msgstr "Rechnungen konnten nicht geladen werden: {reason}"
 #: src/dashboard/page-blocks.tsx
 msgid "Credit note"
 msgstr "Gutschrift"
+
+#: src/dashboard/history-entries.tsx
+msgid "Credit note issued"
+msgstr "Gutschrift ausgestellt"
 
 #: src/dashboard/invoice-detail.tsx
 msgid "Credit Notes"
@@ -41,6 +49,10 @@ msgstr "Rechnung"
 #: src/dashboard/invoice-detail.tsx
 msgid "Invoice Details"
 msgstr "Rechnungsdetails"
+
+#: src/dashboard/history-entries.tsx
+msgid "Invoice issued"
+msgstr "Rechnung ausgestellt"
 
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx

@@ -2,6 +2,11 @@ import { gql } from "graphql-tag";
 
 export const adminApiExtensions = gql`
 
+  extend enum HistoryEntryType {
+    "Written to the orders' history whenever an invoice or credit note is issued for it"
+    PLUGIN_INVOICE_CREATED
+  }
+
   # In case you need a field resolver for result unions
   #
   # type PluginInvoicesResult {

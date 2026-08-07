@@ -1,7 +1,19 @@
-import { AssetStorageStrategy } from "@vendure/core";
+import { AssetStorageStrategy, ID } from "@vendure/core";
 import { FileStrategy } from "./config/FileStrategy";
 import { SequentialIdStrategy } from "./config/SequentialIdStrategy";
 import { SnapshotStrategy } from "./config/SnapshotStrategy";
+import { PLUGIN_INVOICE_CREATED } from "./constants";
+
+declare module "@vendure/core" {
+  interface OrderHistoryEntryData {
+    [PLUGIN_INVOICE_CREATED]: {
+      invoiceId: ID;
+      sequentialId: string;
+      /** Set when the document cancels an earlier invoice, i.e. when it is a credit note. */
+      cancelsSequentialId?: string;
+    };
+  }
+}
 
 /**
  * These are the configuration options for the plugin.

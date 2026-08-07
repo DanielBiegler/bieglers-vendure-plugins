@@ -126,3 +126,30 @@ export const CREATE_INVOICE_DOWNLOAD_URL = gql`
     createInvoiceDownloadUrl(id: $id, expiresIn: $expiresIn, neverExpires: $neverExpires)
   }
 `;
+
+export const GET_ORDER_HISTORY = gql`
+  query GetOrderHistory($id: ID!) {
+    order(id: $id) {
+      id
+      history(options: { sort: { createdAt: ASC } }) {
+        totalItems
+        items {
+          type
+          isPublic
+          data
+        }
+      }
+    }
+  }
+`;
+
+export const GET_ORDERS = gql`
+  query GetOrders {
+    orders(options: { sort: { createdAt: ASC } }) {
+      items {
+        id
+        code
+      }
+    }
+  }
+`;
