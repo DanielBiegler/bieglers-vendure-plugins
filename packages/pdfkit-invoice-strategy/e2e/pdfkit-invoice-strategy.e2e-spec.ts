@@ -121,10 +121,10 @@ describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
     // Non-Latin-1 throughout, so the assertions below prove the characters survive the whole
     // trip: GraphQL, the database, the JSON snapshot and finally the embedded font subset.
     await shopClient.query(SET_CUSTOMER_FOR_ORDER, {
-      input: { firstName: "Ольга", lastName: "Ковалевська", emailAddress: "olha@example.com" },
+      input: { firstName: "Тест", lastName: "Тестенко", emailAddress: "test@example.com" },
     });
     await shopClient.query(SET_ORDER_SHIPPING_ADDRESS, {
-      input: { fullName: "Ольга Ковалевська", streetLine1: "Grünstraße 3", city: "Köln", postalCode: "50667", countryCode: "GB" },
+      input: { fullName: "Тест Тестенко", streetLine1: "Musterstraße 3", city: "Köln", postalCode: "50667", countryCode: "GB" },
     });
 
     const { eligibleShippingMethods } = await shopClient.query(GET_ELIGIBLE_SHIPPING_METHODS);
@@ -161,8 +161,8 @@ describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
     const text = squash(pdfText);
 
     expect(text).toContain(orderCode);
-    expect(text).toContain(squash("Ольга Ковалевська"));
-    expect(text).toContain(squash("Grünstraße 3"));
+    expect(text).toContain(squash("Тест Тестенко"));
+    expect(text).toContain(squash("Musterstraße 3"));
     expect(text).toContain(squash(variantName));
     expect(text).toContain(squash(MERCHANT.name));
     expect(text).toContain(MERCHANT.vatId!);

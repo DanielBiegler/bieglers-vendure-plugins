@@ -189,21 +189,21 @@ export function createSimpleSnapshot(overrides: Partial<PdfkitSnapshot> = {}): P
 export function createMultilingualSnapshot(overrides: Partial<PdfkitSnapshot> = {}): PdfkitSnapshot {
   return createSimpleSnapshot({
     merchant: {
-      name: "Καφές Ελλάδα ΑΕ",
-      address: { streetLine1: "Λεωφόρος Αθηνών 12", postalCode: "104 31", city: "Αθήνα" },
+      name: "Παράδειγμα ΑΕ",
+      address: { streetLine1: "οδός Παραδείγματος 12", postalCode: "104 31", city: "Αθήνα" },
       vatId: "EL123456789",
     },
     customer: {
-      name: "Ольга Ковалевська",
+      name: "Тест Тестенко",
       billingAddress: {
-        fullName: "Ольга Ковалевська",
-        streetLine1: "вулиця Хрещатик 22",
+        fullName: "Тест Тестенко",
+        streetLine1: "вулиця Прикладна 1",
         postalCode: "01001",
         city: "Київ",
         countryCode: "UA",
       },
     },
-    texts: { intro: "Grüße aus Köln — dziękujemy, İstanbul'a teşekkürler." },
+    texts: { intro: "Grüße aus Köln — dziękujemy, İstanbul'a teşekkürler, дякуємо." },
     ...overrides,
   });
 }

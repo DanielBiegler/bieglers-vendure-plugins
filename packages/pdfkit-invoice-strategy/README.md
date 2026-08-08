@@ -156,7 +156,7 @@ new PdfkitFileStrategy({
 
 Documents are set in [Noto Sans][noto], which is bundled with the package. It covers Latin
 (including Central European, Baltic, Turkish and Vietnamese), Greek and Cyrillic — so
-`Grüße`, `Ольга Ковалевська`, `Καφές` and `İstanbul` all print as written, with no configuration.
+`Grüße`, `Київ`, `Καφές` and `İstanbul` all print as written, with no configuration.
 Only the glyphs a document actually uses are embedded, which costs a few kB per PDF.
 
 Scripts beyond that — CJK, Hebrew, Arabic, Indic — need a font of their own. Covering them costs

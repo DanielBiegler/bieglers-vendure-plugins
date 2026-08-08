@@ -80,12 +80,13 @@ describe("fonts", () => {
   test("keeps Greek, Cyrillic and Latin diacritics intact with the default font", async () => {
     const text = extractText(await renderInvoice(createMultilingualSnapshot(), { compress: false }));
 
-    expect(text).toContain("Καφές Ελλάδα ΑΕ");
-    expect(text).toContain("Ольга Ковалевська");
+    expect(text).toContain("Παράδειγμα ΑΕ");
+    expect(text).toContain("Тест Тестенко");
     expect(text).toContain("Київ");
     expect(text).toContain("Grüße aus Köln");
     expect(text).toContain("dziękujemy");
     expect(text).toContain("İstanbul'a teşekkürler");
+    expect(text).toContain("дякуємо");
   });
 
   test("embeds the default font as a subset so the document is self-contained", async () => {
