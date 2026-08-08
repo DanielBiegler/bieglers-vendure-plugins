@@ -1,28 +1,19 @@
 import { describe, expect, test } from "vitest";
+import { STANDARD_FONTS } from "../src/fonts";
 import { createFormatter, interpolate } from "../src/format";
 import { labelsForLocale } from "../src/labels";
 import { renderInvoice } from "../src/render";
-import { createSampleSnapshot, withManyLines } from "./sample-snapshot";
-
-/**
- * With compression off, drawn text sits in the content streams as `<hex>` strings inside
- * TJ arrays. PDFKit splits a single string across several of them wherever it applies
- * kerning, so the fragments are concatenated back together before anything is asserted.
- */
-const readable = (buffer: Buffer) =>
-  (buffer.toString("latin1").match(/<[0-9A-Fa-f]{2,}>/g) ?? [])
-    .map((hex) => Buffer.from(hex.slice(1, -1), "hex").toString("latin1"))
-    .join("");
-
-/** The page tree dictionary is never inside a compressed stream. */
-const pageCount = (buffer: Buffer) => Number(/\/Count (\d+)/.exec(buffer.toString("latin1"))?.[1]);
-
-/** Whitespace does not survive the round trip predictably, currency symbols do not either. */
-const squash = (value: string) => value.replace(/[\s  ]/g, "");
+import { extractText, pageCount, squash } from "./pdf-text";
+import {
+  createMultilingualSnapshot,
+  createSampleSnapshot,
+  createSimpleSnapshot,
+  withManyLines,
+} from "./sample-snapshot";
 
 describe("renderInvoice", () => {
   test("produces a single page PDF for a typical order", async () => {
-    const pdf = await renderInvoice(createSampleSnapshot(), { compress: false });
+    const pdf = await renderInvoice(createSimpleSnapshot(), { compress: false });
 
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pageCount(pdf)).toBe(1);
@@ -30,7 +21,7 @@ describe("renderInvoice", () => {
 
   test("prints the identifying data a reader needs to match invoice to order", async () => {
     const pdf = await renderInvoice(createSampleSnapshot(), { compress: false });
-    const text = readable(pdf);
+    const text = extractText(pdf);
 
     expect(text).toContain("INVOICE01042");
     expect(text).toContain("GJ7T2K9QWERTY");
@@ -42,11 +33,10 @@ describe("renderInvoice", () => {
 
   test("shows the gross grand total and both tax rates", async () => {
     const snapshot = createSampleSnapshot();
-    const text = squash(readable(await renderInvoice(snapshot, { compress: false })));
+    const text = squash(extractText(await renderInvoice(snapshot, { compress: false })));
     const fmt = createFormatter(snapshot.format);
 
-    // The currency symbol is re-encoded to WinAnsi, so only the amount is compared.
-    expect(text).toContain("609,04");
+    expect(text).toContain(squash(fmt.money(snapshot.totals.totalWithTax)));
     expect(text).toContain(squash(snapshot.labels.grandTotal));
     expect(text).toContain(squash(interpolate(snapshot.labels.taxAtRate, { rate: fmt.percent(19) })));
     expect(text).toContain(squash(interpolate(snapshot.labels.taxAtRate, { rate: fmt.percent(7) })));
@@ -55,12 +45,12 @@ describe("renderInvoice", () => {
   test("breaks a long item table across pages and numbers every one of them", async () => {
     const snapshot = withManyLines(createSampleSnapshot(), 60);
     const pdf = await renderInvoice(snapshot, { compress: false });
-    const text = readable(pdf);
+    const text = squash(extractText(pdf));
 
     const pages = pageCount(pdf);
     expect(pages).toBeGreaterThan(1);
     for (let page = 1; page <= pages; page++) {
-      expect(squash(text)).toContain(squash(interpolate(snapshot.labels.page, { page, pages })));
+      expect(text).toContain(squash(interpolate(snapshot.labels.page, { page, pages })));
     }
   });
 
@@ -74,7 +64,7 @@ describe("renderInvoice", () => {
       },
     });
     const pdf = await renderInvoice(snapshot, { compress: false });
-    const text = readable(pdf);
+    const text = extractText(pdf);
 
     expect(text).toContain(snapshot.labels.creditNote);
     expect(text).toContain(interpolate(snapshot.labels.cancelsInvoice, { sequentialId: "INVOICE01042" }));
@@ -83,6 +73,38 @@ describe("renderInvoice", () => {
   test("falls back to English labels for locales without a built-in set", () => {
     expect(labelsForLocale("de-AT").invoice).toBe(labelsForLocale("de").invoice);
     expect(labelsForLocale("ja-JP").invoice).toBe(labelsForLocale("en").invoice);
+  });
+});
+
+describe("fonts", () => {
+  test("keeps Greek, Cyrillic and Latin diacritics intact with the default font", async () => {
+    const text = extractText(await renderInvoice(createMultilingualSnapshot(), { compress: false }));
+
+    expect(text).toContain("Καφές Ελλάδα ΑΕ");
+    expect(text).toContain("Ольга Ковалевська");
+    expect(text).toContain("Київ");
+    expect(text).toContain("Grüße aus Köln");
+    expect(text).toContain("dziękujemy");
+    expect(text).toContain("İstanbul'a teşekkürler");
+  });
+
+  test("embeds the default font as a subset so the document is self-contained", async () => {
+    const pdf = (await renderInvoice(createSampleSnapshot(), { compress: false })).toString("latin1");
+
+    // The six letter tag is what marks an embedded subset rather than a whole face.
+    expect(pdf).toMatch(/\/BaseFont \/[A-Z]{6}\+NotoSans-Regular/);
+    expect(pdf).toMatch(/\/BaseFont \/[A-Z]{6}\+NotoSans-Bold/);
+    expect(pdf).toContain("/FontFile2");
+  });
+
+  test("STANDARD_FONTS opts out of the embedded subset", async () => {
+    const pdf = await renderInvoice(createSampleSnapshot(), { compress: false, fonts: STANDARD_FONTS });
+
+    expect(pdf.toString("latin1")).toContain("/BaseFont /Helvetica");
+    expect(pdf.toString("latin1")).not.toContain("/FontFile2");
+    // WinAnsi still covers Latin-1, so the everyday case reads back correctly.
+    expect(extractText(pdf)).toContain("Beispielstraße 12");
+    expect(extractText(pdf)).toContain("Köln");
   });
 });
 

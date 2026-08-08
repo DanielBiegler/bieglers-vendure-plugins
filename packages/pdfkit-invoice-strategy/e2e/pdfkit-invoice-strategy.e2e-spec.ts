@@ -27,6 +27,7 @@ import { createFormatter } from "../src/format";
 import { MerchantDetails } from "../src/types";
 import { PdfkitFileStrategy } from "../src/PdfkitFileStrategy";
 import { PdfkitSnapshotStrategy } from "../src/PdfkitSnapshotStrategy";
+import { extractText, squash } from "../test/pdf-text";
 
 const TEST_PAYMENT_METHOD_CODE = "test-payment-method";
 const INVOICE_PREFIX = "PDFKIT-INVOICE";
@@ -34,7 +35,7 @@ const INVOICE_DIR = path.join(__dirname, "generated-invoices");
 
 const MERCHANT: MerchantDetails = {
   name: "Musterhandel GmbH",
-  address: { streetLine1: "Beispielstrasse 12", postalCode: "50667", city: "Koeln" },
+  address: { streetLine1: "Beispielstraße 12", postalCode: "50667", city: "Köln" },
   vatId: "DE123456789",
 };
 
@@ -50,14 +51,6 @@ const testPaymentHandler = new PaymentMethodHandler({
   }),
   settlePayment: () => ({ success: true }),
 });
-
-/** Mirrors the extraction in `test/render.spec.ts`; see the comment there. */
-const readable = (buffer: Buffer) =>
-  (buffer.toString("latin1").match(/<[0-9A-Fa-f]{2,}>/g) ?? [])
-    .map((hex) => Buffer.from(hex.slice(1, -1), "hex").toString("latin1"))
-    .join("");
-
-const squash = (value: string) => value.replace(/\s/g, "");
 
 describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
   const { server, adminClient, shopClient } = createTestEnvironment({
@@ -125,11 +118,13 @@ describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
     });
     expect(addItemToOrder.errorCode, JSON.stringify(addItemToOrder)).toBeUndefined();
 
+    // Non-Latin-1 throughout, so the assertions below prove the characters survive the whole
+    // trip: GraphQL, the database, the JSON snapshot and finally the embedded font subset.
     await shopClient.query(SET_CUSTOMER_FOR_ORDER, {
-      input: { firstName: "Erika", lastName: "Mustermann", emailAddress: "erika@example.com" },
+      input: { firstName: "Ольга", lastName: "Ковалевська", emailAddress: "olha@example.com" },
     });
     await shopClient.query(SET_ORDER_SHIPPING_ADDRESS, {
-      input: { fullName: "Erika Mustermann", streetLine1: "Musterweg 3", city: "Berlin", postalCode: "10115", countryCode: "GB" },
+      input: { fullName: "Ольга Ковалевська", streetLine1: "Grünstraße 3", city: "Köln", postalCode: "50667", countryCode: "GB" },
     });
 
     const { eligibleShippingMethods } = await shopClient.query(GET_ELIGIBLE_SHIPPING_METHODS);
@@ -157,17 +152,21 @@ describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
     const pdf = readFileSync(path.join(INVOICE_DIR, `${invoiceList.items[0].sequentialId}.pdf`));
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
 
-    pdfText = readable(pdf);
+    pdfText = extractText(pdf);
     expect(pdfText).toContain(invoiceList.items[0].sequentialId);
   });
 
   test("the rendered invoice carries the order's own data", () => {
-    expect(pdfText).toContain(orderCode);
-    expect(pdfText).toContain("Erika Mustermann");
-    expect(pdfText).toContain("Musterweg 3");
-    expect(pdfText).toContain(variantName);
-    expect(pdfText).toContain(MERCHANT.name);
-    expect(pdfText).toContain(MERCHANT.vatId!);
+    // Squashed because a value that wraps inside its column loses the space it broke on.
+    const text = squash(pdfText);
+
+    expect(text).toContain(orderCode);
+    expect(text).toContain(squash("Ольга Ковалевська"));
+    expect(text).toContain(squash("Grünstraße 3"));
+    expect(text).toContain(squash(variantName));
+    expect(text).toContain(squash(MERCHANT.name));
+    expect(text).toContain(MERCHANT.vatId!);
+    expect(text).toContain(MERCHANT.address!.city!);
   });
 
   test("the printed grand total matches the order total", () => {

@@ -61,9 +61,9 @@ export function createSampleSnapshot(overrides: Partial<PdfkitSnapshot> = {}): P
     merchant: {
       name: "Musterhandel GmbH",
       address: {
-        streetLine1: "Beispielstrasse 12",
+        streetLine1: "Beispielstraße 12",
         postalCode: "50667",
-        city: "Koeln",
+        city: "Köln",
         country: "Deutschland",
       },
       email: "rechnung@musterhandel.example",
@@ -72,10 +72,10 @@ export function createSampleSnapshot(overrides: Partial<PdfkitSnapshot> = {}): P
       vatId: "DE123456789",
       taxNumber: "214/5678/9012",
       footerColumns: [
-        { heading: "Musterhandel GmbH", lines: ["Beispielstrasse 12", "50667 Koeln"] },
+        { heading: "Musterhandel GmbH", lines: ["Beispielstraße 12", "50667 Köln"] },
         { heading: "Kontakt", lines: ["+49 221 1234567", "rechnung@musterhandel.example"] },
-        { heading: "Bank", lines: ["Musterbank Koeln", "IBAN DE02 1001 0010 0000 0123 45"] },
-        { heading: "Register", lines: ["HRB 12345, Amtsgericht Koeln", "USt-IdNr. DE123456789"] },
+        { heading: "Bank", lines: ["Musterbank Köln", "IBAN DE02 1001 0010 0000 0123 45"] },
+        { heading: "Register", lines: ["HRB 12345, Amtsgericht Köln", "USt-IdNr. DE123456789"] },
       ],
     },
     customer: {
@@ -135,13 +135,77 @@ export function createSampleSnapshot(overrides: Partial<PdfkitSnapshot> = {}): P
       },
     ],
     texts: {
-      intro: "Vielen Dank fuer Ihre Bestellung.",
+      intro: "Vielen Dank für Ihre Bestellung.",
       outro: "Zahlbar ohne Abzug innerhalb von 14 Tagen nach Rechnungserhalt.",
     },
     labels: labelsForLocale("de"),
     page: DEFAULT_PAGE,
     ...overrides,
   };
+}
+
+/**
+ * The everyday case: one item and shipping, nothing else. Where {@link createSampleSnapshot}
+ * exists to exercise every branch at once, this one is what a real order usually looks like.
+ */
+export function createSimpleSnapshot(overrides: Partial<PdfkitSnapshot> = {}): PdfkitSnapshot {
+  const sample = createSampleSnapshot();
+  const line = sample.lines[1];
+
+  return createSampleSnapshot({
+    lines: [{ ...line, position: 1 }],
+    discounts: [],
+    surcharges: [],
+    payments: [],
+    taxes: [
+      { description: "Reduced Tax", taxRate: 7, taxBase: 7200, taxTotal: 504 },
+      { description: "Standard Tax", taxRate: 19, taxBase: 495, taxTotal: 94 },
+    ],
+    totals: {
+      items: 7200,
+      itemsWithTax: 7704,
+      discounts: 0,
+      discountsWithTax: 0,
+      surcharges: 0,
+      surchargesWithTax: 0,
+      shipping: 495,
+      shippingWithTax: 589,
+      subTotal: 7695,
+      subTotalWithTax: 8293,
+      tax: 598,
+      total: 7695,
+      totalWithTax: 8293,
+      paid: 0,
+      outstanding: 8293,
+    },
+    ...overrides,
+  });
+}
+
+/**
+ * Names and places a European shop will genuinely be billing, none of which PDFKit's
+ * WinAnsi-only built-in fonts can encode. Renders correctly only with the bundled Noto Sans.
+ */
+export function createMultilingualSnapshot(overrides: Partial<PdfkitSnapshot> = {}): PdfkitSnapshot {
+  return createSimpleSnapshot({
+    merchant: {
+      name: "Καφές Ελλάδα ΑΕ",
+      address: { streetLine1: "Λεωφόρος Αθηνών 12", postalCode: "104 31", city: "Αθήνα" },
+      vatId: "EL123456789",
+    },
+    customer: {
+      name: "Ольга Ковалевська",
+      billingAddress: {
+        fullName: "Ольга Ковалевська",
+        streetLine1: "вулиця Хрещатик 22",
+        postalCode: "01001",
+        city: "Київ",
+        countryCode: "UA",
+      },
+    },
+    texts: { intro: "Grüße aus Köln — dziękujemy, İstanbul'a teşekkürler." },
+    ...overrides,
+  });
 }
 
 /** Repeats the sample lines until the item table is guaranteed to break across pages. */

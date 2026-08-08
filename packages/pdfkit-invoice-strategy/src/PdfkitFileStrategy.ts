@@ -1,6 +1,7 @@
 import type { FileGenerationResult, FileStrategy } from "@danielbiegler/vendure-plugin-invoices";
 import { Logger, RequestContext } from "@vendure/core";
-import { InvoiceFonts, InvoiceLogo, renderInvoice } from "./render";
+import { InvoiceFonts } from "./fonts";
+import { InvoiceLogo, renderInvoice } from "./render";
 import { DeepPartialTheme } from "./theme";
 import { PDFKIT_SNAPSHOT_VERSION, PdfkitSnapshot } from "./types";
 
@@ -8,6 +9,10 @@ export const loggerCtx = "PdfkitInvoiceStrategy";
 
 export interface PdfkitFileStrategyOptions {
   theme?: DeepPartialTheme;
+  /**
+   * Defaults to the bundled Noto Sans, which covers Latin, Greek and Cyrillic. Override it for
+   * scripts beyond that, or pass STANDARD_FONTS for PDFKit's WinAnsi-only built-ins.
+   */
   fonts?: InvoiceFonts;
   logo?: InvoiceLogo;
 

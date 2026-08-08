@@ -15,6 +15,8 @@ generation a fast, in-process operation with no extra runtime to install.
 - Credit notes, rendered as the mirror image of the invoice they cancel.
 - Net or gross price display, per shop or per order.
 - Built-in `en` and `de` label sets, every string overridable.
+- Ships with a font covering Latin, Greek and Cyrillic, so umlauts and non-Latin customer names
+  print correctly out of the box.
 - Correct money handling: amounts stay in Vendure's minor units and are formatted with the
   precision of your configured `MoneyStrategy`.
 - Multi-page documents with a repeating page footer and `Page x of y`.
@@ -139,7 +141,7 @@ new PdfkitSnapshotStrategy({
 });
 ```
 
-### Theme and fonts
+### Theme
 
 ```ts
 new PdfkitFileStrategy({
@@ -147,17 +149,42 @@ new PdfkitFileStrategy({
     color: { accent: "#0f766e" },
     table: { zebra: false },
   },
+});
+```
+
+### Fonts
+
+Documents are set in [Noto Sans][noto], which is bundled with the package. It covers Latin
+(including Central European, Baltic, Turkish and Vietnamese), Greek and Cyrillic — so
+`Grüße`, `Ольга Ковалевська`, `Καφές` and `İstanbul` all print as written, with no configuration.
+Only the glyphs a document actually uses are embedded, which costs a few kB per PDF.
+
+Scripts beyond that — CJK, Hebrew, Arabic, Indic — need a font of their own. Covering them costs
+tens of megabytes, so point `fonts` at one you choose:
+
+```ts
+new PdfkitFileStrategy({
   fonts: {
-    regular: path.join(__dirname, "fonts/NotoSans-Regular.ttf"),
-    bold: path.join(__dirname, "fonts/NotoSans-Bold.ttf"),
+    regular: path.join(__dirname, "fonts/NotoSansJP-Regular.ttf"),
+    bold: path.join(__dirname, "fonts/NotoSansJP-Bold.ttf"),
   },
 });
 ```
 
+To carry no embedded font at all, opt back in to PDFKit's built-ins:
+
+```ts
+import { STANDARD_FONTS } from "@danielbiegler/vendure-pdfkit-invoice-strategy";
+
+new PdfkitFileStrategy({ fonts: STANDARD_FONTS });
+```
+
 > [!IMPORTANT]
-> PDFKit's built-in Helvetica only covers WinAnsi. If your customers' names or addresses can contain
-> Greek, Cyrillic, Turkish, CJK or similar, register TTF/OTF files via `fonts` — otherwise those
-> characters are silently mangled in the output.
+> `STANDARD_FONTS` only encodes WinAnsi. Anything outside Latin-1 — Greek, Cyrillic, Polish,
+> Turkish — is silently mangled in the output, including in customer names and addresses.
+
+Swapping the typeface changes how the text flows, so a document may gain or lose a page.
+Nothing about its content changes.
 
 ### Anything else
 
@@ -184,8 +211,8 @@ whole order.
 
 ## Previewing a template change
 
-Renders the bundled sample order — net, gross, multi-page and credit note variants — into
-`preview/`, without booting Vendure:
+Renders the bundled sample order — simple, multilingual, net, gross, multi-page and credit note
+variants — into `preview/`, without booting Vendure:
 
 ```bash
 npm run preview
@@ -209,5 +236,11 @@ against the order's own totals.
   because Vendure distributes order-level discounts across lines and rounds per line. The legally
   relevant totals are taken from Vendure verbatim and are always exact.
 
+## Third party licenses
+
+Noto Sans is bundled under the [SIL Open Font License 1.1](./assets/fonts/OFL.txt),
+© 2022 The Noto Project Authors.
+
 [invoices]: https://www.npmjs.com/package/@danielbiegler/vendure-plugin-invoices
+[noto]: https://fonts.google.com/noto/specimen/Noto+Sans
 [pdfkit]: https://pdfkit.org/

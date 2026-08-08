@@ -1,17 +1,8 @@
 import PDFDocument from "pdfkit";
+import { bundledFonts, InvoiceFonts } from "./fonts";
 import { createFormatter, interpolate, InvoiceFormatter, joinNonEmpty } from "./format";
 import { DeepPartialTheme, InvoiceTheme, mergeTheme } from "./theme";
 import { InvoiceAddress, PdfkitSnapshot } from "./types";
-
-export interface InvoiceFonts {
-  /**
-   * PDFKit's built-in fonts are limited to WinAnsi, which silently mangles anything
-   * outside Latin-1 (Greek, Cyrillic, Turkish, CJK, …). Point these at TTF/OTF files
-   * covering your customers' alphabets if you sell beyond that.
-   */
-  regular: string | Buffer;
-  bold: string | Buffer;
-}
 
 export interface InvoiceLogo {
   /** File path or raw bytes. A path is read synchronously by PDFKit. */
@@ -22,6 +13,12 @@ export interface InvoiceLogo {
 
 export interface RenderInvoiceOptions {
   theme?: DeepPartialTheme;
+  /**
+   * Override when your customers write in a script the bundled Noto Sans does not cover
+   * (CJK, Hebrew, Arabic, Indic), or pass STANDARD_FONTS to drop the embedded subset.
+   *
+   * @default bundledFonts()
+   */
   fonts?: InvoiceFonts;
   logo?: InvoiceLogo;
   /**
@@ -126,9 +123,9 @@ function documentInfo(snapshot: PdfkitSnapshot): PDFKit.DocumentInfo {
   return info;
 }
 
-function registerFonts(doc: PDFKit.PDFDocument, fonts?: InvoiceFonts): { regular: string; bold: string } {
-  if (!fonts) return { regular: "Helvetica", bold: "Helvetica-Bold" };
-
+function registerFonts(doc: PDFKit.PDFDocument, fonts: InvoiceFonts = bundledFonts()) {
+  // Standard font names pass through `registerFont` untouched, so STANDARD_FONTS needs no
+  // special casing here.
   doc.registerFont(FONT_REGULAR, fonts.regular);
   doc.registerFont(FONT_BOLD, fonts.bold);
   return { regular: FONT_REGULAR, bold: FONT_BOLD };
@@ -184,24 +181,24 @@ function drawParties(ctx: RenderContext) {
   const top = doc.y;
 
   // The one-line return address above the recipient, as expected on window envelopes.
-  doc
-    .font(fonts.regular)
-    .fontSize(theme.fontSize.tiny)
-    .fillColor(theme.color.muted)
-    .text(
-      joinNonEmpty(
-        [
-          merchant.name,
-          merchant.address.streetLine1,
-          joinNonEmpty([merchant.address.postalCode, merchant.address.city], " "),
-        ],
-        " · ",
-      ),
-      ctx.left,
-      top,
-      { width: leftWidth },
-    );
-  doc.moveDown(0.4);
+  // doc
+  //   .font(fonts.regular)
+  //   .fontSize(theme.fontSize.tiny)
+  //   .fillColor(theme.color.muted)
+  //   .text(
+  //     joinNonEmpty(
+  //       [
+  //         merchant.name,
+  //         merchant.address.streetLine1,
+  //         joinNonEmpty([merchant.address.postalCode, merchant.address.city], " "),
+  //       ],
+  //       " · ",
+  //     ),
+  //     ctx.left,
+  //     top,
+  //     { width: leftWidth },
+  //   );
+  // doc.moveDown(0.4);
 
   doc
     .fontSize(theme.fontSize.small)
@@ -342,6 +339,10 @@ function drawItemsTable(ctx: RenderContext) {
       padding: theme.table.padding,
       align: { x: "right", y: "center" },
       textColor: theme.color.text,
+      // PDFKit truncates cell text with an ellipsis whenever the remaining cell height is
+      // under two lines, which fires even when the text fits. A silently shortened product
+      // name is worse than any layout it could save.
+      textOptions: { ellipsis: false },
     },
     // Fixed widths on everything but the description, sized so that the longest built-in
     // header ("Einzelpreis (brutto)") stays on one line.

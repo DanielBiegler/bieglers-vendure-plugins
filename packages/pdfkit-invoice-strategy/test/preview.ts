@@ -1,7 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { renderInvoice } from "../src/render";
-import { createSampleSnapshot, withManyLines } from "./sample-snapshot";
+import {
+  createMultilingualSnapshot,
+  createSampleSnapshot,
+  createSimpleSnapshot,
+  withManyLines,
+} from "./sample-snapshot";
 
 /**
  * Renders the sample snapshot to disk so a template change can be eyeballed without
@@ -16,6 +21,8 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
 
   const documents: Array<[string, Buffer]> = [
+    ["invoice-simple.pdf", await renderInvoice(createSimpleSnapshot())],
+    ["invoice-multilingual.pdf", await renderInvoice(createMultilingualSnapshot())],
     ["invoice-net.pdf", await renderInvoice(createSampleSnapshot())],
     [
       "invoice-gross.pdf",
