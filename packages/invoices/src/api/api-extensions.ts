@@ -106,8 +106,34 @@ export const adminApiExtensions = gql`
     """
     An invoice ID.
     When defined, will create a credit note relating to this invoice.
+
+    Must reference a plain invoice belonging to "orderId". Pointing it at a credit note,
+    or at an invoice of a different order, is rejected.
     """
     cancels: ID
+    """
+    Free-text reason for the correction, e.g. "Item returned".
+
+    Only meaningful together with "cancels". It is handed to your strategies rather than
+    stored on the invoice row, so it only survives if your SnapshotStrategy writes it into
+    the snapshot.
+    """
+    reason: String
+  }
+
+  input ReissueInvoiceInput {
+    "The invoice to cancel. Must be a plain invoice rather than a credit note."
+    cancels: ID!
+    "Free-text reason, forwarded to the credit note. See CreateInvoiceInput.reason."
+    reason: String
+  }
+
+  "The pair of documents written by the reissueInvoice mutation, in the order they were numbered."
+  type ReissueInvoiceResult {
+    "Cancels the original invoice in full."
+    creditNote: Invoice!
+    "Bills the order's current state."
+    invoice: Invoice!
   }
 
   input UpdateInvoiceInput {
@@ -141,6 +167,23 @@ export const adminApiExtensions = gql`
     """
     """
     createInvoice(input: CreateInvoiceInput!): Invoice!
+
+    """
+    Corrects an already issued invoice by cancelling it with a full credit note and
+    immediately issuing a replacement invoice for the order's current state.
+
+    This is the usual flow after an order was modified: the original stays on the books,
+    the credit note reverses it, and the replacement bills the new amount, leaving the
+    three document trail accountants expect. Both documents are written in one
+    transaction, so you never end up with a credit note and no replacement.
+
+    The order is taken from the cancelled invoice, so there is no way to credit one order
+    and re-bill another.
+
+    Nothing prevents reissuing an invoice that was already credited - the plugin does not
+    track how much of an invoice is still outstanding.
+    """
+    reissueInvoice(input: ReissueInvoiceInput!): ReissueInvoiceResult!
 
     """
     """

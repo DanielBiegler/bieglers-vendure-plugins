@@ -19,6 +19,7 @@ import { testConfig } from "../../../utils/e2e/test-config";
 import { DebugSnapshotStrategy, DEFAULT_SEQUENCE_CODE, PLUGIN_INVOICE_CREATED } from "../src";
 import { DebugFileStrategy } from "../src/config/FileStrategy";
 import { StaticSequentialIdStrategy } from "../src/config/SequentialIdStrategy";
+import { Invoice } from "../src/entities/Invoice.entity";
 import { InvoiceSequence } from "../src/entities/Sequence.entity";
 import { InvoicesPlugin } from "../src/plugin";
 import { InvoiceExportService } from "../src/services/InvoiceExport.service";
@@ -28,6 +29,7 @@ import {
   ASSIGN_SHIPPING_METHODS_TO_CHANNEL,
   ASSIGN_STOCK_LOCATIONS_TO_CHANNEL,
   CREATE_CHANNEL,
+  CREATE_INVOICE,
   CREATE_INVOICE_DOWNLOAD_URL,
   CREATE_INVOICE_EXPORT,
   CREATE_INVOICE_EXPORT_DOWNLOAD_URL,
@@ -43,6 +45,7 @@ import {
   GET_STOCK_LOCATIONS,
   GET_ZONES,
   INVOICE_EXPORT_PREVIEW_COUNT,
+  REISSUE_INVOICE,
 } from "./graphql/admin-e2e-definitions";
 import {
   ADD_ITEM_TO_ORDER,
@@ -809,6 +812,127 @@ describe("InvoicesPlugin", { sequential: true }, () => {
         expect(await service.pruneExpired(ctx, 5 * 60)).toBeGreaterThanOrEqual(1);
         expect((await adminClient.query(GET_INVOICE_EXPORT, { id: record.id })).invoiceExport).toBeNull();
       });
+    });
+  });
+
+  /**
+   * Runs last on purpose: these tests append documents to orders that the earlier suites
+   * assert exact invoice counts on.
+   */
+  describe("credit notes", () => {
+    /** Two plain invoices of the default channel, belonging to two different orders. */
+    let first: { id: string; sequentialId: string; orderId: string };
+    let second: { id: string; sequentialId: string; orderId: string };
+
+    /**
+     * The snapshot is not exposed over GraphQL, so proving that the document context
+     * reached the strategies means reading the persisted column back directly.
+     */
+    async function readSnapshot(invoiceId: string): Promise<any> {
+      const connection = server.app.get(TransactionalConnection);
+      const dbId = server.app.get(ConfigService).entityOptions.entityIdStrategy?.decodeId(invoiceId);
+      const row = await connection.rawConnection.getRepository(Invoice).findOneByOrFail({ id: dbId });
+      return row.snapshot;
+    }
+
+    beforeAll(async () => {
+      const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+      const plain = invoiceList.items.filter((i: any) => !i.cancelsId);
+
+      first = plain[0];
+      second = plain.find((i: any) => i.orderId !== first.orderId);
+
+      expect(first, "Expected the earlier suites to have created invoices").toBeDefined();
+      expect(second, "Expected invoices on at least two different orders").toBeDefined();
+    });
+
+    test("hands the file and snapshot strategies an invoice context", async ({ expect }) => {
+      const snapshot = await readSnapshot(first.id);
+      expect(snapshot.kind).toBe("invoice");
+      expect(snapshot.cancels).toBeUndefined();
+    });
+
+    test("issues a credit note that points back at the invoice", async ({ expect }) => {
+      const { createInvoice } = await adminClient.query(CREATE_INVOICE, {
+        input: { orderId: first.orderId, cancels: first.id, reason: "Item returned" },
+      });
+
+      expect(createInvoice.cancelsId).toBe(first.id);
+      expect(createInvoice.orderId).toBe(first.orderId);
+
+      const snapshot = await readSnapshot(createInvoice.id);
+      expect(snapshot.kind).toBe("creditNote");
+      expect(snapshot.cancels.sequentialId).toBe(first.sequentialId);
+      expect(snapshot.reason).toBe("Item returned");
+    });
+
+    test("records the cancelled document in the order history", async ({ expect }) => {
+      const { order } = await adminClient.query(GET_ORDER_HISTORY, { id: first.orderId });
+      const entries = order.history.items.filter((i: any) => i.type === PLUGIN_INVOICE_CREATED);
+      const creditNote = entries.find((e: any) => e.data.cancelsSequentialId);
+
+      expect(creditNote, "Expected a history entry for the credit note").toBeDefined();
+      expect(creditNote.data.cancelsSequentialId).toBe(first.sequentialId);
+    });
+
+    test("refuses to cancel an invoice belonging to a different order", async ({ expect }) => {
+      await expect(
+        adminClient.query(CREATE_INVOICE, { input: { orderId: second.orderId, cancels: first.id } }),
+      ).rejects.toThrow(/cannot be cancelled by a credit note for order/);
+    });
+
+    test("refuses to cancel a credit note", async ({ expect }) => {
+      const { createInvoice: creditNote } = await adminClient.query(CREATE_INVOICE, {
+        input: { orderId: second.orderId, cancels: second.id },
+      });
+
+      await expect(
+        adminClient.query(CREATE_INVOICE, { input: { orderId: second.orderId, cancels: creditNote.id } }),
+      ).rejects.toThrow(/can't cancel a cancellation/);
+    });
+
+    test("reissues an invoice as a credit note plus a replacement", async ({ expect }) => {
+      const { orders } = await adminClient.query(GET_ORDERS);
+      const { createInvoice: original } = await adminClient.query(CREATE_INVOICE, {
+        input: { orderId: orders.items[0].id },
+      });
+
+      const { reissueInvoice } = await adminClient.query(REISSUE_INVOICE, {
+        input: { cancels: original.id, reason: "Order was modified" },
+      });
+
+      const { creditNote, invoice } = reissueInvoice;
+
+      expect(creditNote.cancelsId).toBe(original.id);
+      expect(invoice.cancelsId).toBeNull();
+
+      // The order comes from the cancelled invoice rather than the caller
+      expect(creditNote.orderId).toBe(original.orderId);
+      expect(invoice.orderId).toBe(original.orderId);
+
+      // Credit note first, replacement second, hence consecutive numbers
+      const sequenceOf = (s: string) => Number(s.slice(INVOICE_PREFIX.length));
+      expect(sequenceOf(invoice.sequentialId)).toBe(sequenceOf(creditNote.sequentialId) + 1);
+      expect(sequenceOf(creditNote.sequentialId)).toBe(sequenceOf(original.sequentialId) + 1);
+
+      expect((await readSnapshot(creditNote.id)).reason).toBe("Order was modified");
+      expect((await readSnapshot(invoice.id)).kind).toBe("invoice");
+    });
+
+    test("refuses to reissue a credit note", async ({ expect }) => {
+      const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+      const creditNote = invoiceList.items.find((i: any) => i.cancelsId);
+      expect(creditNote, "Expected the preceding tests to have left a credit note").toBeDefined();
+
+      await expect(
+        adminClient.query(REISSUE_INVOICE, { input: { cancels: creditNote.id } }),
+      ).rejects.toThrow(/can't reissue a credit note/);
+    });
+
+    test("refuses to reissue an unknown invoice", async ({ expect }) => {
+      await expect(
+        adminClient.query(REISSUE_INVOICE, { input: { cancels: "999999" } }),
+      ).rejects.toThrow();
     });
   });
 });

@@ -143,7 +143,9 @@ Every invoice is always in an unambiguous state: fully active or fully cancelled
 
 The net financial position is the original minus the sum of all credit notes against it. Multiple partial credit notes can reference the same invoice, so the `cancels` relation becomes 1:many and the unique constraint must be dropped.
 
-This plugin supports Approach 2, which is the standard e-commerce practice and strictly more general: a full-inversion workflow is just a partial credit note that credits 100% followed by a new invoice. Approach 1 is achievable on top without extra model complexity.
+This plugin models Approach 2, which is the standard e-commerce practice and strictly more general: a full-inversion workflow is just a partial credit note that credits 100% followed by a new invoice. Approach 1 sits on top without extra model complexity and ships as the [`reissueInvoice`](#correcting-an-order-reissueinvoice) mutation.
+
+Note that the *amounts* are entirely your `SnapshotStrategy`'s business - the plugin records which invoice a credit note cancels, not how much of it. Crediting a subset of the lines is therefore a matter of what you write into the snapshot.
 
 The trade-off: DB-level uniqueness cannot prevent over-crediting (total credited exceeding the original amount). This guard moves to the service layer.
 
@@ -151,8 +153,67 @@ The trade-off: DB-level uniqueness cannot prevent over-crediting (total credited
 
 1. `cancels` must point to a row where `cancels IS NULL`. You cannot cancel a cancellation.
 2. A row may not reference itself.
+3. `cancels` must point to an invoice of the same order. Crediting order A's invoice on order B would leave both orders with a ledger that does not add up, so the service rejects it.
 
 Nullable foreign keys as type discriminators sacrifice compile-time type safety, and self-referential ORM relations require care around eager-loading cycles. Both costs are lower than the alternative of cross-entity sequence coupling or duplicated schema.
+
+What the plugin deliberately does *not* enforce is how much of an invoice is still outstanding. Nothing stops you from crediting the same invoice twice, because "how much is left to credit" depends on rules the plugin cannot know. If your accounting needs that guard, put it in your own code.
+
+### Telling invoices and credit notes apart during generation
+
+Because both document types share one entity, one sequence and one storage path, the only thing that distinguishes them at generation time is the `InvoiceDocumentContext` that every strategy receives:
+
+```ts
+type InvoiceDocumentContext =
+  | { kind: "invoice";    order: Order }
+  | { kind: "creditNote"; order: Order; cancels: Invoice; reason?: string };
+```
+
+A discriminated union rather than an `isCreditNote` boolean, so that `cancels` is non-optional exactly where it exists and `switch (doc.kind)` narrows without casts:
+
+```ts
+class MyFileStrategy implements FileStrategy<MySnapshot> {
+  async generate(ctx, sequentialId, snapshot, doc) {
+    switch (doc.kind) {
+      case "invoice":
+        return renderInvoice(sequentialId, snapshot);
+      case "creditNote":
+        // Legally required on a German Rechnungskorrektur: the document it corrects
+        return renderCreditNote(sequentialId, snapshot, doc.cancels.sequentialId);
+    }
+  }
+}
+```
+
+Two rules worth internalising:
+
+- **Read amounts from `doc.cancels.snapshot`, never from `doc.order`.** By the time a correction happens the order has usually moved on, so the live order no longer reflects what the original invoice actually billed.
+- **`reason` is not persisted on the invoice row.** The snapshot is the immutable record, so capture it there from your `SnapshotStrategy` if the document has to show it.
+
+`SequentialIdStrategy.generatePrefix` receives the same context, so you can prefix credit notes differently. Note that both kinds still draw from the same counter, so a differing prefix alone does not give credit notes their own gapless range.
+
+### Correcting an order: `reissueInvoice`
+
+The common case - an order gets modified, the total drops, the customer is refunded - needs three documents. The `reissueInvoice` mutation writes the latter two in a single transaction:
+
+```graphql
+mutation {
+  reissueInvoice(input: { cancels: "42", reason: "Item returned" }) {
+    creditNote { sequentialId }  # cancels the original in full
+    invoice     { sequentialId }  # bills the order's current state
+  }
+}
+```
+
+Leaving you with exactly the trail an accountant expects:
+
+1. `INVOICE001` - the original order
+2. `INVOICE002` - the credit note, inverting `INVOICE001`
+3. `INVOICE003` - the corrected invoice
+
+Doing this as two separate `createInvoice` calls is possible but discouraged: without a shared transaction, a failure while issuing the replacement leaves the order credited with nothing to bill against. Because the sequence counter is claimed inside that same transaction, a rollback takes the numbers with it and the sequence stays gapless.
+
+The order is taken from the cancelled invoice rather than from the caller, so there is no way to credit one order and re-bill another.
 
 ## Order history
 

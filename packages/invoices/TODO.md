@@ -1,6 +1,8 @@
 # Must
 
-- [ ] File generation braucht kontext für file generation z.b. "invoice" | "cancel" ?
+- [x] File generation braucht kontext für file generation z.b. "invoice" | "cancel" ?
+  - `InvoiceDocumentContext` wird an alle drei Strategien durchgereicht
+- [ ] Eigene Nummernkreise für Gutschriften: `getNextSequentialId` hardcodiert `DEFAULT_SEQUENCE_CODE`, obwohl `InvoiceSequence.code` es könnte
 - [ ] Entity: Invoice, CreditNote, Config(?)
   - [ ] Research: Should creditnote be a separate entity or rather a derived state via self-reference cancel
 - [ ] Research: What about translations? I dont think thats a thing but lets see

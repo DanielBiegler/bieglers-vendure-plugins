@@ -1001,11 +1001,22 @@ export type CreateInvoiceInput = {
   /**
    * An invoice ID.
    * When defined, will create a credit note relating to this invoice.
+   *
+   * Must reference a plain invoice belonging to "orderId". Pointing it at a credit note,
+   * or at an invoice of a different order, is rejected.
    */
   cancels?: InputMaybe<Scalars['ID']['input']>;
   customFields?: InputMaybe<Scalars['JSON']['input']>;
   /** The order which this invoice relates to */
   orderId: Scalars['ID']['input'];
+  /**
+   * Free-text reason for the correction, e.g. "Item returned".
+   *
+   * Only meaningful together with "cancels". It is handed to your strategies rather than
+   * stored on the invoice row, so it only survives if your SnapshotStrategy writes it into
+   * the snapshot.
+   */
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreatePaymentMethodInput = {
@@ -3290,6 +3301,22 @@ export type Mutation = {
   moveCollection: Collection;
   refundOrder: RefundOrderResult;
   reindex: Job;
+  /**
+   * Corrects an already issued invoice by cancelling it with a full credit note and
+   * immediately issuing a replacement invoice for the order's current state.
+   *
+   * This is the usual flow after an order was modified: the original stays on the books,
+   * the credit note reverses it, and the replacement bills the new amount, leaving the
+   * three document trail accountants expect. Both documents are written in one
+   * transaction, so you never end up with a credit note and no replacement.
+   *
+   * The order is taken from the cancelled invoice, so there is no way to credit one order
+   * and re-bill another.
+   *
+   * Nothing prevents reissuing an invoice that was already credited - the plugin does not
+   * track how much of an invoice is still outstanding.
+   */
+  reissueInvoice: ReissueInvoiceResult;
   /** Removes Collections from the specified Channel */
   removeCollectionsFromChannel: Array<Collection>;
   /** Removes the given coupon code from the draft Order */
@@ -4009,6 +4036,11 @@ export type MutationMoveCollectionArgs = {
 
 export type MutationRefundOrderArgs = {
   input: RefundOrderInput;
+};
+
+
+export type MutationReissueInvoiceArgs = {
+  input: ReissueInvoiceInput;
 };
 
 
@@ -6231,6 +6263,22 @@ export type RegionTranslation = {
   languageCode: LanguageCode;
   name: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+export type ReissueInvoiceInput = {
+  /** The invoice to cancel. Must be a plain invoice rather than a credit note. */
+  cancels: Scalars['ID']['input'];
+  /** Free-text reason, forwarded to the credit note. See CreateInvoiceInput.reason. */
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** The pair of documents written by the reissueInvoice mutation, in the order they were numbered. */
+export type ReissueInvoiceResult = {
+  __typename?: 'ReissueInvoiceResult';
+  /** Cancels the original invoice in full. */
+  creditNote: Invoice;
+  /** Bills the order's current state. */
+  invoice: Invoice;
 };
 
 export type RelationCustomFieldConfig = CustomField & {

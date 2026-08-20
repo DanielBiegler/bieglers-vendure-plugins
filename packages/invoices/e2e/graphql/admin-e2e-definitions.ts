@@ -118,6 +118,38 @@ export const GET_INVOICE_LIST = gql`
         createdAt
         sequentialId
         assetUrl
+        orderId
+        cancelsId
+      }
+    }
+  }
+`;
+
+export const CREATE_INVOICE = gql`
+  mutation CreateInvoice($input: CreateInvoiceInput!) {
+    createInvoice(input: $input) {
+      id
+      sequentialId
+      orderId
+      cancelsId
+    }
+  }
+`;
+
+export const REISSUE_INVOICE = gql`
+  mutation ReissueInvoice($input: ReissueInvoiceInput!) {
+    reissueInvoice(input: $input) {
+      creditNote {
+        id
+        sequentialId
+        orderId
+        cancelsId
+      }
+      invoice {
+        id
+        sequentialId
+        orderId
+        cancelsId
       }
     }
   }

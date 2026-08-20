@@ -2,8 +2,8 @@ import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { Allow, Ctx, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, UserInputError } from "@vendure/core";
 import { InvoicePermissions } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
-import { MutationCreateInvoiceArgs, MutationCreateInvoiceDownloadUrlArgs, MutationUpdateInvoiceArgs, QueryInvoiceArgs, QueryInvoiceListArgs } from "../generated-admin-types";
-import { InvoiceService } from "../services/Invoice.service";
+import { MutationCreateInvoiceArgs, MutationCreateInvoiceDownloadUrlArgs, MutationReissueInvoiceArgs, MutationUpdateInvoiceArgs, QueryInvoiceArgs, QueryInvoiceListArgs } from "../generated-admin-types";
+import { InvoiceService, ReissueInvoiceResult } from "../services/Invoice.service";
 
 @Resolver()
 export class AdminResolver {
@@ -38,6 +38,23 @@ export class AdminResolver {
     @Relations({ entity: Invoice }) relations: RelationPaths<Invoice>,
   ): Promise<Invoice> {
     return this.service.createInvoice(ctx, args.input, relations);
+  }
+
+  /**
+   * Create rather than Update: nothing about the cancelled invoice is mutated, the
+   * mutation only ever appends two new documents to the ledger.
+   */
+  @Mutation()
+  @Transaction()
+  @Allow(InvoicePermissions.Create)
+  async reissueInvoice(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationReissueInvoiceArgs,
+  ): Promise<ReissueInvoiceResult> {
+    // Not @Relations: that decorator reads the selection set of the type being returned,
+    // which here is the wrapper rather than an Invoice, so it would resolve to no
+    // relations at all and leave the non-nullable "order" field unresolvable.
+    return this.service.reissueInvoice(ctx, args.input, ["order"]);
   }
 
   @Mutation()

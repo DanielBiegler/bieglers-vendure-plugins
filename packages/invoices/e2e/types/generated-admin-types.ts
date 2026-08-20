@@ -1002,11 +1002,22 @@ export type CreateInvoiceInput = {
   /**
    * An invoice ID.
    * When defined, will create a credit note relating to this invoice.
+   *
+   * Must reference a plain invoice belonging to "orderId". Pointing it at a credit note,
+   * or at an invoice of a different order, is rejected.
    */
   cancels?: InputMaybe<Scalars['ID']['input']>;
   customFields?: InputMaybe<Scalars['JSON']['input']>;
   /** The order which this invoice relates to */
   orderId: Scalars['ID']['input'];
+  /**
+   * Free-text reason for the correction, e.g. "Item returned".
+   *
+   * Only meaningful together with "cancels". It is handed to your strategies rather than
+   * stored on the invoice row, so it only survives if your SnapshotStrategy writes it into
+   * the snapshot.
+   */
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreatePaymentMethodInput = {
@@ -3291,6 +3302,22 @@ export type Mutation = {
   moveCollection: Collection;
   refundOrder: RefundOrderResult;
   reindex: Job;
+  /**
+   * Corrects an already issued invoice by cancelling it with a full credit note and
+   * immediately issuing a replacement invoice for the order's current state.
+   *
+   * This is the usual flow after an order was modified: the original stays on the books,
+   * the credit note reverses it, and the replacement bills the new amount, leaving the
+   * three document trail accountants expect. Both documents are written in one
+   * transaction, so you never end up with a credit note and no replacement.
+   *
+   * The order is taken from the cancelled invoice, so there is no way to credit one order
+   * and re-bill another.
+   *
+   * Nothing prevents reissuing an invoice that was already credited - the plugin does not
+   * track how much of an invoice is still outstanding.
+   */
+  reissueInvoice: ReissueInvoiceResult;
   /** Removes Collections from the specified Channel */
   removeCollectionsFromChannel: Array<Collection>;
   /** Removes the given coupon code from the draft Order */
@@ -4010,6 +4037,11 @@ export type MutationMoveCollectionArgs = {
 
 export type MutationRefundOrderArgs = {
   input: RefundOrderInput;
+};
+
+
+export type MutationReissueInvoiceArgs = {
+  input: ReissueInvoiceInput;
 };
 
 
@@ -6234,6 +6266,22 @@ export type RegionTranslation = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type ReissueInvoiceInput = {
+  /** The invoice to cancel. Must be a plain invoice rather than a credit note. */
+  cancels: Scalars['ID']['input'];
+  /** Free-text reason, forwarded to the credit note. See CreateInvoiceInput.reason. */
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** The pair of documents written by the reissueInvoice mutation, in the order they were numbered. */
+export type ReissueInvoiceResult = {
+  __typename?: 'ReissueInvoiceResult';
+  /** Cancels the original invoice in full. */
+  creditNote: Invoice;
+  /** Bills the order's current state. */
+  invoice: Invoice;
+};
+
 export type RelationCustomFieldConfig = CustomField & {
   __typename?: 'RelationCustomFieldConfig';
   deprecated?: Maybe<Scalars['Boolean']['output']>;
@@ -7625,7 +7673,7 @@ export type GetInvoiceListQueryVariables = Exact<{
 }>;
 
 
-export type GetInvoiceListQuery = { __typename?: 'Query', invoiceList: { __typename?: 'InvoiceList', totalItems: number, items: Array<{ __typename?: 'Invoice', id: string | number, createdAt: any, sequentialId: string }> } };
+export type GetInvoiceListQuery = { __typename?: 'Query', invoiceList: { __typename?: 'InvoiceList', totalItems: number, items: Array<{ __typename?: 'Invoice', id: string | number, createdAt: any, sequentialId: string, assetUrl: string }> } };
 
 export type CreateInvoiceDownloadUrlMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -7698,7 +7746,7 @@ export const AssignPaymentMethodsToChannelDocument = {"kind":"Document","definit
 export const AssignProductsToChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignProductsToChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignProductsToChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignProductsToChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<AssignProductsToChannelMutation, AssignProductsToChannelMutationVariables>;
 export const GetStockLocationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetStockLocations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"stockLocations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<GetStockLocationsQuery, GetStockLocationsQueryVariables>;
 export const AssignStockLocationsToChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignStockLocationsToChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignStockLocationsToChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignStockLocationsToChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<AssignStockLocationsToChannelMutation, AssignStockLocationsToChannelMutationVariables>;
-export const GetInvoiceListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceListQuery, GetInvoiceListQueryVariables>;
+export const GetInvoiceListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"assetUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceListQuery, GetInvoiceListQueryVariables>;
 export const CreateInvoiceDownloadUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceDownloadUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceDownloadUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"expiresIn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}}},{"kind":"Argument","name":{"kind":"Name","value":"neverExpires"},"value":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}}}]}]}}]} as unknown as DocumentNode<CreateInvoiceDownloadUrlMutation, CreateInvoiceDownloadUrlMutationVariables>;
 export const GetOrderHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOrderHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"order"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"history"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"sort"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"createdAt"},"value":{"kind":"EnumValue","value":"ASC"}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"isPublic"}},{"kind":"Field","name":{"kind":"Name","value":"data"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetOrderHistoryQuery, GetOrderHistoryQueryVariables>;
 export const GetOrdersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOrders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"orders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"sort"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"createdAt"},"value":{"kind":"EnumValue","value":"ASC"}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]}}]} as unknown as DocumentNode<GetOrdersQuery, GetOrdersQueryVariables>;

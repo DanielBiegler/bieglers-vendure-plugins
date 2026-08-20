@@ -7,6 +7,7 @@ import {
   EventBus,
   HistoryService,
   ID,
+  idsAreEqual,
   JobQueue,
   JobQueueService,
   ListQueryBuilder,
@@ -20,7 +21,8 @@ import {
   RelationPaths,
   RequestContext,
   SerializedRequestContext,
-  TransactionalConnection
+  TransactionalConnection,
+  UserInputError
 } from "@vendure/core";
 import { extname } from "node:path";
 import { Readable, Stream } from "node:stream";
@@ -34,13 +36,27 @@ import {
   PLUGIN_INVOICE_CREATED,
   ROW_LOCK_COMPATIBLE_DATABASES
 } from "../constants";
+import { InvoiceDocumentContext } from "../document-context";
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
-import { CreateInvoiceInput, GetSingleInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
+import { CreateInvoiceInput, GetSingleInvoiceInput, ReissueInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
 import { InvoicesOptions } from "../types";
 import { openFileStream } from "../utils/open-file-stream";
 import { InvoiceDownloadSignerService } from "./DownloadSigner.service";
+
+/**
+ * The two documents {@link InvoiceService.reissueInvoice} writes, in the order they were
+ * issued and therefore numbered.
+ *
+ * @category Services
+ */
+export interface ReissueInvoiceResult {
+  /** Cancels the original invoice in full. */
+  creditNote: Invoice;
+  /** Bills the order's current state. */
+  invoice: Invoice;
+}
 
 /**
  * // TODO
@@ -178,15 +194,25 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const invoiceToCancel = input.cancels ? await this.findOne(ctx, { id: input.cancels }) : null;
     if (input.cancels && !invoiceToCancel) throw new EntityNotFoundError("Invoice", input.cancels);
 
-    // TODO check docs for custom errors?
-    // TODO can make an e2e test for this
     if (invoiceToCancel?.cancelsId)
-      throw new Error(`The cancellation ID "${input.cancels}" points to a credit note. You can't cancel a cancellation.`)
+      throw new UserInputError(`The cancellation ID "${input.cancels}" points to a credit note. You can't cancel a cancellation.`)
 
-    const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, order);
-    const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, order, invoiceToCancel);
+    // Without this a credit note could be booked against an unrelated order: the document
+    // would credit order A's invoice while its history entry and order relation point at
+    // order B, leaving both orders with a ledger that does not add up.
+    if (invoiceToCancel && !idsAreEqual(invoiceToCancel.orderId, order.id))
+      throw new UserInputError(
+        `Invoice "${invoiceToCancel.sequentialId}" belongs to order "${invoiceToCancel.orderId}", so it cannot be cancelled by a credit note for order "${order.id}".`
+      );
 
-    const { filename, buffer } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot)
+    const doc: InvoiceDocumentContext = invoiceToCancel
+      ? { kind: "creditNote", order, cancels: invoiceToCancel, reason: input.reason ?? undefined }
+      : { kind: "invoice", order };
+
+    const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, doc);
+    const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, doc);
+
+    const { filename, buffer } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot, doc)
     const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
     Logger.verbose(`Persisted file "${filename}" under "${assetUrl}"`, loggerCtx)
 
@@ -224,6 +250,55 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
       await this.eventBus.publish(new CreditNoteEvent(ctx, invoice, "created", input))
 
     return assertFound(this.findOne(ctx, { id: invoice.id }, relations));
+  }
+
+  /**
+   * Cancels `input.cancels` with a full-inversion credit note and immediately issues a
+   * replacement invoice for the order's current state, leaving the three document trail
+   * that accountants expect: original, credit note, corrected invoice.
+   *
+   * Both documents are written through {@link createInvoice}, so they emit the usual
+   * events and order history entries. Wrap the call in a transaction (the resolver does)
+   * - otherwise a failure while issuing the replacement leaves the order credited with
+   * nothing to bill against. The sequence counter is claimed inside that same
+   * transaction, so a rollback takes the numbers with it and stays gapless.
+   *
+   * The order is taken from the cancelled invoice rather than the caller, which removes
+   * any chance of crediting one order and re-billing another.
+   *
+   * Note that nothing stops you from reissuing an invoice that was already credited; the
+   * plugin does not track how much of an invoice is still outstanding. Enforce that in
+   * your own code if your accounting requires it.
+   *
+   * Is Channel-Aware
+   */
+  public async reissueInvoice(
+    ctx: RequestContext,
+    input: ReissueInvoiceInput,
+    relations?: RelationPaths<Invoice<Snapshot>>
+  ): Promise<ReissueInvoiceResult> {
+    const original = await this.findOne(ctx, { id: input.cancels });
+    if (!original) throw new EntityNotFoundError("Invoice", input.cancels);
+
+    if (original.cancelsId)
+      throw new UserInputError(`Invoice "${original.sequentialId}" is a credit note. You can't reissue a credit note.`);
+
+    const creditNote = await this.createInvoice(ctx, {
+      orderId: original.orderId,
+      cancels: original.id,
+      reason: input.reason,
+    }, relations);
+
+    const invoice = await this.createInvoice(ctx, {
+      orderId: original.orderId,
+    }, relations);
+
+    Logger.verbose(
+      `Reissued Invoice(${original.id}) as credit note "${creditNote.sequentialId}" and invoice "${invoice.sequentialId}"`,
+      loggerCtx,
+    );
+
+    return { creditNote, invoice };
   }
 
   public async updateInvoice(
@@ -337,7 +412,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
   private async getNextSequentialId(
     ctx: RequestContext,
     sequenceCode: typeof DEFAULT_SEQUENCE_CODE | (string & {}),
-    order: Order,
+    doc: InvoiceDocumentContext,
   ): Promise<string> {
     const sequenceRepo = this.connection.getRepository(ctx, InvoiceSequence);
     const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
@@ -372,7 +447,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
       }
     }
 
-    const prefix = await this.options.prefixStrategy.generatePrefix(ctx, order);
+    const prefix = await this.options.prefixStrategy.generatePrefix(ctx, doc);
     const paddedSequence = sequenceRow.sequence.toString().padStart(this.options.sequenceLeftPadCount ?? 0, "0");
     sequenceRow.sequence += 1;
     await sequenceRepo.save(sequenceRow);

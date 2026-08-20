@@ -18,6 +18,7 @@ export * from "./services/Invoice.service";
 export * from "./services/InvoiceExport.service";
 
 export * from "./constants";
+export * from "./document-context";
 export * from "./events";
 export * from "./types";
 
