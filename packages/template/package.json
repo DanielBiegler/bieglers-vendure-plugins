@@ -5,6 +5,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
+    "dev:seed": "ts-node dev-server/seed.ts",
+    "dev:reset": "ts-node dev-server/seed.ts --reset",
     "codegen": "ts-node generate-types.ts",
     "build": "rimraf dist && tsc -p ./tsconfig.build.json",
     "e2e": "cross-env PACKAGE=__SCAFFOLD_TITLE_URL_SAFE__ vitest -c ../../utils/e2e/vitest.config.mts"
