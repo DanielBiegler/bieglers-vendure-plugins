@@ -48,6 +48,7 @@ const navMenuTitle = msg`Invoices`;
 
 export const invoiceList: DashboardRouteDefinition = {
   path: '/invoices',
+  loader: () => ({ breadcrumb: () => <Trans>Invoices</Trans> }),
   component: route => (
     <ListPage
       pageId="invoice-list"

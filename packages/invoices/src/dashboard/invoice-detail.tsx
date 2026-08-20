@@ -130,5 +130,17 @@ function InvoiceDetailPage({ route }: { route: any }) {
 
 export const invoiceDetail: DashboardRouteDefinition = {
   path: '/invoices/$id',
+  loader: async ({ context, params }: { context: any; params: { id: string } }) => {
+    const data = await context.queryClient.ensureQueryData({
+      queryKey: ['GetInvoice', params.id],
+      queryFn: () => api.query(invoiceDetailDocument, { input: { id: params.id } }),
+    });
+    return {
+      breadcrumb: [
+        { path: '/invoices', label: <Trans>Invoices</Trans> },
+        data.invoice?.sequentialId ?? <Trans>Invoice</Trans>,
+      ],
+    };
+  },
   component: route => <InvoiceDetailPage route={route} />,
 };
