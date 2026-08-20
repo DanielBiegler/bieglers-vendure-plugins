@@ -40,6 +40,9 @@ export const config: VendureConfig = {
     logging: false,
     database: path.join(__dirname, "vendure.sqlite"),
   },
+  schedulerOptions: {
+    runTasksInWorkerOnly: false,
+  },
   paymentOptions: {
     paymentMethodHandlers: [dummyPaymentHandler],
     paymentMethodEligibilityCheckers: [dummyPaymentEligibilityChecker],

@@ -1,6 +1,6 @@
 import { AdminUiPlugin } from "@vendure/admin-ui-plugin";
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
-import { DefaultLogger, DefaultSearchPlugin, LogLevel, VendureConfig } from "@vendure/core";
+import { DefaultLogger, DefaultSchedulerPlugin, DefaultSearchPlugin, LogLevel, VendureConfig } from "@vendure/core";
 import "dotenv/config";
 import path from "path";
 import { __SCAFFOLD_TITLE_NO_SPACE__Plugin } from "../src";
@@ -30,6 +30,10 @@ export const config: VendureConfig = {
     logging: false,
     database: path.join(__dirname, "vendure.sqlite"),
   },
+  schedulerOptions: {
+    // In a dev environment we need this so that it runs on the server
+    runTasksInWorkerOnly: false,
+  },
   paymentOptions: {
     paymentMethodHandlers: [],
   },
@@ -39,6 +43,7 @@ export const config: VendureConfig = {
       assetUploadDir: path.join(__dirname, "assets"),
     }),
     __SCAFFOLD_TITLE_NO_SPACE__Plugin.init({}),
+    DefaultSchedulerPlugin.init({}),
     DefaultSearchPlugin.init({}),
     AdminUiPlugin.init({
       port: 3002,
