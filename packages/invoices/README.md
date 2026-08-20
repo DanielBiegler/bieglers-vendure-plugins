@@ -229,6 +229,82 @@ to retract one afterwards is rotating `signingSecret` — which invalidates ever
 out, your customers' included. Prefer a finite lifetime whenever the recipient is able to ask for a
 fresh link, i.e. for everything that goes through a dashboard or download page.
 
+## Bulk export for accountants
+
+The invoice list page has an **Export range** action that bundles every invoice issued in a
+period into a downloadable archive. The work runs as a job on the worker, so the request
+returns immediately and the dashboard polls for the result. Past exports appear in an
+**Exports** table below the invoice list, where they can be re-downloaded or deleted.
+
+```graphql
+mutation {
+  createInvoiceExport(input: {
+    startsAt: "2026-01-01T00:00:00.000Z"
+    endsAt:   "2026-02-01T00:00:00.000Z"
+  }) { id state }
+}
+
+# once state is COMPLETED
+mutation {
+  createInvoiceExportDownloadUrl(id: "1")
+}
+```
+
+Scoped to the current channel and gated behind the existing `ReadInvoice` permission —
+deliberately not a permission of its own. An export reaches nothing that `invoiceList`
+plus `createInvoiceDownloadUrl` do not already hand out.
+
+Memory stays flat in the number of invoices: rows are paged, files are opened only as the
+archive reaches them, and bytes go straight to storage instead of piling up in a buffer. A
+ten thousand invoice export costs a few megabytes of RAM.
+
+### The range is `[startsAt, endsAt)`
+
+The upper bound is **exclusive**, so pass the start of the *following* period: February 1st
+exports all of January. This is what makes consecutive periods tile without dropping or
+duplicating an invoice at the seam, and it avoids the usual `23:59:59.999` mistake.
+
+Bounds are full instants, not bare dates, because `createdAt` is stored in UTC while an
+administrator thinks in local time. The dashboard converts for you.
+
+### Archive format
+
+Handled by the `ArchiveStrategy`. The default `ZipArchiveStrategy` produces a single
+uncompressed ZIP, with entries named `YYYY-MM/{sequentialId}{ext}`:
+
+```ts
+archiveStrategy: new ZipArchiveStrategy({
+  // PDFs are already compressed, so this usually buys 2-5% for real CPU. Worth it only
+  // if your FileStrategy emits something compressible, e.g. XML.
+  compress: false,
+  // How many storage reads may be in flight. Raise it to hide S3 latency, at the cost of
+  // roughly `readAhead × filesize` in peak memory.
+  readAhead: 4,
+}),
+```
+
+One export produces exactly one archive. Size is not worth designing around: yazl switches
+to ZIP64 by itself past 65.535 entries or 4GB.
+
+An invoice whose file has vanished from storage is skipped rather than failing the whole
+export, and counted in `missingFileCount`. Anything above zero means the archive is
+incomplete.
+
+### Retention
+
+Archives are full duplicates of the invoices inside them, so they add up. Cleanup is
+**off** by default, but you should configure it once you know your needs:
+
+```ts
+exportRetention: {
+  maxAge: 60 * 60 * 24 * 30, // seconds, so 30 days
+  schedule: "0 3 * * *",     // optional, this is the default
+}
+```
+
+This registers a scheduled task that deletes expired exports and their archives. The
+invoices themselves are never touched. Requires a scheduler, e.g. `DefaultSchedulerPlugin`.
+
 ## Practical Guides and Resources
 
 ### Guides

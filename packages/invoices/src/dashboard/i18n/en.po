@@ -13,17 +13,79 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. placeholder {0}: record.missingFileCount
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "{0} file(s) were missing from storage and are not part of the archive."
+msgstr "{0} file(s) were missing from storage and are not part of the archive."
+
+#. placeholder {0}: record.entryCount
+#. placeholder {1}: formatBytes(record.fileSizeBytes)
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "{0} invoice(s), {1}"
+msgstr "{0} invoice(s), {1}"
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "{0} missing"
+#~ msgstr "{0} missing"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "{count} invoice(s) fall into this period."
+msgstr "{count} invoice(s) fall into this period."
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Actions"
+#~ msgstr "Actions"
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Archives bundling every invoice of a period, for handing to an accountant. Only exports of the current channel are listed."
+#~ msgstr "Archives bundling every invoice of a period, for handing to an accountant. Only exports of the current channel are listed."
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Building the archive. This can take a while for large periods, and continues even if you close this dialog."
+msgstr "Building the archive. This can take a while for large periods, and continues even if you close this dialog."
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Building…"
+msgstr "Building…"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Bundles every invoice issued in the selected period into a downloadable archive. Only invoices of the current channel are included."
+msgstr "Bundles every invoice issued in the selected period into a downloadable archive. Only invoices of the current channel are included."
+
 #: src/dashboard/history-entries.tsx
 msgid "cancels {cancelled}"
 msgstr "cancels {cancelled}"
 
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Close"
+msgstr "Close"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Completed"
+msgstr "Completed"
+
 #: src/dashboard/invoice-download-button.tsx
+#: src/dashboard/invoice-export-dialog.tsx
+#: src/dashboard/invoice-export-list.tsx
 msgid "Could not create a download link"
 msgstr "Could not create a download link"
+
+#: src/dashboard/invoice-export-list.tsx
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Could not delete the export"
+#~ msgstr "Could not delete the export"
 
 #: src/dashboard/page-blocks.tsx
 msgid "Could not load invoices: {reason}"
 msgstr "Could not load invoices: {reason}"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Could not start the export"
+msgstr "Could not start the export"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Counting invoices…"
+msgstr "Counting invoices…"
 
 #: src/dashboard/page-blocks.tsx
 msgid "Credit note"
@@ -41,6 +103,30 @@ msgstr "Credit Notes"
 msgid "Download"
 msgstr "Download"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Download archive"
+msgstr "Download archive"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Export invoices"
+msgstr "Export invoices"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Export range"
+msgstr "Export range"
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Exports"
+#~ msgstr "Exports"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Failed"
+msgstr "Failed"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "From"
+msgstr "From"
+
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Invoice"
@@ -50,10 +136,15 @@ msgstr "Invoice"
 msgid "Invoice Details"
 msgstr "Invoice Details"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Invoice exports"
+msgstr "Invoice exports"
+
 #: src/dashboard/history-entries.tsx
 msgid "Invoice issued"
 msgstr "Invoice issued"
 
+#: src/dashboard/invoice-export-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/page-blocks.tsx
@@ -65,6 +156,10 @@ msgstr "Invoices"
 msgid "Issued"
 msgstr "Issued"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Missing files"
+msgstr "Missing files"
+
 #: src/dashboard/page-blocks.tsx
 msgid "No invoices"
 msgstr "No invoices"
@@ -74,11 +169,44 @@ msgstr "No invoices"
 msgid "Order"
 msgstr "Order"
 
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Period"
+#~ msgstr "Period"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Requested"
+msgstr "Requested"
+
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Sequential ID"
 msgstr "Sequential ID"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Size"
+msgstr "Size"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Start export"
+msgstr "Start export"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Status"
+msgstr "Status"
+
+#. placeholder {0}: record.errorMessage ?? "unknown error"
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "The export failed: {0}"
+msgstr "The export failed: {0}"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "This export has no archive to download yet"
+msgstr "This export has no archive to download yet"
+
 #: src/dashboard/page-blocks.tsx
 msgid "Type"
 msgstr "Type"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Until"
+msgstr "Until"

@@ -115,7 +115,9 @@ export const GET_INVOICE_LIST = gql`
       totalItems
       items {
         id
+        createdAt
         sequentialId
+        assetUrl
       }
     }
   }
@@ -150,6 +152,52 @@ export const GET_ORDERS = gql`
         id
         code
       }
+    }
+  }
+`;
+
+export const INVOICE_EXPORT_PREVIEW_COUNT = gql`
+  query InvoiceExportPreviewCount($startsAt: DateTime!, $endsAt: DateTime!) {
+    invoiceExportPreviewCount(startsAt: $startsAt, endsAt: $endsAt)
+  }
+`;
+
+export const CREATE_INVOICE_EXPORT = gql`
+  mutation CreateInvoiceExport($input: CreateInvoiceExportInput!) {
+    createInvoiceExport(input: $input) {
+      id
+      state
+      startsAt
+      endsAt
+    }
+  }
+`;
+
+export const GET_INVOICE_EXPORT = gql`
+  query GetInvoiceExport($id: ID!) {
+    invoiceExport(id: $id) {
+      id
+      state
+      filename
+      entryCount
+      fileSizeBytes
+      missingFileCount
+      errorMessage
+    }
+  }
+`;
+
+export const CREATE_INVOICE_EXPORT_DOWNLOAD_URL = gql`
+  mutation CreateInvoiceExportDownloadUrl($id: ID!, $expiresIn: Int, $neverExpires: Boolean) {
+    createInvoiceExportDownloadUrl(id: $id, expiresIn: $expiresIn, neverExpires: $neverExpires)
+  }
+`;
+
+export const DELETE_INVOICE_EXPORT = gql`
+  mutation DeleteInvoiceExport($id: ID!) {
+    deleteInvoiceExport(id: $id) {
+      result
+      message
     }
   }
 `;

@@ -7,6 +7,8 @@ export const loggerCtx = "PluginInvoices";
 export const PLUGIN_INIT_OPTIONS = Symbol("PLUGIN_INIT_OPTIONS");
 
 export const INVOICE_QUEUE_NAME = "plugin-invoices";
+export const INVOICE_EXPORT_QUEUE_NAME = "plugin-invoices-export";
+export const INVOICE_EXPORT_CLEANUP_TASK_ID = "plugin-invoices-export-cleanup";
 export const DEFAULT_SEQUENCE_CODE = "__default";
 
 /**
@@ -25,6 +27,19 @@ export const PLUGIN_INVOICE_CREATED = "PLUGIN_INVOICE_CREATED";
  */
 export const INVOICE_DOWNLOAD_ROUTE = "invoices";
 export const DEFAULT_DOWNLOAD_EXPIRES_IN = 300;
+
+/**
+ * Namespaces the HMAC payload of a signed download URL by the kind of resource it
+ * grants access to.
+ *
+ * Changing these values invalidates every URL that is still in flight, including the
+ * permanent ones handed to customers.
+ */
+export const DOWNLOAD_KIND_INVOICE = "invoice";
+/** @see {@link DOWNLOAD_KIND_INVOICE} */
+export const DOWNLOAD_KIND_EXPORT = "export";
+
+export type DownloadKind = typeof DOWNLOAD_KIND_INVOICE | typeof DOWNLOAD_KIND_EXPORT;
 
 /**
  * Stands in for the expiry timestamp of URLs that never expire.

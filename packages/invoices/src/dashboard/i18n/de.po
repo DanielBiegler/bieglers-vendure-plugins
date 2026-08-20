@@ -13,17 +13,79 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. placeholder {0}: record.missingFileCount
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "{0} file(s) were missing from storage and are not part of the archive."
+msgstr "{0} Datei(en) fehlten im Speicher und sind nicht Teil des Archivs."
+
+#. placeholder {0}: record.entryCount
+#. placeholder {1}: formatBytes(record.fileSizeBytes)
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "{0} invoice(s), {1}"
+msgstr "{0} Rechnung(en), {1}"
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "{0} missing"
+#~ msgstr "{0} fehlen"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "{count} invoice(s) fall into this period."
+msgstr "{count} Rechnung(en) fallen in diesen Zeitraum."
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Actions"
+#~ msgstr "Aktionen"
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Archives bundling every invoice of a period, for handing to an accountant. Only exports of the current channel are listed."
+#~ msgstr "Archive, die alle Rechnungen eines Zeitraums bündeln, zur Übergabe an die Steuerberatung. Es werden nur Exporte des aktuellen Channels aufgelistet."
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Building the archive. This can take a while for large periods, and continues even if you close this dialog."
+msgstr "Das Archiv wird erstellt. Bei großen Zeiträumen kann das dauern, der Vorgang läuft auch weiter, wenn Sie diesen Dialog schließen."
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Building…"
+msgstr "Wird erstellt …"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Bundles every invoice issued in the selected period into a downloadable archive. Only invoices of the current channel are included."
+msgstr "Bündelt alle im gewählten Zeitraum ausgestellten Rechnungen in ein herunterladbares Archiv. Es werden ausschließlich Rechnungen des aktuellen Channels berücksichtigt."
+
 #: src/dashboard/history-entries.tsx
 msgid "cancels {cancelled}"
 msgstr "storniert {cancelled}"
 
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Close"
+msgstr "Schließen"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Completed"
+msgstr "Abgeschlossen"
+
 #: src/dashboard/invoice-download-button.tsx
+#: src/dashboard/invoice-export-dialog.tsx
+#: src/dashboard/invoice-export-list.tsx
 msgid "Could not create a download link"
 msgstr "Download-Link konnte nicht erstellt werden"
+
+#: src/dashboard/invoice-export-list.tsx
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Could not delete the export"
+#~ msgstr "Der Export konnte nicht gelöscht werden"
 
 #: src/dashboard/page-blocks.tsx
 msgid "Could not load invoices: {reason}"
 msgstr "Rechnungen konnten nicht geladen werden: {reason}"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Could not start the export"
+msgstr "Der Export konnte nicht gestartet werden"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Counting invoices…"
+msgstr "Rechnungen werden gezählt …"
 
 #: src/dashboard/page-blocks.tsx
 msgid "Credit note"
@@ -41,6 +103,30 @@ msgstr "Gutschriften"
 msgid "Download"
 msgstr "Herunterladen"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Download archive"
+msgstr "Archiv herunterladen"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Export invoices"
+msgstr "Rechnungen exportieren"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Export range"
+msgstr "Zeitraum exportieren"
+
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Exports"
+#~ msgstr "Exporte"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "From"
+msgstr "Von"
+
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Invoice"
@@ -50,10 +136,15 @@ msgstr "Rechnung"
 msgid "Invoice Details"
 msgstr "Rechnungsdetails"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Invoice exports"
+msgstr "Rechnungsexporte"
+
 #: src/dashboard/history-entries.tsx
 msgid "Invoice issued"
 msgstr "Rechnung ausgestellt"
 
+#: src/dashboard/invoice-export-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/page-blocks.tsx
@@ -65,6 +156,10 @@ msgstr "Rechnungen"
 msgid "Issued"
 msgstr "Ausgestellt"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Missing files"
+msgstr "Fehlende Dateien"
+
 #: src/dashboard/page-blocks.tsx
 msgid "No invoices"
 msgstr "Keine Rechnungen"
@@ -74,11 +169,44 @@ msgstr "Keine Rechnungen"
 msgid "Order"
 msgstr "Bestellung"
 
+#: src/dashboard/invoice-export-list.tsx
+#~ msgid "Period"
+#~ msgstr "Zeitraum"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Requested"
+msgstr "Angefordert"
+
 #: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Sequential ID"
 msgstr "Fortlaufende Nummer"
 
+#: src/dashboard/invoice-export-list.tsx
+msgid "Size"
+msgstr "Größe"
+
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "Start export"
+msgstr "Export starten"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Status"
+msgstr "Status"
+
+#. placeholder {0}: record.errorMessage ?? "unknown error"
+#: src/dashboard/invoice-export-dialog.tsx
+msgid "The export failed: {0}"
+msgstr "Der Export ist fehlgeschlagen: {0}"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "This export has no archive to download yet"
+msgstr "Dieser Export hat noch kein Archiv zum Herunterladen"
+
 #: src/dashboard/page-blocks.tsx
 msgid "Type"
 msgstr "Typ"
+
+#: src/dashboard/invoice-export-list.tsx
+msgid "Until"
+msgstr "Bis"

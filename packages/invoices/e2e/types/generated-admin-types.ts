@@ -987,6 +987,17 @@ export type CreateGroupOptionInput = {
   translations: Array<ProductOptionGroupTranslationInput>;
 };
 
+export type CreateInvoiceExportInput = {
+  customFields?: InputMaybe<Scalars['JSON']['input']>;
+  /**
+   * Exclusive upper bound. Pass the start of the following period, e.g. February 1st to
+   * export all of January, which avoids the usual 23:59:59.999 fencepost mistake.
+   */
+  endsAt: Scalars['DateTime']['input'];
+  /** Inclusive lower bound, as a full instant rather than a bare date. */
+  startsAt: Scalars['DateTime']['input'];
+};
+
 export type CreateInvoiceInput = {
   /**
    * An invoice ID.
@@ -1512,6 +1523,7 @@ export type CustomFields = {
   GlobalSettings: Array<CustomFieldConfig>;
   HistoryEntry: Array<CustomFieldConfig>;
   Invoice: Array<CustomFieldConfig>;
+  InvoiceExport: Array<CustomFieldConfig>;
   InvoiceSequence: Array<CustomFieldConfig>;
   Order: Array<CustomFieldConfig>;
   OrderLine: Array<CustomFieldConfig>;
@@ -2215,7 +2227,9 @@ export enum HistoryEntryType {
   ORDER_NOTE = 'ORDER_NOTE',
   ORDER_PAYMENT_TRANSITION = 'ORDER_PAYMENT_TRANSITION',
   ORDER_REFUND_TRANSITION = 'ORDER_REFUND_TRANSITION',
-  ORDER_STATE_TRANSITION = 'ORDER_STATE_TRANSITION'
+  ORDER_STATE_TRANSITION = 'ORDER_STATE_TRANSITION',
+  /** Written to the orders' history whenever an invoice or credit note is issued for it */
+  PLUGIN_INVOICE_CREATED = 'PLUGIN_INVOICE_CREATED'
 }
 
 /** Operators for filtering on a list of ID fields */
@@ -2328,6 +2342,93 @@ export type Invoice = Node & {
   sequentialId: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
 };
+
+export type InvoiceExport = Node & {
+  __typename?: 'InvoiceExport';
+  createdAt: Scalars['DateTime']['output'];
+  customFields?: Maybe<Scalars['JSON']['output']>;
+  /** Exclusive upper bound of the exported period. */
+  endsAt: Scalars['DateTime']['output'];
+  /** Number of invoices written into the archive. */
+  entryCount: Scalars['Int']['output'];
+  /** Only set when the state is FAILED. */
+  errorMessage?: Maybe<Scalars['String']['output']>;
+  /**
+   * Size of the archive in bytes. Zero until the export completes.
+   *
+   * Deliberately a Float: GraphQL's Int is 32 bit signed and therefore caps at 2GB, which
+   * a yearly export can exceed.
+   */
+  fileSizeBytes: Scalars['Float']['output'];
+  /** Name of the archive. Null until the export completes. */
+  filename?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  /**
+   * Invoices whose row exists but whose file was gone from storage. They are skipped
+   * rather than failing the export, so anything above zero means the archive is
+   * incomplete and worth investigating.
+   */
+  missingFileCount: Scalars['Int']['output'];
+  /** Inclusive lower bound of the exported period. */
+  startsAt: Scalars['DateTime']['output'];
+  state: InvoiceExportState;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type InvoiceExportFilterParameter = {
+  _and?: InputMaybe<Array<InvoiceExportFilterParameter>>;
+  _or?: InputMaybe<Array<InvoiceExportFilterParameter>>;
+  createdAt?: InputMaybe<DateOperators>;
+  endsAt?: InputMaybe<DateOperators>;
+  entryCount?: InputMaybe<NumberOperators>;
+  errorMessage?: InputMaybe<StringOperators>;
+  fileSizeBytes?: InputMaybe<NumberOperators>;
+  filename?: InputMaybe<StringOperators>;
+  id?: InputMaybe<IdOperators>;
+  missingFileCount?: InputMaybe<NumberOperators>;
+  startsAt?: InputMaybe<DateOperators>;
+  state?: InputMaybe<StringOperators>;
+  updatedAt?: InputMaybe<DateOperators>;
+};
+
+export type InvoiceExportList = PaginatedList & {
+  __typename?: 'InvoiceExportList';
+  items: Array<InvoiceExport>;
+  totalItems: Scalars['Int']['output'];
+};
+
+export type InvoiceExportListOptions = {
+  /** Allows the results to be filtered */
+  filter?: InputMaybe<InvoiceExportFilterParameter>;
+  /** Specifies whether multiple top-level "filter" fields should be combined with a logical AND or OR operation. Defaults to AND. */
+  filterOperator?: InputMaybe<LogicalOperator>;
+  /** Skips the first n results, for use in pagination */
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  /** Specifies which properties to sort the results by */
+  sort?: InputMaybe<InvoiceExportSortParameter>;
+  /** Takes n results, for use in pagination */
+  take?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type InvoiceExportSortParameter = {
+  createdAt?: InputMaybe<SortOrder>;
+  endsAt?: InputMaybe<SortOrder>;
+  entryCount?: InputMaybe<SortOrder>;
+  errorMessage?: InputMaybe<SortOrder>;
+  fileSizeBytes?: InputMaybe<SortOrder>;
+  filename?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  missingFileCount?: InputMaybe<SortOrder>;
+  startsAt?: InputMaybe<SortOrder>;
+  updatedAt?: InputMaybe<SortOrder>;
+};
+
+export enum InvoiceExportState {
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  PENDING = 'PENDING',
+  RUNNING = 'RUNNING'
+}
 
 export type InvoiceFilterParameter = {
   _and?: InputMaybe<Array<InvoiceFilterParameter>>;
@@ -3026,6 +3127,24 @@ export type Mutation = {
    * Specifying it together with "expiresIn" is an error.
    */
   createInvoiceDownloadUrl: Scalars['String']['output'];
+  /**
+   * Queues a job that bundles every invoice issued in the given range into one archive.
+   *
+   * Returns immediately with a PENDING record; poll "invoiceExport" until it reports
+   * COMPLETED, then ask for a download URL. Requesting a range that is already
+   * PENDING or RUNNING returns the existing record instead of starting a second job.
+   *
+   * Scoped to the current channel, i.e. invoices belonging to other channels are never
+   * part of the archive.
+   */
+  createInvoiceExport: InvoiceExport;
+  /**
+   * Creates a short lived, signed URL which downloads the archive of a finished export.
+   *
+   * Same rules as "createInvoiceDownloadUrl": the signature is the authorization, so the
+   * URL is a secret.
+   */
+  createInvoiceExportDownloadUrl: Scalars['String']['output'];
   /** Create existing PaymentMethod */
   createPaymentMethod: PaymentMethod;
   /** Create a new Product */
@@ -3095,6 +3214,8 @@ export type Mutation = {
   deleteFacetValues: Array<DeletionResponse>;
   /** Delete multiple existing Facets */
   deleteFacets: Array<DeletionResponse>;
+  /** Deletes an export and the archive behind it. The invoices themselves are untouched. */
+  deleteInvoiceExport: DeletionResponse;
   deleteOrderNote: DeletionResponse;
   /** Delete a PaymentMethod */
   deletePaymentMethod: DeletionResponse;
@@ -3511,6 +3632,18 @@ export type MutationCreateInvoiceDownloadUrlArgs = {
 };
 
 
+export type MutationCreateInvoiceExportArgs = {
+  input: CreateInvoiceExportInput;
+};
+
+
+export type MutationCreateInvoiceExportDownloadUrlArgs = {
+  expiresIn?: InputMaybe<Scalars['Int']['input']>;
+  id: Scalars['ID']['input'];
+  neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
 export type MutationCreatePaymentMethodArgs = {
   input: CreatePaymentMethodInput;
 };
@@ -3691,6 +3824,11 @@ export type MutationDeleteFacetValuesArgs = {
 export type MutationDeleteFacetsArgs = {
   force?: InputMaybe<Scalars['Boolean']['input']>;
   ids: Array<Scalars['ID']['input']>;
+};
+
+
+export type MutationDeleteInvoiceExportArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -5569,6 +5707,14 @@ export type Query = {
    * Throws an error if neither ID nor sequential ID is specified.
    */
   invoice?: Maybe<Invoice>;
+  invoiceExport?: Maybe<InvoiceExport>;
+  /** Paginate through all bulk exports of the current channel */
+  invoiceExportList: InvoiceExportList;
+  /**
+   * How many invoices a given range would export, so the dashboard can show the size of
+   * the job before anyone commits to running it.
+   */
+  invoiceExportPreviewCount: Scalars['Int']['output'];
   /** Paginate through all invoices */
   invoiceList: InvoiceList;
   job?: Maybe<Job>;
@@ -5751,6 +5897,22 @@ export type QueryGetSettingsStoreValuesArgs = {
 
 export type QueryInvoiceArgs = {
   input: GetSingleInvoiceInput;
+};
+
+
+export type QueryInvoiceExportArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryInvoiceExportListArgs = {
+  options?: InputMaybe<InvoiceExportListOptions>;
+};
+
+
+export type QueryInvoiceExportPreviewCountArgs = {
+  endsAt: Scalars['DateTime']['input'];
+  startsAt: Scalars['DateTime']['input'];
 };
 
 
@@ -7463,15 +7625,66 @@ export type GetInvoiceListQueryVariables = Exact<{
 }>;
 
 
-export type GetInvoiceListQuery = { __typename?: 'Query', invoiceList: { __typename?: 'InvoiceList', totalItems: number, items: Array<{ __typename?: 'Invoice', id: string | number, sequentialId: string }> } };
+export type GetInvoiceListQuery = { __typename?: 'Query', invoiceList: { __typename?: 'InvoiceList', totalItems: number, items: Array<{ __typename?: 'Invoice', id: string | number, createdAt: any, sequentialId: string }> } };
 
 export type CreateInvoiceDownloadUrlMutationVariables = Exact<{
   id: Scalars['ID']['input'];
   expiresIn?: InputMaybe<Scalars['Int']['input']>;
+  neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 
 export type CreateInvoiceDownloadUrlMutation = { __typename?: 'Mutation', createInvoiceDownloadUrl: string };
+
+export type GetOrderHistoryQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetOrderHistoryQuery = { __typename?: 'Query', order?: { __typename?: 'Order', id: string | number, history: { __typename?: 'HistoryEntryList', totalItems: number, items: Array<{ __typename?: 'HistoryEntry', type: HistoryEntryType, isPublic: boolean, data: any }> } } };
+
+export type GetOrdersQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetOrdersQuery = { __typename?: 'Query', orders: { __typename?: 'OrderList', items: Array<{ __typename?: 'Order', id: string | number, code: string }> } };
+
+export type InvoiceExportPreviewCountQueryVariables = Exact<{
+  startsAt: Scalars['DateTime']['input'];
+  endsAt: Scalars['DateTime']['input'];
+}>;
+
+
+export type InvoiceExportPreviewCountQuery = { __typename?: 'Query', invoiceExportPreviewCount: number };
+
+export type CreateInvoiceExportMutationVariables = Exact<{
+  input: CreateInvoiceExportInput;
+}>;
+
+
+export type CreateInvoiceExportMutation = { __typename?: 'Mutation', createInvoiceExport: { __typename?: 'InvoiceExport', id: string | number, state: InvoiceExportState, startsAt: any, endsAt: any } };
+
+export type GetInvoiceExportQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetInvoiceExportQuery = { __typename?: 'Query', invoiceExport?: { __typename?: 'InvoiceExport', id: string | number, state: InvoiceExportState, filename?: string, entryCount: number, fileSizeBytes: number, missingFileCount: number, errorMessage?: string } };
+
+export type CreateInvoiceExportDownloadUrlMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  expiresIn?: InputMaybe<Scalars['Int']['input']>;
+  neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type CreateInvoiceExportDownloadUrlMutation = { __typename?: 'Mutation', createInvoiceExportDownloadUrl: string };
+
+export type DeleteInvoiceExportMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteInvoiceExportMutation = { __typename?: 'Mutation', deleteInvoiceExport: { __typename?: 'DeletionResponse', result: DeletionResult, message?: string } };
 
 
 export const CreatePaymentMethodDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreatePaymentMethod"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreatePaymentMethodInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createPaymentMethod"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}}]}}]} as unknown as DocumentNode<CreatePaymentMethodMutation, CreatePaymentMethodMutationVariables>;
@@ -7485,5 +7698,12 @@ export const AssignPaymentMethodsToChannelDocument = {"kind":"Document","definit
 export const AssignProductsToChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignProductsToChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignProductsToChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignProductsToChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<AssignProductsToChannelMutation, AssignProductsToChannelMutationVariables>;
 export const GetStockLocationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetStockLocations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"stockLocations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<GetStockLocationsQuery, GetStockLocationsQueryVariables>;
 export const AssignStockLocationsToChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignStockLocationsToChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignStockLocationsToChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignStockLocationsToChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<AssignStockLocationsToChannelMutation, AssignStockLocationsToChannelMutationVariables>;
-export const GetInvoiceListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceListQuery, GetInvoiceListQueryVariables>;
-export const CreateInvoiceDownloadUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceDownloadUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceDownloadUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"expiresIn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}}}]}]}}]} as unknown as DocumentNode<CreateInvoiceDownloadUrlMutation, CreateInvoiceDownloadUrlMutationVariables>;
+export const GetInvoiceListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceListQuery, GetInvoiceListQueryVariables>;
+export const CreateInvoiceDownloadUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceDownloadUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceDownloadUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"expiresIn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}}},{"kind":"Argument","name":{"kind":"Name","value":"neverExpires"},"value":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}}}]}]}}]} as unknown as DocumentNode<CreateInvoiceDownloadUrlMutation, CreateInvoiceDownloadUrlMutationVariables>;
+export const GetOrderHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOrderHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"order"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"history"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"sort"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"createdAt"},"value":{"kind":"EnumValue","value":"ASC"}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"isPublic"}},{"kind":"Field","name":{"kind":"Name","value":"data"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetOrderHistoryQuery, GetOrderHistoryQueryVariables>;
+export const GetOrdersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOrders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"orders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"sort"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"createdAt"},"value":{"kind":"EnumValue","value":"ASC"}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]}}]} as unknown as DocumentNode<GetOrdersQuery, GetOrdersQueryVariables>;
+export const InvoiceExportPreviewCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvoiceExportPreviewCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startsAt"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endsAt"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceExportPreviewCount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startsAt"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startsAt"}}},{"kind":"Argument","name":{"kind":"Name","value":"endsAt"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endsAt"}}}]}]}}]} as unknown as DocumentNode<InvoiceExportPreviewCountQuery, InvoiceExportPreviewCountQueryVariables>;
+export const CreateInvoiceExportDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceExport"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateInvoiceExportInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceExport"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"startsAt"}},{"kind":"Field","name":{"kind":"Name","value":"endsAt"}}]}}]}}]} as unknown as DocumentNode<CreateInvoiceExportMutation, CreateInvoiceExportMutationVariables>;
+export const GetInvoiceExportDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceExport"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceExport"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"entryCount"}},{"kind":"Field","name":{"kind":"Name","value":"fileSizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"missingFileCount"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}}]}}]}}]} as unknown as DocumentNode<GetInvoiceExportQuery, GetInvoiceExportQueryVariables>;
+export const CreateInvoiceExportDownloadUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceExportDownloadUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceExportDownloadUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"expiresIn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}}},{"kind":"Argument","name":{"kind":"Name","value":"neverExpires"},"value":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}}}]}]}}]} as unknown as DocumentNode<CreateInvoiceExportDownloadUrlMutation, CreateInvoiceExportDownloadUrlMutationVariables>;
+export const DeleteInvoiceExportDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteInvoiceExport"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteInvoiceExport"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]} as unknown as DocumentNode<DeleteInvoiceExportMutation, DeleteInvoiceExportMutationVariables>;

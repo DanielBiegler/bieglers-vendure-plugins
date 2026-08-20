@@ -22,13 +22,11 @@ import {
   SerializedRequestContext,
   TransactionalConnection
 } from "@vendure/core";
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { extname } from "node:path";
-import { Stream } from "node:stream";
+import { Readable, Stream } from "node:stream";
 import {
-  DEFAULT_DOWNLOAD_EXPIRES_IN,
   DEFAULT_SEQUENCE_CODE,
-  DOWNLOAD_NEVER_EXPIRES,
+  DOWNLOAD_KIND_INVOICE,
   INVOICE_DOWNLOAD_ROUTE,
   INVOICE_QUEUE_NAME,
   loggerCtx,
@@ -40,7 +38,9 @@ import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
 import { CreateInvoiceInput, GetSingleInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
-import { InvoiceDownloadOptions, InvoicesOptions } from "../types";
+import { InvoicesOptions } from "../types";
+import { openFileStream } from "../utils/open-file-stream";
+import { InvoiceDownloadSignerService } from "./DownloadSigner.service";
 
 /**
  * // TODO
@@ -59,6 +59,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     private listQueryBuilder: ListQueryBuilder,
     private jobQueueService: JobQueueService,
     private orderService: OrderService,
+    private signer: InvoiceDownloadSignerService,
     @Inject(PLUGIN_INIT_OPTIONS)
     private options: InvoicesOptions<Snapshot>,
   ) { }
@@ -259,22 +260,18 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     invoiceId: ID,
     expiresIn?: number | null,
   ): Promise<string> {
-    const options = this.assertDownloadEnabled();
+    this.signer.assertEnabled();
 
     const invoice = await this.findOne(ctx, { id: invoiceId });
     if (!invoice) throw new EntityNotFoundError("Invoice", invoiceId);
 
-    const requested = expiresIn ?? options.defaultExpiresIn ?? DEFAULT_DOWNLOAD_EXPIRES_IN;
-    // Signing the literal sentinel rather than a far future timestamp keeps a forged
-    // "expires=never" from validating against a signature minted for a finite window
-    const expires: number | typeof DOWNLOAD_NEVER_EXPIRES =
-      Number.isFinite(requested) ? Math.floor(Date.now() / 1000) + requested : DOWNLOAD_NEVER_EXPIRES;
-
-    const signature = this.signDownload(invoice.id, expires, options.signingSecret);
-    const baseUrl = (options.baseUrl ?? this.originOfRequest(ctx)).replace(/\/+$/, "");
-    const query = new URLSearchParams({ expires: String(expires), signature });
-
-    return `${baseUrl}/${INVOICE_DOWNLOAD_ROUTE}/${invoice.id}/download?${query.toString()}`;
+    return this.signer.createUrl(
+      ctx,
+      DOWNLOAD_KIND_INVOICE,
+      String(invoice.id),
+      `${INVOICE_DOWNLOAD_ROUTE}/${invoice.id}/download`,
+      expiresIn,
+    );
   }
 
   /**
@@ -286,23 +283,7 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     expires: unknown,
     signature: unknown,
   ): "valid" | "expired" | "invalid" {
-    const options = this.assertDownloadEnabled();
-
-    if (typeof signature !== "string") return "invalid";
-
-    const neverExpires = expires === DOWNLOAD_NEVER_EXPIRES;
-    const expiresAt = neverExpires ? DOWNLOAD_NEVER_EXPIRES : Number(expires);
-    if (!neverExpires && !Number.isSafeInteger(expiresAt)) return "invalid";
-
-    const expected = Buffer.from(this.signDownload(invoiceId, expiresAt, options.signingSecret));
-    const received = Buffer.from(signature);
-    // timingSafeEqual throws on differing lengths, which would leak via the exception
-    if (expected.length !== received.length) return "invalid";
-    if (!timingSafeEqual(expected, received)) return "invalid";
-
-    if (neverExpires) return "valid";
-
-    return (expiresAt as number) < Math.floor(Date.now() / 1000) ? "expired" : "valid";
+    return this.signer.verify(DOWNLOAD_KIND_INVOICE, String(invoiceId), expires, signature);
   }
 
   /**
@@ -310,15 +291,29 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
    *
    * Deliberately *not* Channel-Aware: callers reach this through a signed URL which
    * carries no session, and the signature was minted inside a channel-scoped lookup.
+   *
+   * `null` covers both "no such invoice" and "the row is there but its file is not",
+   * because neither is something the caller can act on differently.
    */
   public async readFileForDownload(
     ctx: RequestContext,
     invoiceId: ID,
-  ): Promise<{ filename: string; stream: Stream } | null> {
+  ): Promise<{ filename: string; stream: Readable } | null> {
     const invoice = await this.connection.getRepository(ctx, Invoice).findOne({ where: { id: invoiceId } });
     if (!invoice) return null;
 
-    const stream = await this.options.storageStrategy.readFileToStream(invoice.assetUrl);
+    let stream: Readable;
+    try {
+      stream = await openFileStream(this.options.storageStrategy, invoice.assetUrl);
+    } catch (error) {
+      // Storage drifted away from the database, e.g. a bucket lifecycle rule swept the
+      // file. Logged rather than thrown, since the caller only turns it into a 404.
+      Logger.warn(
+        `Invoice(${invoice.id}): could not read "${invoice.assetUrl}": ${String(error)}`,
+        loggerCtx,
+      );
+      return null;
+    }
 
     // The stored identifier can be a bucket key with prefixes, so the sequential ID
     // makes for a friendlier filename than its basename would. Quotes get dropped
@@ -326,38 +321,6 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const filename = `${invoice.sequentialId}${extname(invoice.assetUrl)}`.replace(/["\\]/g, "");
 
     return { filename, stream };
-  }
-
-  private assertDownloadEnabled(): InvoiceDownloadOptions {
-    if (!this.options.download?.signingSecret) {
-      const error = new Error(
-        "Invoice downloads require the `download.signingSecret` option to be configured",
-      );
-      Logger.error(error.message, loggerCtx, error.stack);
-      throw error;
-    }
-
-    return this.options.download;
-  }
-
-  private signDownload(invoiceId: ID, expires: number | typeof DOWNLOAD_NEVER_EXPIRES, secret: string): string {
-    return createHmac("sha256", secret)
-      .update(`${invoiceId}:${expires}`)
-      .digest("base64url");
-  }
-
-  private originOfRequest(ctx: RequestContext): string {
-    const req = ctx.req;
-    const host = req?.get?.("host");
-    if (!req || !host) {
-      const error = new Error(
-        "Could not derive the origin for a download URL. Configure `download.baseUrl` instead",
-      );
-      Logger.error(error.message, loggerCtx, error.stack);
-      throw error;
-    }
-
-    return `${req.protocol}://${host}`;
   }
 
   /**

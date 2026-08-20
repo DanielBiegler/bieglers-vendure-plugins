@@ -1,6 +1,6 @@
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/config/local-asset-storage-strategy";
-import { DefaultLogger, DefaultSearchPlugin, dummyPaymentHandler, LanguageCode, LogLevel, PaymentMethodEligibilityChecker, VendureConfig } from "@vendure/core";
+import { DefaultLogger, DefaultSchedulerPlugin, DefaultSearchPlugin, dummyPaymentHandler, LanguageCode, LogLevel, PaymentMethodEligibilityChecker, VendureConfig } from "@vendure/core";
 import { DashboardPlugin } from '@vendure/dashboard/plugin';
 import "dotenv/config";
 import path from "path";
@@ -59,7 +59,13 @@ export const config: VendureConfig = {
       download: {
         signingSecret: process.env.INVOICE_DOWNLOAD_SECRET || "dev-only-insecure-secret",
       },
+      // Left at the default ZipArchiveStrategy, i.e. one uncompressed archive.
+      exportRetention: {
+        maxAge: 30, // seconds, so a week
+        schedule: "*/5 * * * *",
+      },
     }),
+    DefaultSchedulerPlugin.init({}),
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({
       route: "dashboard",

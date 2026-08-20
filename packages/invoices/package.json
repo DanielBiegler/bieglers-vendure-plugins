@@ -5,6 +5,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node dev-server/index.ts",
+    "dev:seed": "ts-node dev-server/seed.ts",
+    "dev:reset": "ts-node dev-server/seed.ts --reset",
     "dev:dashboard": "vite --clearScreen false",
     "preview": "vite preview",
     "build": "rimraf dist && tsc -p ./tsconfig.build.json && cp -r src/dashboard dist/dashboard",
@@ -43,5 +45,13 @@
     "docs"
   ],
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
+    "yauzl": "^3.4.0"
+  }
 }

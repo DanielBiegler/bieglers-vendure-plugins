@@ -1,4 +1,5 @@
 import { AssetStorageStrategy, ID } from "@vendure/core";
+import { ArchiveStrategy } from "./config/ArchiveStrategy";
 import { FileStrategy } from "./config/FileStrategy";
 import { SequentialIdStrategy } from "./config/SequentialIdStrategy";
 import { SnapshotStrategy } from "./config/SnapshotStrategy";
@@ -64,6 +65,54 @@ export interface InvoicesOptions<Snapshot = unknown> {
    * or a bucket key and is not necessarily reachable by a browser at all.
    */
   download?: InvoiceDownloadOptions,
+
+  /**
+   * Packs bulk exports into archives.
+   *
+   * @default new ZipArchiveStrategy() i.e. a single, uncompressed ZIP file
+   */
+  archiveStrategy?: ArchiveStrategy,
+
+  /**
+   * Deletes finished exports after a while.
+   *
+   * Off by default.
+   */
+  exportRetention?: InvoiceExportRetentionOptions,
+}
+
+/**
+ * {@link InvoicesOptions} after {@link InvoicesPlugin.init} has filled in the defaults.
+ *
+ * Only what gets injected as `PLUGIN_INIT_OPTIONS` sees this shape, so that internal code
+ * does not have to re-assert an optional that is in fact always present by then.
+ *
+ * @category Plugin
+ */
+export type ResolvedInvoicesOptions<Snapshot = unknown> =
+  Omit<InvoicesOptions<Snapshot>, "archiveStrategy"> & { archiveStrategy: ArchiveStrategy };
+
+/**
+ * @category Plugin
+ */
+export interface InvoiceExportRetentionOptions {
+  /**
+   * Age **in seconds** past which an export gets deleted, along with its archive. The
+   * invoices themselves are never touched.
+   *
+   * @example
+   * ```ts
+   * maxAge: 60 * 60 * 24 * 30, // 30 days
+   * ```
+   */
+  maxAge: number,
+
+  /**
+   * Cron expression deciding how often the sweep runs.
+   *
+   * @default "0 3 * * *" (daily at 03:00)
+   */
+  schedule?: string,
 }
 
 /**
