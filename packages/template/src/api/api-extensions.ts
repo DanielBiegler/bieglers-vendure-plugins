@@ -9,11 +9,11 @@ export const adminApiExtensions = gql`
   # }
   # union Plugin__SCAFFOLD_TITLE_NO_SPACE__CreateResult = Asset | Plugin__SCAFFOLD_TITLE_NO_SPACE__Result
 
-  extend type Query {
-    # TODO
-  }
+  # extend type Mutation {
+  #   TODO
+  # }
 
-  extend type Mutation {
-    # TODO
-  }
+  # extend type Query {
+  #   TODO
+  # }
 `;

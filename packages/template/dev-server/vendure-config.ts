@@ -1,6 +1,6 @@
-import { AdminUiPlugin } from "@vendure/admin-ui-plugin";
 import { AssetServerPlugin } from "@vendure/asset-server-plugin";
 import { DefaultLogger, DefaultSchedulerPlugin, DefaultSearchPlugin, LogLevel, VendureConfig } from "@vendure/core";
+import { DashboardPlugin } from "@vendure/dashboard/plugin";
 import "dotenv/config";
 import path from "path";
 import { __SCAFFOLD_TITLE_NO_SPACE__Plugin } from "../src";
@@ -45,13 +45,9 @@ export const config: VendureConfig = {
     __SCAFFOLD_TITLE_NO_SPACE__Plugin.init({}),
     DefaultSchedulerPlugin.init({}),
     DefaultSearchPlugin.init({}),
-    AdminUiPlugin.init({
-      port: 3002,
-      route: "admin",
-      adminUiConfig: {
-        apiPort: +apiPort,
-        apiHost: "http://localhost",
-      },
+    DashboardPlugin.init({
+      route: "dashboard",
+      appDir: path.join(__dirname, "dashboard"),
     }),
   ],
 };
