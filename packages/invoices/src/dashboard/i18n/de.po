@@ -32,6 +32,11 @@ msgstr "{0} Rechnung(en), {1}"
 msgid "{count} invoice(s) fall into this period."
 msgstr "{count} Rechnung(en) fallen in diesen Zeitraum."
 
+#. placeholder {0}: original.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "A credit note will cancel invoice {0} in full and a new invoice will bill the order's current state. All three documents stay on the books, so this cannot be undone."
+msgstr "Eine Gutschrift storniert Rechnung {0} vollständig und eine neue Rechnung stellt den aktuellen Stand der Bestellung in Rechnung. Alle drei Dokumente bleiben erhalten, dies lässt sich also nicht rückgängig machen."
+
 #: src/dashboard/invoice-export-list.tsx
 #~ msgid "Actions"
 #~ msgstr "Aktionen"
@@ -51,6 +56,10 @@ msgstr "Wird erstellt …"
 #: src/dashboard/invoice-export-dialog.tsx
 msgid "Bundles every invoice issued in the selected period into a downloadable archive. Only invoices of the current channel are included."
 msgstr "Bündelt alle im gewählten Zeitraum ausgestellten Rechnungen in ein herunterladbares Archiv. Es werden ausschließlich Rechnungen des aktuellen Channels berücksichtigt."
+
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Cancel"
+msgstr "Abbrechen"
 
 #: src/dashboard/history-entries.tsx
 msgid "cancels {cancelled}"
@@ -79,6 +88,10 @@ msgstr "Download-Link konnte nicht erstellt werden"
 msgid "Could not load invoices: {reason}"
 msgstr "Rechnungen konnten nicht geladen werden: {reason}"
 
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Could not reissue the invoice"
+msgstr "Die Rechnung konnte nicht neu ausgestellt werden"
+
 #: src/dashboard/invoice-export-dialog.tsx
 msgid "Could not start the export"
 msgstr "Der Export konnte nicht gestartet werden"
@@ -90,6 +103,12 @@ msgstr "Rechnungen werden gezählt …"
 #: src/dashboard/page-blocks.tsx
 msgid "Credit note"
 msgstr "Gutschrift"
+
+#. placeholder {0}: reissueInvoice.creditNote.sequentialId
+#. placeholder {1}: reissueInvoice.invoice.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Credit note {0} cancels it, invoice {1} replaces it."
+msgstr "Gutschrift {0} storniert sie, Rechnung {1} ersetzt sie."
 
 #: src/dashboard/history-entries.tsx
 msgid "Credit note issued"
@@ -128,6 +147,7 @@ msgid "From"
 msgstr "Von"
 
 #: src/dashboard/invoice-detail.tsx
+#: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Invoice"
 msgstr "Rechnung"
@@ -144,7 +164,9 @@ msgstr "Rechnungsexporte"
 msgid "Invoice issued"
 msgstr "Rechnung ausgestellt"
 
+#: src/dashboard/invoice-detail.tsx
 #: src/dashboard/invoice-export-list.tsx
+#: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/page-blocks.tsx
@@ -172,6 +194,24 @@ msgstr "Bestellung"
 #: src/dashboard/invoice-export-list.tsx
 #~ msgid "Period"
 #~ msgstr "Zeitraum"
+
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissue"
+msgstr "Neu ausstellen"
+
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissue invoice"
+msgstr "Rechnung neu ausstellen"
+
+#. placeholder {0}: original.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissue invoice {0}?"
+msgstr "Rechnung {0} neu ausstellen?"
+
+#. placeholder {0}: original?.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissued invoice {0}"
+msgstr "Rechnung {0} neu ausgestellt"
 
 #: src/dashboard/invoice-export-list.tsx
 msgid "Requested"

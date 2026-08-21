@@ -32,6 +32,11 @@ msgstr "{0} invoice(s), {1}"
 msgid "{count} invoice(s) fall into this period."
 msgstr "{count} invoice(s) fall into this period."
 
+#. placeholder {0}: original.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "A credit note will cancel invoice {0} in full and a new invoice will bill the order's current state. All three documents stay on the books, so this cannot be undone."
+msgstr "A credit note will cancel invoice {0} in full and a new invoice will bill the order's current state. All three documents stay on the books, so this cannot be undone."
+
 #: src/dashboard/invoice-export-list.tsx
 #~ msgid "Actions"
 #~ msgstr "Actions"
@@ -51,6 +56,10 @@ msgstr "Building…"
 #: src/dashboard/invoice-export-dialog.tsx
 msgid "Bundles every invoice issued in the selected period into a downloadable archive. Only invoices of the current channel are included."
 msgstr "Bundles every invoice issued in the selected period into a downloadable archive. Only invoices of the current channel are included."
+
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Cancel"
+msgstr "Cancel"
 
 #: src/dashboard/history-entries.tsx
 msgid "cancels {cancelled}"
@@ -79,6 +88,10 @@ msgstr "Could not create a download link"
 msgid "Could not load invoices: {reason}"
 msgstr "Could not load invoices: {reason}"
 
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Could not reissue the invoice"
+msgstr "Could not reissue the invoice"
+
 #: src/dashboard/invoice-export-dialog.tsx
 msgid "Could not start the export"
 msgstr "Could not start the export"
@@ -90,6 +103,12 @@ msgstr "Counting invoices…"
 #: src/dashboard/page-blocks.tsx
 msgid "Credit note"
 msgstr "Credit note"
+
+#. placeholder {0}: reissueInvoice.creditNote.sequentialId
+#. placeholder {1}: reissueInvoice.invoice.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Credit note {0} cancels it, invoice {1} replaces it."
+msgstr "Credit note {0} cancels it, invoice {1} replaces it."
 
 #: src/dashboard/history-entries.tsx
 msgid "Credit note issued"
@@ -128,6 +147,7 @@ msgid "From"
 msgstr "From"
 
 #: src/dashboard/invoice-detail.tsx
+#: src/dashboard/invoice-detail.tsx
 #: src/dashboard/page-blocks.tsx
 msgid "Invoice"
 msgstr "Invoice"
@@ -144,7 +164,9 @@ msgstr "Invoice exports"
 msgid "Invoice issued"
 msgstr "Invoice issued"
 
+#: src/dashboard/invoice-detail.tsx
 #: src/dashboard/invoice-export-list.tsx
+#: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/invoice-list.tsx
 #: src/dashboard/page-blocks.tsx
@@ -172,6 +194,24 @@ msgstr "Order"
 #: src/dashboard/invoice-export-list.tsx
 #~ msgid "Period"
 #~ msgstr "Period"
+
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissue"
+msgstr "Reissue"
+
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissue invoice"
+msgstr "Reissue invoice"
+
+#. placeholder {0}: original.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissue invoice {0}?"
+msgstr "Reissue invoice {0}?"
+
+#. placeholder {0}: original?.sequentialId
+#: src/dashboard/reissue-invoice-menu-item.tsx
+msgid "Reissued invoice {0}"
+msgstr "Reissued invoice {0}"
 
 #: src/dashboard/invoice-export-list.tsx
 msgid "Requested"

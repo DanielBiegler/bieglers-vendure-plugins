@@ -5,6 +5,7 @@ import { InvoiceExportDialog } from './invoice-export-dialog';
 import { invoiceExports } from './invoice-export-list';
 import { invoiceList } from './invoice-list';
 import { relatedInvoices } from './page-blocks';
+import { reissueInvoice } from './reissue-invoice-menu-item';
 
 defineDashboardExtension({
   routes: [
@@ -17,6 +18,7 @@ defineDashboardExtension({
       pageId: 'invoice-list',
       component: () => <InvoiceExportDialog />,
     },
+    reissueInvoice,
   ],
   pageBlocks: [
     relatedInvoices,

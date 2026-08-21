@@ -20,7 +20,7 @@ type RelatedInvoiceItem = {
 type GetRelatedInvoicesQuery = { invoiceList: { items: RelatedInvoiceItem[] } };
 type GetRelatedInvoicesQueryVariables = { orderId: string };
 
-const relatedInvoicesDocument = gql`
+export const relatedInvoicesDocument = gql`
   query GetRelatedInvoices($orderId: String!) {
     invoiceList(
       options: { filter: { orderId: { eq: $orderId } }, sort: { createdAt: ASC }, take: 100 }
@@ -35,10 +35,18 @@ const relatedInvoicesDocument = gql`
   }
 ` as TypedDocumentNode<GetRelatedInvoicesQuery, GetRelatedInvoicesQueryVariables>;
 
+/**
+ * Shared so that anything issuing documents for an order invalidates the very cache entry
+ * this block reads, instead of leaving a stale list behind.
+ */
+export function relatedInvoicesQueryKey(orderId: string) {
+  return ["GetRelatedInvoices", orderId];
+}
+
 function RelatedInvoicesList({ orderId }: { orderId: string }) {
   const { formatDate } = useLocalFormat();
   const { data, isPending, error } = useQuery({
-    queryKey: ["GetRelatedInvoices", orderId],
+    queryKey: relatedInvoicesQueryKey(orderId),
     queryFn: () => api.query(relatedInvoicesDocument, { orderId }),
   });
 
