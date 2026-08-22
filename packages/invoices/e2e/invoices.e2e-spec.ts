@@ -3,6 +3,7 @@ import { LocalAssetStorageStrategy } from "@vendure/asset-server-plugin/lib/src/
 import {
   ChannelService,
   ConfigService,
+  ID,
   LanguageCode,
   PaymentMethodHandler,
   RequestContext,
@@ -17,7 +18,7 @@ import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-r
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
 import { DebugSnapshotStrategy, DEFAULT_SEQUENCE_CODE, PLUGIN_INVOICE_CREATED } from "../src";
-import { DebugFileStrategy } from "../src/config/FileStrategy";
+import { FileGenerationResult, FileStrategy } from "../src/config/FileStrategy";
 import { StaticSequentialIdStrategy } from "../src/config/SequentialIdStrategy";
 import { Invoice } from "../src/entities/Invoice.entity";
 import { InvoiceSequence } from "../src/entities/Sequence.entity";
@@ -37,6 +38,7 @@ import {
   DELETE_INVOICE_EXPORT,
   GET_ACTIVE_CHANNEL,
   GET_INVOICE_EXPORT,
+  GET_INVOICE_FILES,
   GET_INVOICE_LIST,
   GET_ORDER_HISTORY,
   GET_ORDERS,
@@ -59,6 +61,42 @@ import {
 } from "./graphql/shop-e2e-definitions";
 
 const TEST_PAYMENT_METHOD_CODE = "test-payment-method";
+
+/**
+ * Controls the extra artifact {@link E2EFileStrategy} emits.
+ *
+ * A module level switch rather than a second plugin instance, because the strategy is
+ * chosen once at bootstrap. `null` means "one file only", which is what every suite
+ * asserting exact invoice-to-entry counts relies on; the multi-file suite runs last and
+ * flips it on. Safe because the whole file is `sequential: true`.
+ */
+let sidecar: { channelIds?: ID[] } | null = null;
+
+/**
+ * Emits the snapshot as JSON, exactly like `DebugFileStrategy`, plus an optional second
+ * artifact so the multi-file and channel-scoping paths are exercisable.
+ */
+class E2EFileStrategy implements FileStrategy {
+  async generate(_ctx: any, sequentialId: string, snapshot: unknown): Promise<FileGenerationResult> {
+    const files = [
+      {
+        filename: `${sequentialId}.json`,
+        buffer: Buffer.from(JSON.stringify(snapshot, null, 2)),
+        mimeType: "application/json",
+      },
+    ];
+
+    if (sidecar)
+      files.push({
+        filename: `${sequentialId}.txt`,
+        buffer: Buffer.from(`sidecar for ${sequentialId}`),
+        mimeType: "text/plain",
+        ...(sidecar.channelIds ? { channelIds: sidecar.channelIds } : {}),
+      });
+
+    return { files };
+  }
+}
 
 const testPaymentHandler = new PaymentMethodHandler({
   code: TEST_PAYMENT_METHOD_CODE,
@@ -94,7 +132,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
       }),
       InvoicesPlugin.init({
         prefixStrategy: new StaticSequentialIdStrategy(INVOICE_PREFIX),
-        fileStrategy: new DebugFileStrategy(),
+        fileStrategy: new E2EFileStrategy(),
         storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "test-invoices")),
         sequenceLeftPadCount: 4,
         subscribeToOrderPlacedEvent: true,
@@ -132,6 +170,43 @@ describe("InvoicesPlugin", { sequential: true }, () => {
   afterAll(async () => {
     await server.destroy();
   });
+
+  /** Reads a zip from a buffer without touching disk. */
+  async function readZipEntries(buffer: Buffer): Promise<Map<string, Buffer>> {
+    const { fromBuffer } = await import("yauzl");
+    return new Promise((resolve, reject) => {
+      fromBuffer(buffer, { lazyEntries: true }, (err, zip) => {
+        if (err || !zip) return reject(err);
+        const entries = new Map<string, Buffer>();
+        zip.on("entry", entry => {
+          zip.openReadStream(entry, (streamErr, stream) => {
+            if (streamErr || !stream) return reject(streamErr);
+            const chunks: Buffer[] = [];
+            stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+            stream.on("end", () => {
+              entries.set(entry.fileName, Buffer.concat(chunks));
+              zip.readEntry();
+            });
+          });
+        });
+        zip.on("end", () => resolve(entries));
+        zip.on("error", reject);
+        zip.readEntry();
+      });
+    });
+  }
+
+  /** Polls until the export job leaves its non-terminal states. */
+  async function runExport(startsAt: string, endsAt: string) {
+    const { createInvoiceExport } = await adminClient.query(CREATE_INVOICE_EXPORT, {
+      input: { startsAt, endsAt },
+    });
+    await awaitRunningJobs(adminClient);
+    await assertNoFailedJobs(adminClient);
+
+    const { invoiceExport } = await adminClient.query(GET_INVOICE_EXPORT, { id: createInvoiceExport.id });
+    return invoiceExport;
+  }
 
   describe("sequence sharing across channels", () => {
     let newChannelToken: string;
@@ -317,6 +392,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
   describe("signed download URLs", () => {
     let invoiceId: string;
     let sequentialId: string;
+    let fileId: string;
     let downloadOrigin: string;
 
     beforeAll(async () => {
@@ -325,6 +401,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
       expect(invoiceList.totalItems, "Expected the earlier suites to have created invoices").toBeGreaterThan(0);
       invoiceId = invoiceList.items[0].id;
       sequentialId = invoiceList.items[0].sequentialId;
+      fileId = invoiceList.items[0].files[0].id;
 
       const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId });
       downloadOrigin = new URL(createInvoiceDownloadUrl).origin;
@@ -332,14 +409,16 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
     /**
      * Mirrors the servers' scheme so that forged and stale links can be crafted here.
-     * The `invoice:` prefix is the domain separator, see {@link DOWNLOAD_KIND_INVOICE}.
+     * The `invoice:` prefix is the domain separator, see {@link DOWNLOAD_KIND_INVOICE},
+     * and the file ID is part of the payload so a link cannot be walked onto a sibling
+     * artifact.
      */
-    function craftUrl(id: string, expires: number): URL {
+    function craftUrl(id: string, file: string, expires: number): URL {
       const signature = createHmac("sha256", DOWNLOAD_SIGNING_SECRET)
-        .update(`invoice:${id}:${expires}`)
+        .update(`invoice:${id}:${file}:${expires}`)
         .digest("base64url");
 
-      const url = new URL(`/invoices/${id}/download`, downloadOrigin);
+      const url = new URL(`/invoices/${id}/download/${file}`, downloadOrigin);
       url.search = new URLSearchParams({ expires: String(expires), signature }).toString();
       return url;
     }
@@ -375,7 +454,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
     });
 
     test("rejects a correctly signed but expired link", async ({ expect }) => {
-      const url = craftUrl(invoiceId, Math.floor(Date.now() / 1000) - 1);
+      const url = craftUrl(invoiceId, fileId, Math.floor(Date.now() / 1000) - 1);
 
       expect((await fetch(url)).status).toBe(410);
     });
@@ -390,7 +469,28 @@ describe("InvoicesPlugin", { sequential: true }, () => {
     });
 
     test("returns 404 for a validly signed but unknown invoice", async ({ expect }) => {
-      const url = craftUrl("999999", Math.floor(Date.now() / 1000) + 60);
+      const url = craftUrl("999999", fileId, Math.floor(Date.now() / 1000) + 60);
+
+      expect((await fetch(url)).status).toBe(404);
+    });
+
+    test("serves the content type the FileStrategy declared", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoiceId });
+      const response = await fetch(createInvoiceDownloadUrl);
+
+      // Express appends a charset to types it recognises, hence the prefix match
+      expect(response.headers.get("content-type")).toMatch(/^application\/json/);
+      expect(Number(response.headers.get("content-length"))).toBeGreaterThan(0);
+    });
+
+    test("refuses a file that belongs to a different invoice", async ({ expect }) => {
+      const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+      const other = invoiceList.items.find((i: any) => i.id !== invoiceId);
+      expect(other, "Expected more than one invoice").toBeDefined();
+
+      // Correctly signed for *this* pairing, but the file is not part of that invoice,
+      // so the lookup rather than the signature is what has to reject it.
+      const url = craftUrl(invoiceId, other.files[0].id, Math.floor(Date.now() / 1000) + 60);
 
       expect((await fetch(url)).status).toBe(404);
     });
@@ -448,43 +548,6 @@ describe("InvoicesPlugin", { sequential: true }, () => {
   });
 
   describe("bulk export by date range", () => {
-    /** Reads a zip from a buffer without touching disk. */
-    async function readZipEntries(buffer: Buffer): Promise<Map<string, Buffer>> {
-      const { fromBuffer } = await import("yauzl");
-      return new Promise((resolve, reject) => {
-        fromBuffer(buffer, { lazyEntries: true }, (err, zip) => {
-          if (err || !zip) return reject(err);
-          const entries = new Map<string, Buffer>();
-          zip.on("entry", entry => {
-            zip.openReadStream(entry, (streamErr, stream) => {
-              if (streamErr || !stream) return reject(streamErr);
-              const chunks: Buffer[] = [];
-              stream.on("data", (chunk: Buffer) => chunks.push(chunk));
-              stream.on("end", () => {
-                entries.set(entry.fileName, Buffer.concat(chunks));
-                zip.readEntry();
-              });
-            });
-          });
-          zip.on("end", () => resolve(entries));
-          zip.on("error", reject);
-          zip.readEntry();
-        });
-      });
-    }
-
-    /** Polls until the export job leaves its non-terminal states. */
-    async function runExport(startsAt: string, endsAt: string) {
-      const { createInvoiceExport } = await adminClient.query(CREATE_INVOICE_EXPORT, {
-        input: { startsAt, endsAt },
-      });
-      await awaitRunningJobs(adminClient);
-      await assertNoFailedJobs(adminClient);
-
-      const { invoiceExport } = await adminClient.query(GET_INVOICE_EXPORT, { id: createInvoiceExport.id });
-      return invoiceExport;
-    }
-
     /** A range wide enough to cover every invoice the earlier suites created. */
     const WHOLE_PERIOD = {
       startsAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
@@ -612,11 +675,16 @@ describe("InvoicesPlugin", { sequential: true }, () => {
 
       test("rejects an export signature replayed against the invoice route", async ({ expect }) => {
         const expires = Math.floor(Date.now() / 1000) + 60;
+        // Signed for the export kind, then aimed at an invoice file. The domain separator
+        // is the only thing making these two payloads distinguishable.
         const signature = createHmac("sha256", DOWNLOAD_SIGNING_SECRET)
           .update(`export:${record.id}:${expires}`)
           .digest("base64url");
 
-        const url = new URL(`/invoices/${record.id}/download`, origin);
+        const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 1 } });
+        const invoice = invoiceList.items[0];
+
+        const url = new URL(`/invoices/${record.id}/download/${invoice.files[0].id}`, origin);
         url.search = new URLSearchParams({ expires: String(expires), signature }).toString();
 
         expect((await fetch(url)).status).toBe(403);
@@ -711,8 +779,8 @@ describe("InvoicesPlugin", { sequential: true }, () => {
      */
     describe("files that vanished from storage", () => {
       const uploadPath = path.join(__dirname, "test-invoices");
-      let orphan: { id: string; sequentialId: string; assetUrl: string };
-      let intact: { id: string; sequentialId: string; assetUrl: string };
+      let orphan: { id: string; sequentialId: string; files: { assetUrl: string }[] };
+      let intact: { id: string; sequentialId: string; files: { assetUrl: string }[] };
 
       beforeAll(async () => {
         const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
@@ -720,7 +788,7 @@ describe("InvoicesPlugin", { sequential: true }, () => {
         intact = invoiceList.items[0];
         expect(orphan.id).not.toBe(intact.id);
 
-        await rm(path.join(uploadPath, orphan.assetUrl));
+        await rm(path.join(uploadPath, orphan.files[0].assetUrl));
       });
 
       test("answers 404 for an invoice whose file is gone", async ({ expect }) => {
@@ -933,6 +1001,152 @@ describe("InvoicesPlugin", { sequential: true }, () => {
       await expect(
         adminClient.query(REISSUE_INVOICE, { input: { cancels: "999999" } }),
       ).rejects.toThrow();
+    });
+  });
+
+  /**
+   * Runs last on purpose: these invoices carry a second artifact, which throws off the
+   * one-entry-per-invoice arithmetic that the export suites assert on.
+   */
+  describe("multiple files per invoice", () => {
+    /** Wide enough to cover every invoice the suite creates. */
+    const PERIOD = {
+      startsAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      endsAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    let orderId: string;
+    let multiFile: { id: string; sequentialId: string; files: any[] };
+
+    beforeAll(async () => {
+      const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+      orderId = invoiceList.items.find((i: any) => !i.cancelsId).orderId;
+
+      sidecar = {};
+      const { createInvoice } = await adminClient.query(CREATE_INVOICE, { input: { orderId } });
+      const { invoice } = await adminClient.query(GET_INVOICE_FILES, { input: { id: createInvoice.id } });
+      multiFile = invoice;
+    });
+
+    afterAll(() => {
+      sidecar = null;
+    });
+
+    test("persists every artifact the strategy returned", async ({ expect }) => {
+      expect(multiFile.files).toHaveLength(2);
+      expect(multiFile.files.map(f => f.position)).toEqual([0, 1]);
+
+      expect(multiFile.files[0]).toMatchObject({
+        filename: `${multiFile.sequentialId}.json`,
+        mimeType: "application/json",
+      });
+      expect(multiFile.files[1]).toMatchObject({
+        filename: `${multiFile.sequentialId}.txt`,
+        mimeType: "text/plain",
+        fileSizeBytes: Buffer.byteLength(`sidecar for ${multiFile.sequentialId}`),
+      });
+    });
+
+    test("serves each artifact under its own signed URL", async ({ expect }) => {
+      const [primary, extra] = multiFile.files;
+
+      const first = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, {
+        id: multiFile.id,
+        fileId: primary.id,
+      });
+      const second = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, {
+        id: multiFile.id,
+        fileId: extra.id,
+      });
+
+      const primaryResponse = await fetch(first.createInvoiceDownloadUrl);
+      expect(primaryResponse.headers.get("content-type")).toMatch(/^application\/json/);
+      expect(await primaryResponse.json()).toMatchObject({ sequentialId: multiFile.sequentialId });
+
+      const extraResponse = await fetch(second.createInvoiceDownloadUrl);
+      expect(extraResponse.headers.get("content-type")).toMatch(/^text\/plain/);
+      expect(extraResponse.headers.get("content-disposition"))
+        .toBe(`attachment; filename="${multiFile.sequentialId}.txt"`);
+      expect(await extraResponse.text()).toBe(`sidecar for ${multiFile.sequentialId}`);
+    });
+
+    test("defaults to the primary artifact when no file is named", async ({ expect }) => {
+      const { createInvoiceDownloadUrl } = await adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, {
+        id: multiFile.id,
+      });
+
+      const response = await fetch(createInvoiceDownloadUrl);
+      expect(response.headers.get("content-type")).toMatch(/^application\/json/);
+    });
+
+    test("packs every artifact into the export archive under a distinct name", async ({ expect }) => {
+      const record = await runExport(PERIOD.startsAt, PERIOD.endsAt);
+      expect(record.state).toBe("COMPLETED");
+
+      const { createInvoiceExportDownloadUrl } = await adminClient.query(CREATE_INVOICE_EXPORT_DOWNLOAD_URL, {
+        id: record.id,
+      });
+      const entries = await readZipEntries(
+        Buffer.from(await (await fetch(createInvoiceExportDownloadUrl)).arrayBuffer()),
+      );
+      const names = [...entries.keys()].map(name => name.split("/").pop());
+
+      expect(names).toContain(`${multiFile.sequentialId}.json`);
+      expect(names).toContain(`${multiFile.sequentialId}.txt`);
+    });
+
+    test("hides a file from the channels it was not assigned to", async ({ expect }) => {
+      // Read off the service rather than the API: `channelIds` is the internal ID space,
+      // while the testing id strategy hands out encoded IDs over GraphQL.
+      const defaultChannel = await server.app.get(ChannelService).getDefaultChannel();
+
+      // The sidecar goes to the default channel only, while the primary file follows the
+      // channel the invoice is created in. That is the marketplace shape in miniature:
+      // one order, one number, artifacts each party sees only their own share of.
+      sidecar = { channelIds: [defaultChannel.id] };
+
+      adminClient.setChannelToken("seq-sharing-channel-token");
+      let scoped: { id: string; sequentialId: string };
+      try {
+        const { invoiceList } = await adminClient.query(GET_INVOICE_LIST, { options: { take: 100 } });
+        const orderInChannel = invoiceList.items.find((i: any) => !i.cancelsId).orderId;
+
+        const { createInvoice } = await adminClient.query(CREATE_INVOICE, { input: { orderId: orderInChannel } });
+        const { invoice } = await adminClient.query(GET_INVOICE_FILES, { input: { id: createInvoice.id } });
+        scoped = invoice;
+
+        expect(invoice.files).toHaveLength(1);
+        expect(invoice.files[0].filename).toBe(`${invoice.sequentialId}.json`);
+      } finally {
+        adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
+      }
+
+      // The operator of the marketplace, i.e. the default channel, still sees both
+      const { invoice } = await adminClient.query(GET_INVOICE_FILES, { input: { id: scoped.id } });
+      expect(invoice.files).toHaveLength(2);
+      expect(invoice.files.map((f: any) => f.filename)).toEqual([
+        `${scoped.sequentialId}.json`,
+        `${scoped.sequentialId}.txt`,
+      ]);
+    });
+
+    test("refuses to mint a URL for a file of another channel", async ({ expect }) => {
+      const defaultChannel = await server.app.get(ChannelService).getDefaultChannel();
+      sidecar = { channelIds: [defaultChannel.id] };
+
+      const { createInvoice } = await adminClient.query(CREATE_INVOICE, { input: { orderId } });
+      const { invoice } = await adminClient.query(GET_INVOICE_FILES, { input: { id: createInvoice.id } });
+      const hidden = invoice.files.find((f: any) => f.filename.endsWith(".txt"));
+      expect(hidden, "Expected the default channel to see the sidecar").toBeDefined();
+
+      adminClient.setChannelToken("seq-sharing-channel-token");
+      try {
+        await expect(
+          adminClient.query(CREATE_INVOICE_DOWNLOAD_URL, { id: invoice.id, fileId: hidden.id }),
+        ).rejects.toThrow();
+      } finally {
+        adminClient.setChannelToken(E2E_DEFAULT_CHANNEL_TOKEN);
+      }
     });
   });
 });

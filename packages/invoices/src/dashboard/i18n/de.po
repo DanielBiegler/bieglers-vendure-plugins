@@ -142,6 +142,10 @@ msgstr "Zeitraum exportieren"
 msgid "Failed"
 msgstr "Fehlgeschlagen"
 
+#: src/dashboard/invoice-detail.tsx
+msgid "Files"
+msgstr "Dateien"
+
 #: src/dashboard/invoice-export-list.tsx
 msgid "From"
 msgstr "Von"

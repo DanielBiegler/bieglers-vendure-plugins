@@ -3,8 +3,8 @@ import { Ctx, Logger, RequestContext } from "@vendure/core";
 import type { Response } from "express";
 import { Readable } from "node:stream";
 import { INVOICE_DOWNLOAD_ROUTE, loggerCtx } from "../constants";
-import { InvoiceExportService } from "../services/InvoiceExport.service";
 import { InvoiceService } from "../services/Invoice.service";
+import { InvoiceExportService } from "../services/InvoiceExport.service";
 
 /**
  * Streams invoice files to whoever holds a valid signature.
@@ -57,33 +57,40 @@ export class InvoiceDownloadController {
     this.send(file.stream, res, `invoice export "${id}"`);
   }
 
-  @Get(":id/download")
+  /**
+   * An invoice can carry several artifacts - a PDF and its Factur-X XML, or the
+   * per-vendor paperwork of a marketplace order - so the file is addressed explicitly
+   * rather than guessed at. The signature covers both segments, which is what stops a
+   * URL for one vendor's document from being edited into another's.
+   */
+  @Get(":id/download/:fileId")
   async download(
     @Ctx() ctx: RequestContext,
     @Param("id") id: string,
+    @Param("fileId") fileId: string,
     @Query("expires") expires: string,
     @Query("signature") signature: string,
     @Res() res: Response,
   ): Promise<void> {
-    switch (this.service.verifyDownloadSignature(id, expires, signature)) {
+    switch (this.service.verifyDownloadSignature(id, fileId, expires, signature)) {
       case "expired":
         throw new GoneException("This download link has expired");
       case "invalid":
         throw new ForbiddenException("Invalid download link");
     }
 
-    const file = await this.service.readFileForDownload(ctx, id);
-    if (!file) throw new NotFoundException(`No invoice with the ID "${id}"`);
+    const file = await this.service.readFileForDownload(ctx, id, fileId);
+    if (!file) throw new NotFoundException(`No file "${fileId}" on invoice "${id}"`);
 
     res.set({
-      // The FileStrategy decides the actual format, so anything more specific would be a guess
-      "Content-Type": "application/octet-stream",
+      "Content-Type": file.mimeType,
       "Content-Disposition": `attachment; filename="${file.filename}"`,
+      "Content-Length": String(file.fileSizeBytes),
       // Signed URLs are per-recipient secrets and must not linger in shared caches
       "Cache-Control": "private, no-store",
     });
 
-    this.send(file.stream, res, `invoice "${id}"`);
+    this.send(file.stream, res, `invoice file "${fileId}"`);
   }
 
   /**

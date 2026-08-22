@@ -176,10 +176,10 @@ class MyFileStrategy implements FileStrategy<MySnapshot> {
   async generate(ctx, sequentialId, snapshot, doc) {
     switch (doc.kind) {
       case "invoice":
-        return renderInvoice(sequentialId, snapshot);
+        return { files: [await renderInvoice(sequentialId, snapshot)] };
       case "creditNote":
         // Legally required on a German Rechnungskorrektur: the document it corrects
-        return renderCreditNote(sequentialId, snapshot, doc.cancels.sequentialId);
+        return { files: [await renderCreditNote(sequentialId, snapshot, doc.cancels.sequentialId)] };
     }
   }
 }
@@ -191,6 +191,63 @@ Two rules worth internalising:
 - **`reason` is not persisted on the invoice row.** The snapshot is the immutable record, so capture it there from your `SnapshotStrategy` if the document has to show it.
 
 `SequentialIdStrategy.generatePrefix` receives the same context, so you can prefix credit notes differently. Note that both kinds still draw from the same counter, so a differing prefix alone does not give credit notes their own gapless range.
+
+### Several files per invoice
+
+`FileStrategy.generate` returns `{ files: [...] }`, so one invoice can carry more than one
+artifact. They share the invoice's `sequentialId`, which makes this the right shape for *one
+document in several representations* and the wrong one for two documents that each need a number
+of their own:
+
+```ts
+async generate(ctx, sequentialId, snapshot, doc) {
+  const pdf = await renderPdf(snapshot);
+  return {
+    files: [
+      { filename: `${sequentialId}.pdf`, buffer: pdf, mimeType: "application/pdf" },
+      // Factur-X / ZUGFeRD: the same invoice, machine readable
+      { filename: `${sequentialId}.xml`, buffer: toFacturX(snapshot), mimeType: "application/xml" },
+    ],
+  };
+}
+```
+
+The first file is the **primary** document: it is what a download without an explicit `fileId`
+serves, and what the dashboard offers first. Filenames have to be unique within one result, since
+the export archive names entries after them.
+
+#### Scoping artifacts per vendor
+
+Files are channel-aware independently of their invoice, which is what makes a marketplace order
+safe to paper over. One order spanning two vendors produces one invoice that spans both channels,
+while each artifact stays readable only by the party it settles:
+
+```ts
+async generate(ctx, sequentialId, snapshot, doc) {
+  return {
+    files: [
+      // No channelIds -> the channel the invoice is created in
+      { filename: `${sequentialId}.pdf`, buffer: customerCopy, mimeType: "application/pdf" },
+      { filename: `${sequentialId}-acme.pdf`, buffer: acmeCopy, channelIds: [acmeChannelId] },
+      { filename: `${sequentialId}-globex.pdf`, buffer: globexCopy, channelIds: [globexChannelId] },
+    ],
+  };
+}
+```
+
+`Invoice.files`, the export archive and `createInvoiceDownloadUrl` are all scoped to the requesting
+channel, so vendor Acme can neither list, archive nor mint a URL for Globex's document. Two things
+to know:
+
+- **The default channel is always added on top of whatever you pass.** The operator of the
+  marketplace keeps a complete view, mirroring how Vendure assigns every other channel-aware
+  entity. There is no way to hide a file from it.
+- **`channelIds` are internal IDs**, the same space as `ctx.channelId` and `ChannelService` - not
+  the encoded ones the GraphQL APIs hand out.
+
+Note that this scopes *visibility*, not numbering: all of these still share one `sequentialId`.
+Giving each vendor its own gapless range means issuing one invoice per vendor, which is a separate
+concern from how many files a single invoice carries.
 
 ### Correcting an order: `reissueInvoice`
 
@@ -244,9 +301,25 @@ guarded by a signed, expiring URL:
 ```graphql
 mutation {
   createInvoiceDownloadUrl(id: "1", expiresIn: 300)
-  # -> "https://api.example.com/invoices/1/download?expires=1786095410&signature=Ux_ZGU2M..."
+  # -> "https://api.example.com/invoices/1/download/7?expires=1786095410&signature=Ux_ZGU2M..."
 }
 ```
+
+An invoice can hold several files, so `fileId` picks which one to serve. Left out, you get the
+primary document, i.e. the first file the `FileStrategy` returned. Query `Invoice.files` for the
+choices:
+
+```graphql
+{
+  invoice(input: { id: "1" }) {
+    sequentialId
+    files { id  filename  mimeType  fileSizeBytes  position }
+  }
+}
+```
+
+The file ID is part of the signed payload, so a minted URL cannot be edited into a different
+artifact of the same invoice.
 
 Minting a URL requires the `ReadInvoice` permission and is scoped to the current channel. The
 returned URL is not: the HMAC signature *is* the authorization, which is what lets a browser, an
@@ -269,9 +342,10 @@ InvoicesPlugin.init({
 
 Without it, the mutation and the endpoint both refuse to work.
 
-The endpoint lives at `/invoices/:id/download` and answers with `410` for an expired URL, `403` for a
-forged one and `404` when the invoice does not exist. It sends `Content-Disposition: attachment` plus
-a generic `application/octet-stream`, because your `FileStrategy` decides the actual format.
+The endpoint lives at `/invoices/:id/download/:fileId` and answers with `410` for an expired URL,
+`403` for a forged one and `404` when that file does not belong to that invoice. It sends
+`Content-Disposition: attachment`, a `Content-Length`, and the `mimeType` your `FileStrategy`
+declared - falling back to `application/octet-stream` when it declared none.
 
 ### Permanent URLs for customers
 
@@ -281,7 +355,7 @@ Shops that mail invoices to their customers need links that still work next tax 
 ```graphql
 mutation {
   createInvoiceDownloadUrl(id: "1", neverExpires: true)
-  # -> "https://api.example.com/invoices/1/download?expires=never&signature=..."
+  # -> "https://api.example.com/invoices/1/download/7?expires=never&signature=..."
 }
 ```
 
@@ -331,7 +405,18 @@ administrator thinks in local time. The dashboard converts for you.
 ### Archive format
 
 Handled by the `ArchiveStrategy`. The default `ZipArchiveStrategy` produces a single
-uncompressed ZIP, with entries named `YYYY-MM/{sequentialId}{ext}`:
+uncompressed ZIP, with entries named `YYYY-MM/{sequentialId}{ext}` - one entry per file, so an
+invoice carrying a PDF and its XML contributes two:
+
+```
+2026-01/INVOICE0042.pdf
+2026-01/INVOICE0042.xml
+2026-01/INVOICE0043.pdf
+```
+
+Two files of the same invoice sharing an extension get the second one suffixed with its position,
+e.g. `INVOICE0042_1.pdf`. Only files visible in the exporting channel are included, so a vendor's
+export never contains a co-vendor's paperwork.
 
 ```ts
 archiveStrategy: new ZipArchiveStrategy({
@@ -347,9 +432,11 @@ archiveStrategy: new ZipArchiveStrategy({
 One export produces exactly one archive. Size is not worth designing around: yazl switches
 to ZIP64 by itself past 65.535 entries or 4GB.
 
-An invoice whose file has vanished from storage is skipped rather than failing the whole
-export, and counted in `missingFileCount`. Anything above zero means the archive is
-incomplete.
+A file that has vanished from storage is skipped rather than failing the whole export, and
+counted in `missingFileCount`. Anything above zero means the archive is incomplete.
+
+`entryCount` counts archive entries, i.e. files, so it can exceed the number of invoices in the
+range. `invoiceExportPreviewCount` counts invoices.
 
 ### Retention
 
@@ -382,8 +469,8 @@ This is for a regular [order process][orderprocess], applicable to most Vendure 
     - Every step is customizable but conceptionally speaking the following happens:
     1. `SequentialIdStrategy` claims the next unique sequential ID
     2. `SnapshotStrategy` creates a readonly snapshot containing necessary data for file generation
-    3. `FileStrategy` generates a file and provides a name
-    4. `StorageStrategy` persists said file
+    3. `FileStrategy` generates one or more files, naming each one
+    4. `StorageStrategy` persists them, and an `InvoiceFile` row is written per file
 6. `InvoiceService` publishes an `InvoiceEvent` which you can react to, for example to send the customer an email containing the generated file
 
 For example sake, let's modify this existing order.

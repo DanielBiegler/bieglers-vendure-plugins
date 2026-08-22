@@ -68,8 +68,13 @@ export class PdfkitFileStrategy implements FileStrategy<PdfkitSnapshot> {
     });
 
     return {
-      filename: this.options.filename?.(sequentialId, snapshot) ?? `${sequentialId}.pdf`,
-      buffer,
+      files: [
+        {
+          filename: this.options.filename?.(sequentialId, snapshot) ?? `${sequentialId}.pdf`,
+          buffer,
+          mimeType: "application/pdf",
+        },
+      ],
     };
   }
 }

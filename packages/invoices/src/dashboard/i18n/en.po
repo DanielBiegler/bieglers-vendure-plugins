@@ -142,6 +142,10 @@ msgstr "Export range"
 msgid "Failed"
 msgstr "Failed"
 
+#: src/dashboard/invoice-detail.tsx
+msgid "Files"
+msgstr "Files"
+
 #: src/dashboard/invoice-export-list.tsx
 msgid "From"
 msgstr "From"

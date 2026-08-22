@@ -15,12 +15,21 @@ import {
 import gql from 'graphql-tag';
 import { InvoiceDownloadButton } from './invoice-download-button';
 
+type InvoiceFile = {
+  id: string;
+  filename: string;
+  mimeType: string | null;
+  fileSizeBytes: number;
+  position: number;
+};
+
 type InvoiceDetail = {
   id: string;
   createdAt: string;
   updatedAt: string;
   sequentialId: string;
   order: { id: string; code: string };
+  files: InvoiceFile[];
 } | null;
 
 type GetInvoiceQuery = { invoice: InvoiceDetail };
@@ -37,9 +46,32 @@ const invoiceDetailDocument = gql`
         id
         code
       }
+      files {
+        id
+        filename
+        mimeType
+        fileSizeBytes
+        position
+      }
     }
   }
 ` as TypedDocumentNode<GetInvoiceQuery, GetInvoiceQueryVariables>;
+
+/**
+ * Binary units rather than decimal, matching what a file manager reports, so a size shown
+ * here lines up with what the operator sees after the download finishes.
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KiB", "MiB", "GiB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
 
 type CreditNoteItem = {
   id: string;
@@ -110,6 +142,21 @@ function InvoiceDetailPage({ route }: { route: any }) {
             <dd>{invoice?.createdAt ? <DateTime value={invoice.createdAt} /> : '—'}</dd>
           </dl>
         </PageBlock>
+        {(invoice?.files.length ?? 0) > 1 && (
+          <PageBlock column="main" blockId="invoice-files" title={<Trans>Files</Trans>}>
+            <ul className="space-y-2 text-sm">
+              {invoice!.files.map(file => (
+                <li key={file.id} className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{file.filename}</span>
+                  <span className="text-muted-foreground">
+                    {file.mimeType ?? '—'} · {formatBytes(file.fileSizeBytes)}
+                  </span>
+                  <InvoiceDownloadButton invoiceId={invoice!.id} fileId={file.id} size="sm" />
+                </li>
+              ))}
+            </ul>
+          </PageBlock>
+        )}
         {creditNotes.length > 0 && (
           <PageBlock column="main" blockId="credit-notes" title={<Trans>Credit Notes</Trans>}>
             <ul className="space-y-2 text-sm">

@@ -11,6 +11,7 @@ export { InvoicesPlugin } from "./plugin";
 
 export * from "./entities/Invoice.entity";
 export * from "./entities/InvoiceExport.entity";
+export * from "./entities/InvoiceFile.entity";
 export * from "./entities/Sequence.entity";
 
 export * from "./services/DownloadSigner.service";

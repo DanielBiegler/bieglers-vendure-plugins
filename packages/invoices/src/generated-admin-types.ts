@@ -2341,11 +2341,18 @@ export type InvalidFulfillmentHandlerError = ErrorResult & {
 
 export type Invoice = Node & {
   __typename?: 'Invoice';
-  assetUrl: Scalars['String']['output'];
   cancels?: Maybe<Invoice>;
   cancelsId?: Maybe<Scalars['ID']['output']>;
   createdAt: Scalars['DateTime']['output'];
   customFields?: Maybe<Scalars['JSON']['output']>;
+  /**
+   * The artifacts of this document, primary one first.
+   *
+   * Scoped to the current channel: an invoice covering a marketplace order spans every
+   * vendor involved, but each vendor only ever sees the files that settle their own
+   * share.
+   */
+  files: Array<InvoiceFile>;
   id: Scalars['ID']['output'];
   order: Order;
   orderId: Scalars['ID']['output'];
@@ -2359,7 +2366,10 @@ export type InvoiceExport = Node & {
   customFields?: Maybe<Scalars['JSON']['output']>;
   /** Exclusive upper bound of the exported period. */
   endsAt: Scalars['DateTime']['output'];
-  /** Number of invoices written into the archive. */
+  /**
+   * Number of files written into the archive. An invoice contributes one entry per
+   * artifact, so this can exceed the number of invoices in the range.
+   */
   entryCount: Scalars['Int']['output'];
   /** Only set when the state is FAILED. */
   errorMessage?: Maybe<Scalars['String']['output']>;
@@ -2374,7 +2384,7 @@ export type InvoiceExport = Node & {
   filename?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   /**
-   * Invoices whose row exists but whose file was gone from storage. They are skipped
+   * Files whose row exists but whose bytes were gone from storage. They are skipped
    * rather than failing the export, so anything above zero means the archive is
    * incomplete and worth investigating.
    */
@@ -2440,10 +2450,35 @@ export enum InvoiceExportState {
   RUNNING = 'RUNNING'
 }
 
+/** One artifact of an invoice, e.g. the PDF or the machine readable XML beside it. */
+export type InvoiceFile = Node & {
+  __typename?: 'InvoiceFile';
+  /**
+   * Opaque storage identifier. May be a filesystem path or a bucket key and is not
+   * necessarily reachable by a browser, so never treat it as a link - use
+   * "createInvoiceDownloadUrl" instead.
+   */
+  assetUrl: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  /**
+   * Size of the file in bytes.
+   *
+   * Deliberately a Float: GraphQL's Int is 32 bit signed and therefore caps at 2GB.
+   */
+  fileSizeBytes: Scalars['Float']['output'];
+  /** Name the file is served under, extension included. */
+  filename: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** Content type declared by the FileStrategy. Null when it did not claim one. */
+  mimeType?: Maybe<Scalars['String']['output']>;
+  /** Position within the invoice. Zero is the primary document. */
+  position: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type InvoiceFilterParameter = {
   _and?: InputMaybe<Array<InvoiceFilterParameter>>;
   _or?: InputMaybe<Array<InvoiceFilterParameter>>;
-  assetUrl?: InputMaybe<StringOperators>;
   cancelsId?: InputMaybe<IdOperators>;
   createdAt?: InputMaybe<DateOperators>;
   id?: InputMaybe<IdOperators>;
@@ -2472,7 +2507,6 @@ export type InvoiceListOptions = {
 };
 
 export type InvoiceSortParameter = {
-  assetUrl?: InputMaybe<SortOrder>;
   cancelsId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
@@ -3126,6 +3160,10 @@ export type Mutation = {
    * Anyone holding the URL can download the file until it expires, so treat it as a
    * secret and keep the lifetime short. Requires the plugins' "download" option.
    *
+   * "fileId" picks which artifact of the invoice to serve and defaults to the primary
+   * one. It must belong to the given invoice and be visible in the current channel;
+   * the signature covers it, so a minted URL cannot be edited into a different file.
+   *
    * "expiresIn" is the validity in seconds and is taken at face value, so a value in
    * the past yields a URL which is already dead. Defaults to the configured
    * "download.defaultExpiresIn".
@@ -3653,6 +3691,7 @@ export type MutationCreateInvoiceArgs = {
 
 export type MutationCreateInvoiceDownloadUrlArgs = {
   expiresIn?: InputMaybe<Scalars['Int']['input']>;
+  fileId?: InputMaybe<Scalars['ID']['input']>;
   id: Scalars['ID']['input'];
   neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
 };

@@ -29,6 +29,7 @@ import {
   PLUGIN_INIT_OPTIONS,
 } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
+import { InvoiceFile } from "../entities/InvoiceFile.entity";
 import { InvoiceExport } from "../entities/InvoiceExport.entity";
 import { CreateInvoiceExportInput, DeletionResponse, DeletionResult } from "../generated-admin-types";
 import { ResolvedInvoicesOptions } from "../types";
@@ -39,12 +40,15 @@ import { InvoiceDownloadSignerService } from "./DownloadSigner.service";
 const INVOICE_PAGE_SIZE = 500;
 
 /** Columns the export actually reads. Notably excludes the fat `snapshot` blob. */
-type InvoiceRow = Pick<Invoice, "id" | "sequentialId" | "assetUrl" | "createdAt">;
+type InvoiceRow = Pick<Invoice, "id" | "sequentialId" | "createdAt">;
+
+/** The subset of an artifact the archive needs to name and open it. */
+type InvoiceFileRow = Pick<InvoiceFile, "id" | "invoiceId" | "assetUrl" | "filename" | "position">;
 
 interface ExportStats {
   /** Entries handed to the archive, i.e. excluding files that turned out to be missing. */
   added: number;
-  /** Rows visited, whether or not their file could be read. Drives the progress readout. */
+  /** Invoices visited, whether or not their files could be read. Drives the progress readout. */
   processed: number;
   missing: number;
 }
@@ -227,7 +231,7 @@ export class InvoiceExportService implements OnModuleInit {
     onProgress?.(100);
 
     Logger.info(
-      `InvoiceExport(${record.id}): ${stats.added} invoice(s)` +
+      `InvoiceExport(${record.id}): ${stats.added} file(s) from ${stats.processed} invoice(s)` +
       (stats.missing ? `, ${stats.missing} file(s) missing from storage` : ""),
       loggerCtx,
     );
@@ -377,35 +381,62 @@ export class InvoiceExportService implements OnModuleInit {
     onProgress?: (percent: number) => void,
   ): AsyncGenerator<ArchiveEntry> {
     for await (const invoice of this.walkRange(ctx, record.startsAt, record.endsAt)) {
-      yield {
-        name: this.entryName(invoice),
-        mtime: invoice.createdAt,
-        open: async () => {
-          stats.processed++;
-          if (total > 0) onProgress?.(Math.min(99, Math.floor((stats.processed / total) * 100)));
+      // Progress is counted per invoice rather than per file, so that it stays comparable
+      // to the count `invoiceExportPreviewCount` showed before the job was started.
+      stats.processed++;
+      if (total > 0) onProgress?.(Math.min(99, Math.floor((stats.processed / total) * 100)));
 
-          try {
-            // `openFileStream` rather than the strategy directly: a missing file has to
-            // surface as a rejection here, or it arrives later as an `error` event on a
-            // stream already handed to the archive, which both fails the whole export and
-            // risks taking the process down.
-            const stream = await openFileStream(this.options.storageStrategy, invoice.assetUrl);
-            stats.added++;
-            return stream;
-          } catch (error) {
-            // A row without its file means storage drifted away from the database, e.g. a
-            // bucket lifecycle rule swept it. Aborting would throw away an otherwise
-            // complete export, so the gap is counted and reported on the record instead.
-            stats.missing++;
-            Logger.warn(
-              `Skipping Invoice(${invoice.id}): could not read "${invoice.assetUrl}": ${String(error)}`,
-              loggerCtx,
-            );
-            return null;
-          }
-        },
-      };
+      // Names are deduplicated per invoice rather than globally: `sequentialId` is unique,
+      // so the only way two entries can collide is a strategy emitting two files that
+      // share an extension.
+      const used = new Set<string>();
+
+      for (const file of await this.filesOf(ctx, invoice.id)) {
+        yield {
+          name: this.entryName(invoice, file, used),
+          mtime: invoice.createdAt,
+          open: async () => {
+            try {
+              // `openFileStream` rather than the strategy directly: a missing file has to
+              // surface as a rejection here, or it arrives later as an `error` event on a
+              // stream already handed to the archive, which both fails the whole export and
+              // risks taking the process down.
+              const stream = await openFileStream(this.options.storageStrategy, file.assetUrl);
+              stats.added++;
+              return stream;
+            } catch (error) {
+              // A row without its file means storage drifted away from the database, e.g. a
+              // bucket lifecycle rule swept it. Aborting would throw away an otherwise
+              // complete export, so the gap is counted and reported on the record instead.
+              stats.missing++;
+              Logger.warn(
+                `Skipping InvoiceFile(${file.id}): could not read "${file.assetUrl}": ${String(error)}`,
+                loggerCtx,
+              );
+              return null;
+            }
+          },
+        };
+      }
     }
+  }
+
+  /**
+   * The artifacts of one invoice that the exporting channel is allowed to see.
+   *
+   * Channel-scoped rather than joined onto the invoice walk: on a marketplace order the
+   * invoice spans every vendor involved, so an unscoped join would pack a co-vendor's
+   * documents into this vendor's export.
+   */
+  private async filesOf(ctx: RequestContext, invoiceId: ID): Promise<InvoiceFileRow[]> {
+    return this.connection
+      .getRepository(ctx, InvoiceFile)
+      .createQueryBuilder("file")
+      .innerJoin("file.channels", "channel", "channel.id = :channelId", { channelId: ctx.channelId })
+      .select(["file.id", "file.invoiceId", "file.assetUrl", "file.filename", "file.position"])
+      .where("file.invoiceId = :invoiceId", { invoiceId })
+      .orderBy("file.position", "ASC")
+      .getMany();
   }
 
   /**
@@ -424,7 +455,7 @@ export class InvoiceExportService implements OnModuleInit {
 
     while (true) {
       const query = this.rangeQuery(ctx, startsAt, endsAt)
-        .select(["invoice.id", "invoice.sequentialId", "invoice.assetUrl", "invoice.createdAt"])
+        .select(["invoice.id", "invoice.sequentialId", "invoice.createdAt"])
         // Keyset rather than OFFSET: paging deep into a large range with OFFSET makes the
         // database re-scan everything it already skipped, on every single page.
         //
@@ -534,11 +565,24 @@ export class InvoiceExportService implements OnModuleInit {
     return { filename: archive.filename, assetUrl, fileSizeBytes };
   }
 
-  private entryName(invoice: InvoiceRow): string {
-    // `sequentialId` is a unique column, so entry names cannot collide and need no dedup
-    // pass. The month prefix is how accountants file the documents.
+  /**
+   * Flat `2026-01/INVOICE0042.pdf`, one entry per artifact. The month prefix is how
+   * accountants file the documents, and the sequential ID rather than the strategy's own
+   * filename is what makes an entry findable from a ledger.
+   *
+   * `used` carries the names already taken by this invoice, so a strategy emitting two
+   * files of the same type still yields two distinct entries instead of silently
+   * overwriting one with the other.
+   */
+  private entryName(invoice: InvoiceRow, file: InvoiceFileRow, used: Set<string>): string {
     const month = invoice.createdAt.toISOString().slice(0, 7);
-    return `${month}/${invoice.sequentialId}${extname(invoice.assetUrl)}`.replace(/["\\]/g, "");
+    const extension = extname(file.filename);
+
+    let stem = invoice.sequentialId;
+    if (used.has(`${stem}${extension}`)) stem = `${stem}_${file.position}`;
+    used.add(`${stem}${extension}`);
+
+    return `${month}/${stem}${extension}`.replace(/["\\]/g, "");
   }
 
   private basename(record: InvoiceExport): string {

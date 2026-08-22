@@ -2342,11 +2342,18 @@ export type InvalidFulfillmentHandlerError = ErrorResult & {
 
 export type Invoice = Node & {
   __typename?: 'Invoice';
-  assetUrl: Scalars['String']['output'];
   cancels?: Maybe<Invoice>;
   cancelsId?: Maybe<Scalars['ID']['output']>;
   createdAt: Scalars['DateTime']['output'];
   customFields?: Maybe<Scalars['JSON']['output']>;
+  /**
+   * The artifacts of this document, primary one first.
+   *
+   * Scoped to the current channel: an invoice covering a marketplace order spans every
+   * vendor involved, but each vendor only ever sees the files that settle their own
+   * share.
+   */
+  files: Array<InvoiceFile>;
   id: Scalars['ID']['output'];
   order: Order;
   orderId: Scalars['ID']['output'];
@@ -2360,7 +2367,10 @@ export type InvoiceExport = Node & {
   customFields?: Maybe<Scalars['JSON']['output']>;
   /** Exclusive upper bound of the exported period. */
   endsAt: Scalars['DateTime']['output'];
-  /** Number of invoices written into the archive. */
+  /**
+   * Number of files written into the archive. An invoice contributes one entry per
+   * artifact, so this can exceed the number of invoices in the range.
+   */
   entryCount: Scalars['Int']['output'];
   /** Only set when the state is FAILED. */
   errorMessage?: Maybe<Scalars['String']['output']>;
@@ -2375,7 +2385,7 @@ export type InvoiceExport = Node & {
   filename?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   /**
-   * Invoices whose row exists but whose file was gone from storage. They are skipped
+   * Files whose row exists but whose bytes were gone from storage. They are skipped
    * rather than failing the export, so anything above zero means the archive is
    * incomplete and worth investigating.
    */
@@ -2441,10 +2451,35 @@ export enum InvoiceExportState {
   RUNNING = 'RUNNING'
 }
 
+/** One artifact of an invoice, e.g. the PDF or the machine readable XML beside it. */
+export type InvoiceFile = Node & {
+  __typename?: 'InvoiceFile';
+  /**
+   * Opaque storage identifier. May be a filesystem path or a bucket key and is not
+   * necessarily reachable by a browser, so never treat it as a link - use
+   * "createInvoiceDownloadUrl" instead.
+   */
+  assetUrl: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  /**
+   * Size of the file in bytes.
+   *
+   * Deliberately a Float: GraphQL's Int is 32 bit signed and therefore caps at 2GB.
+   */
+  fileSizeBytes: Scalars['Float']['output'];
+  /** Name the file is served under, extension included. */
+  filename: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** Content type declared by the FileStrategy. Null when it did not claim one. */
+  mimeType?: Maybe<Scalars['String']['output']>;
+  /** Position within the invoice. Zero is the primary document. */
+  position: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type InvoiceFilterParameter = {
   _and?: InputMaybe<Array<InvoiceFilterParameter>>;
   _or?: InputMaybe<Array<InvoiceFilterParameter>>;
-  assetUrl?: InputMaybe<StringOperators>;
   cancelsId?: InputMaybe<IdOperators>;
   createdAt?: InputMaybe<DateOperators>;
   id?: InputMaybe<IdOperators>;
@@ -2473,7 +2508,6 @@ export type InvoiceListOptions = {
 };
 
 export type InvoiceSortParameter = {
-  assetUrl?: InputMaybe<SortOrder>;
   cancelsId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
@@ -3127,6 +3161,10 @@ export type Mutation = {
    * Anyone holding the URL can download the file until it expires, so treat it as a
    * secret and keep the lifetime short. Requires the plugins' "download" option.
    *
+   * "fileId" picks which artifact of the invoice to serve and defaults to the primary
+   * one. It must belong to the given invoice and be visible in the current channel;
+   * the signature covers it, so a minted URL cannot be edited into a different file.
+   *
    * "expiresIn" is the validity in seconds and is taken at face value, so a value in
    * the past yields a URL which is already dead. Defaults to the configured
    * "download.defaultExpiresIn".
@@ -3654,6 +3692,7 @@ export type MutationCreateInvoiceArgs = {
 
 export type MutationCreateInvoiceDownloadUrlArgs = {
   expiresIn?: InputMaybe<Scalars['Int']['input']>;
+  fileId?: InputMaybe<Scalars['ID']['input']>;
   id: Scalars['ID']['input'];
   neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -7673,16 +7712,38 @@ export type GetInvoiceListQueryVariables = Exact<{
 }>;
 
 
-export type GetInvoiceListQuery = { __typename?: 'Query', invoiceList: { __typename?: 'InvoiceList', totalItems: number, items: Array<{ __typename?: 'Invoice', id: string | number, createdAt: any, sequentialId: string, assetUrl: string }> } };
+export type GetInvoiceListQuery = { __typename?: 'Query', invoiceList: { __typename?: 'InvoiceList', totalItems: number, items: Array<{ __typename?: 'Invoice', id: string | number, createdAt: any, sequentialId: string, orderId: string | number, cancelsId?: string | number, files: Array<{ __typename?: 'InvoiceFile', id: string | number, filename: string, assetUrl: string, mimeType?: string, fileSizeBytes: number, position: number }> }> } };
+
+export type CreateInvoiceMutationVariables = Exact<{
+  input: CreateInvoiceInput;
+}>;
+
+
+export type CreateInvoiceMutation = { __typename?: 'Mutation', createInvoice: { __typename?: 'Invoice', id: string | number, sequentialId: string, orderId: string | number, cancelsId?: string | number } };
+
+export type ReissueInvoiceMutationVariables = Exact<{
+  input: ReissueInvoiceInput;
+}>;
+
+
+export type ReissueInvoiceMutation = { __typename?: 'Mutation', reissueInvoice: { __typename?: 'ReissueInvoiceResult', creditNote: { __typename?: 'Invoice', id: string | number, sequentialId: string, orderId: string | number, cancelsId?: string | number }, invoice: { __typename?: 'Invoice', id: string | number, sequentialId: string, orderId: string | number, cancelsId?: string | number } } };
 
 export type CreateInvoiceDownloadUrlMutationVariables = Exact<{
   id: Scalars['ID']['input'];
+  fileId?: InputMaybe<Scalars['ID']['input']>;
   expiresIn?: InputMaybe<Scalars['Int']['input']>;
   neverExpires?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 
 export type CreateInvoiceDownloadUrlMutation = { __typename?: 'Mutation', createInvoiceDownloadUrl: string };
+
+export type GetInvoiceFilesQueryVariables = Exact<{
+  input: GetSingleInvoiceInput;
+}>;
+
+
+export type GetInvoiceFilesQuery = { __typename?: 'Query', invoice?: { __typename?: 'Invoice', id: string | number, sequentialId: string, files: Array<{ __typename?: 'InvoiceFile', id: string | number, filename: string, assetUrl: string, mimeType?: string, fileSizeBytes: number, position: number }> } };
 
 export type GetOrderHistoryQueryVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -7746,8 +7807,11 @@ export const AssignPaymentMethodsToChannelDocument = {"kind":"Document","definit
 export const AssignProductsToChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignProductsToChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignProductsToChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignProductsToChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<AssignProductsToChannelMutation, AssignProductsToChannelMutationVariables>;
 export const GetStockLocationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetStockLocations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"stockLocations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<GetStockLocationsQuery, GetStockLocationsQueryVariables>;
 export const AssignStockLocationsToChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignStockLocationsToChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssignStockLocationsToChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignStockLocationsToChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<AssignStockLocationsToChannelMutation, AssignStockLocationsToChannelMutationVariables>;
-export const GetInvoiceListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"assetUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceListQuery, GetInvoiceListQueryVariables>;
-export const CreateInvoiceDownloadUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceDownloadUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceDownloadUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"expiresIn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}}},{"kind":"Argument","name":{"kind":"Name","value":"neverExpires"},"value":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}}}]}]}}]} as unknown as DocumentNode<CreateInvoiceDownloadUrlMutation, CreateInvoiceDownloadUrlMutationVariables>;
+export const GetInvoiceListDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceList"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"options"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceListOptions"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceList"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"Variable","name":{"kind":"Name","value":"options"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"orderId"}},{"kind":"Field","name":{"kind":"Name","value":"cancelsId"}},{"kind":"Field","name":{"kind":"Name","value":"files"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"assetUrl"}},{"kind":"Field","name":{"kind":"Name","value":"mimeType"}},{"kind":"Field","name":{"kind":"Name","value":"fileSizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"position"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceListQuery, GetInvoiceListQueryVariables>;
+export const CreateInvoiceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateInvoiceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"orderId"}},{"kind":"Field","name":{"kind":"Name","value":"cancelsId"}}]}}]}}]} as unknown as DocumentNode<CreateInvoiceMutation, CreateInvoiceMutationVariables>;
+export const ReissueInvoiceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ReissueInvoice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ReissueInvoiceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reissueInvoice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"creditNote"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"orderId"}},{"kind":"Field","name":{"kind":"Name","value":"cancelsId"}}]}},{"kind":"Field","name":{"kind":"Name","value":"invoice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"orderId"}},{"kind":"Field","name":{"kind":"Name","value":"cancelsId"}}]}}]}}]}}]} as unknown as DocumentNode<ReissueInvoiceMutation, ReissueInvoiceMutationVariables>;
+export const CreateInvoiceDownloadUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateInvoiceDownloadUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fileId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createInvoiceDownloadUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"fileId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fileId"}}},{"kind":"Argument","name":{"kind":"Name","value":"expiresIn"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expiresIn"}}},{"kind":"Argument","name":{"kind":"Name","value":"neverExpires"},"value":{"kind":"Variable","name":{"kind":"Name","value":"neverExpires"}}}]}]}}]} as unknown as DocumentNode<CreateInvoiceDownloadUrlMutation, CreateInvoiceDownloadUrlMutationVariables>;
+export const GetInvoiceFilesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetInvoiceFiles"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"GetSingleInvoiceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sequentialId"}},{"kind":"Field","name":{"kind":"Name","value":"files"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"assetUrl"}},{"kind":"Field","name":{"kind":"Name","value":"mimeType"}},{"kind":"Field","name":{"kind":"Name","value":"fileSizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"position"}}]}}]}}]}}]} as unknown as DocumentNode<GetInvoiceFilesQuery, GetInvoiceFilesQueryVariables>;
 export const GetOrderHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOrderHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"order"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"history"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"sort"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"createdAt"},"value":{"kind":"EnumValue","value":"ASC"}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalItems"}},{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"isPublic"}},{"kind":"Field","name":{"kind":"Name","value":"data"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetOrderHistoryQuery, GetOrderHistoryQueryVariables>;
 export const GetOrdersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetOrders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"orders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"options"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"sort"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"createdAt"},"value":{"kind":"EnumValue","value":"ASC"}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]}}]} as unknown as DocumentNode<GetOrdersQuery, GetOrdersQueryVariables>;
 export const InvoiceExportPreviewCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvoiceExportPreviewCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startsAt"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endsAt"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DateTime"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoiceExportPreviewCount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"startsAt"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startsAt"}}},{"kind":"Argument","name":{"kind":"Name","value":"endsAt"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endsAt"}}}]}]}}]} as unknown as DocumentNode<InvoiceExportPreviewCountQuery, InvoiceExportPreviewCountQueryVariables>;

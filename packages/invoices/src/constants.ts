@@ -20,7 +20,8 @@ export const DEFAULT_SEQUENCE_CODE = "__default";
 export const PLUGIN_INVOICE_CREATED = "PLUGIN_INVOICE_CREATED";
 
 /**
- * Base path of the endpoint that streams invoice files, i.e. `/invoices/:id/download`.
+ * Base path of the endpoint that streams invoice files, i.e.
+ * `/invoices/:id/download/:fileId`.
  *
  * Not configurable, because Nest reads controller paths at decoration time, which
  * happens before `InvoicesPlugin.init()` ever runs.

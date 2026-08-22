@@ -1,4 +1,4 @@
-import type { Invoice, SnapshotStrategy } from "@danielbiegler/vendure-plugin-invoices";
+import { type Invoice, type InvoiceDocumentContext, isCreditNoteDocument, type SnapshotStrategy } from "@danielbiegler/vendure-plugin-invoices";
 import {
   AdjustmentType,
   ConfigService,
@@ -115,9 +115,11 @@ export class PdfkitSnapshotStrategy implements SnapshotStrategy<PdfkitSnapshot> 
   async generate(
     ctx: RequestContext,
     sequentialId: string,
-    order: Order,
-    cancels?: Invoice | null,
+    doc: InvoiceDocumentContext,
   ): Promise<PdfkitSnapshot> {
+    const order = doc.order;
+    const cancels = isCreditNoteDocument(doc) ? doc.cancels : null;
+
     // The plugin loads an Order with default relations, which omits the shipping
     // method names and payments this document needs.
     await this.entityHydrator.hydrate(ctx, order, {

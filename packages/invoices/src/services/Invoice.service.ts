@@ -1,8 +1,11 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
+import { unique } from "@vendure/common/lib/unique";
 import {
   assertFound,
+  Channel,
   ChannelService,
   CustomFieldRelationService,
+  DeepPartial,
   EntityNotFoundError,
   EventBus,
   HistoryService,
@@ -13,7 +16,6 @@ import {
   ListQueryBuilder,
   ListQueryOptions,
   Logger,
-  Order,
   OrderPlacedEvent,
   OrderService,
   PaginatedList,
@@ -24,8 +26,8 @@ import {
   TransactionalConnection,
   UserInputError
 } from "@vendure/core";
-import { extname } from "node:path";
-import { Readable, Stream } from "node:stream";
+import { Readable } from "node:stream";
+import { GeneratedFile } from "../config/FileStrategy";
 import {
   DEFAULT_SEQUENCE_CODE,
   DOWNLOAD_KIND_INVOICE,
@@ -38,6 +40,7 @@ import {
 } from "../constants";
 import { InvoiceDocumentContext } from "../document-context";
 import { Invoice } from "../entities/Invoice.entity";
+import { InvoiceFile } from "../entities/InvoiceFile.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
 import { CreateInvoiceInput, GetSingleInvoiceInput, ReissueInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
@@ -212,23 +215,16 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, doc);
     const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, doc);
 
-    const { filename, buffer } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot, doc)
-    const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(filename, buffer);
-    Logger.verbose(`Persisted file "${filename}" under "${assetUrl}"`, loggerCtx)
+    const { files } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot, doc)
+    this.assertUsableFiles(sequentialId, files);
 
-    const invoice = await this.connection.getRepository(ctx, Invoice).save(
-      await this.channelService.assignToCurrentChannel(
-        new Invoice({
-          sequentialId: sequentialId,
-          assetUrl,
-          cancelsId: invoiceToCancel?.id,
-          order,
-          // @ts-expect-error Generic doesnt play well with deep-partial
-          snapshot,
-        }),
-        ctx
-      )
-    );
+    const invoice = await this.persistDocument(ctx, {
+      sequentialId: sequentialId,
+      cancelsId: invoiceToCancel?.id,
+      order,
+      // @ts-expect-error Generic doesnt play well with deep-partial
+      snapshot,
+    }, files);
 
     await this.customFieldRelationService.updateRelations(ctx, Invoice, input, invoice);
 
@@ -334,19 +330,58 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     ctx: RequestContext,
     invoiceId: ID,
     expiresIn?: number | null,
+    fileId?: ID | null,
   ): Promise<string> {
     this.signer.assertEnabled();
 
     const invoice = await this.findOne(ctx, { id: invoiceId });
     if (!invoice) throw new EntityNotFoundError("Invoice", invoiceId);
 
+    const file = await this.findFile(ctx, invoice.id, fileId);
+    if (!file) throw new EntityNotFoundError("InvoiceFile", fileId ?? `primary file of Invoice ${invoiceId}`);
+
     return this.signer.createUrl(
       ctx,
       DOWNLOAD_KIND_INVOICE,
-      String(invoice.id),
-      `${INVOICE_DOWNLOAD_ROUTE}/${invoice.id}/download`,
+      // Both path segments have to fold into the resource ID, otherwise a signature
+      // minted for one vendor's artifact would unlock every other file of the invoice.
+      `${invoice.id}:${file.id}`,
+      `${INVOICE_DOWNLOAD_ROUTE}/${invoice.id}/download/${file.id}`,
       expiresIn,
     );
+  }
+
+  /**
+   * Resolves the file a download refers to, defaulting to the primary one.
+   *
+   * Is Channel-Aware: it is the check standing between a vendor and the file IDs
+   * of the co-vendors on a shared order, since the endpoint itself trusts the signature.
+   */
+  private async findFile(
+    ctx: RequestContext,
+    invoiceId: ID,
+    fileId?: ID | null,
+  ): Promise<InvoiceFile | null> {
+    return this.connection.getRepository(ctx, InvoiceFile).findOne({
+      where: {
+        invoiceId,
+        channels: { id: ctx.channelId },
+        ...(fileId != null ? { id: fileId } : {}),
+      },
+      order: { position: "ASC" },
+    });
+  }
+
+  /**
+   * Every artifact of an invoice that the current channel may see.
+   *
+   * Is Channel-Aware
+   */
+  public async findFiles(ctx: RequestContext, invoiceId: ID): Promise<InvoiceFile[]> {
+    return this.connection.getRepository(ctx, InvoiceFile).find({
+      where: { invoiceId, channels: { id: ctx.channelId } },
+      order: { position: "ASC" },
+    });
   }
 
   /**
@@ -355,10 +390,11 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
    */
   public verifyDownloadSignature(
     invoiceId: ID,
+    fileId: ID,
     expires: unknown,
     signature: unknown,
   ): "valid" | "expired" | "invalid" {
-    return this.signer.verify(DOWNLOAD_KIND_INVOICE, String(invoiceId), expires, signature);
+    return this.signer.verify(DOWNLOAD_KIND_INVOICE, `${invoiceId}:${fileId}`, expires, signature);
   }
 
   /**
@@ -373,29 +409,128 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
   public async readFileForDownload(
     ctx: RequestContext,
     invoiceId: ID,
-  ): Promise<{ filename: string; stream: Readable } | null> {
-    const invoice = await this.connection.getRepository(ctx, Invoice).findOne({ where: { id: invoiceId } });
-    if (!invoice) return null;
+    fileId: ID,
+  ): Promise<{ filename: string; stream: Readable; mimeType: string; fileSizeBytes: number } | null> {
+    // Scoped by `invoiceId` as well as by `fileId`, so that a signature is only ever
+    // honoured for the pairing it was actually minted for.
+    const file = await this.connection
+      .getRepository(ctx, InvoiceFile)
+      .findOne({ where: { id: fileId, invoiceId } });
+    if (!file) return null;
 
     let stream: Readable;
     try {
-      stream = await openFileStream(this.options.storageStrategy, invoice.assetUrl);
+      stream = await openFileStream(this.options.storageStrategy, file.assetUrl);
     } catch (error) {
       // Storage drifted away from the database, e.g. a bucket lifecycle rule swept the
       // file. Logged rather than thrown, since the caller only turns it into a 404.
       Logger.warn(
-        `Invoice(${invoice.id}): could not read "${invoice.assetUrl}": ${String(error)}`,
+        `InvoiceFile(${file.id}): could not read "${file.assetUrl}": ${String(error)}`,
         loggerCtx,
       );
       return null;
     }
 
-    // The stored identifier can be a bucket key with prefixes, so the sequential ID
-    // makes for a friendlier filename than its basename would. Quotes get dropped
-    // because the value lands inside a quoted Content-Disposition parameter.
-    const filename = `${invoice.sequentialId}${extname(invoice.assetUrl)}`.replace(/["\\]/g, "");
+    return {
+      // Quotes get dropped because the value lands inside a quoted Content-Disposition
+      // parameter. The stored identifier is no help here: it can be a bucket key with
+      // prefixes, which is exactly why the FileStrategy names the file separately.
+      filename: file.filename.replace(/["\\]/g, ""),
+      stream,
+      mimeType: file.mimeType ?? "application/octet-stream",
+      fileSizeBytes: file.fileSizeBytes,
+    };
+  }
 
-    return { filename, stream };
+  /**
+   * A FileStrategy is user supplied code, so its output gets checked rather than
+   * trusted. An empty result would write an invoice nobody can download, and two files
+   * sharing a name would be indistinguishable to a downloader and collide inside the
+   * export archive.
+   */
+  private assertUsableFiles(sequentialId: string, files: GeneratedFile[]): void {
+    if (!files?.length)
+      throw new Error(`The FileStrategy returned no files for "${sequentialId}"`);
+
+    const seen = new Set<string>();
+    for (const file of files) {
+      if (!file.filename)
+        throw new Error(`The FileStrategy returned a file without a filename for "${sequentialId}"`);
+      if (seen.has(file.filename))
+        throw new Error(`The FileStrategy returned two files named "${file.filename}" for "${sequentialId}"`);
+      seen.add(file.filename);
+    }
+  }
+
+  /**
+   * Writes the generated artifacts to storage, then the rows that point at them.
+   *
+   * Storage writes take no part in the surrounding database transaction, so a failure
+   * part way through - or a rollback afterwards - would leave whatever already landed
+   * behind with nothing referencing it. Everything written is therefore tracked and
+   * swept before the error is rethrown.
+   */
+  private async persistDocument(
+    ctx: RequestContext,
+    invoiceInput: DeepPartial<Invoice>,
+    files: GeneratedFile[],
+  ): Promise<Invoice> {
+    const defaultChannelId = (await this.channelService.getDefaultChannel(ctx)).id;
+    // The default channel is always added on top
+    const channelIdsPerFile = files.map(file =>
+      unique([...(file.channelIds ?? [ctx.channelId]), defaultChannelId]),
+    );
+
+    const written: string[] = [];
+    try {
+      const rows: InvoiceFile[] = [];
+      for (const [position, file] of files.entries()) {
+        const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(file.filename, file.buffer);
+        written.push(assetUrl);
+        Logger.verbose(`Persisted file "${file.filename}" under "${assetUrl}"`, loggerCtx);
+
+        rows.push(new InvoiceFile({
+          assetUrl,
+          filename: file.filename,
+          mimeType: file.mimeType ?? null,
+          fileSizeBytes: file.buffer.length,
+          position,
+          channels: channelIdsPerFile[position].map(id => ({ id })) as Channel[],
+        }));
+      }
+
+      const invoice = new Invoice(invoiceInput);
+      // Goes through the service so that the ChangeChannelEvent still fires, then gets
+      // widened to every channel its files reach: a vendor scoped out of the invoice
+      // itself could never reach the artifact that was meant for them.
+      await this.channelService.assignToCurrentChannel(invoice, ctx);
+      invoice.channels = unique([
+        ...invoice.channels.map(channel => channel.id),
+        ...channelIdsPerFile.flat(),
+      ]).map(id => ({ id })) as Channel[];
+
+      const saved = await this.connection.getRepository(ctx, Invoice).save(invoice);
+
+      for (const row of rows) row.invoiceId = saved.id;
+      await this.connection.getRepository(ctx, InvoiceFile).save(rows);
+
+      return saved;
+    } catch (error) {
+      for (const assetUrl of written) await this.deleteQuietly(assetUrl);
+      throw error;
+    }
+  }
+
+  /**
+   * Best effort cleanup of a file whose row never made it. Failing here would replace
+   * the caller's real error with a bookkeeping one, so it is only logged.
+   */
+  private async deleteQuietly(assetUrl: string): Promise<void> {
+    try {
+      await this.options.storageStrategy.deleteFile(assetUrl);
+    } catch (error) {
+      Logger.warn(`Could not delete orphaned file "${assetUrl}": ${String(error)}`, loggerCtx);
+    }
   }
 
   /**

@@ -117,9 +117,16 @@ export const GET_INVOICE_LIST = gql`
         id
         createdAt
         sequentialId
-        assetUrl
         orderId
         cancelsId
+        files {
+          id
+          filename
+          assetUrl
+          mimeType
+          fileSizeBytes
+          position
+        }
       }
     }
   }
@@ -156,8 +163,25 @@ export const REISSUE_INVOICE = gql`
 `;
 
 export const CREATE_INVOICE_DOWNLOAD_URL = gql`
-  mutation CreateInvoiceDownloadUrl($id: ID!, $expiresIn: Int, $neverExpires: Boolean) {
-    createInvoiceDownloadUrl(id: $id, expiresIn: $expiresIn, neverExpires: $neverExpires)
+  mutation CreateInvoiceDownloadUrl($id: ID!, $fileId: ID, $expiresIn: Int, $neverExpires: Boolean) {
+    createInvoiceDownloadUrl(id: $id, fileId: $fileId, expiresIn: $expiresIn, neverExpires: $neverExpires)
+  }
+`;
+
+export const GET_INVOICE_FILES = gql`
+  query GetInvoiceFiles($input: GetSingleInvoiceInput!) {
+    invoice(input: $input) {
+      id
+      sequentialId
+      files {
+        id
+        filename
+        assetUrl
+        mimeType
+        fileSizeBytes
+        position
+      }
+    }
   }
 `;
 

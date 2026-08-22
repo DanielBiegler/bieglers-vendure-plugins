@@ -1,13 +1,14 @@
 import { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { InjectableStrategy, Injector, PluginCommonModule, VendurePlugin } from "@vendure/core";
-import { AdminResolver } from "./api/admin.resolver";
+import { AdminResolver, InvoiceEntityResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { InvoiceDownloadController } from "./api/invoice-download.controller";
 import { InvoiceExportResolver } from "./api/invoice-export.resolver";
 import { ZipArchiveStrategy } from "./config/ZipArchiveStrategy";
 import { InvoicePermissions, PLUGIN_INIT_OPTIONS } from "./constants";
 import { Invoice } from "./entities/Invoice.entity";
+import { InvoiceFile } from "./entities/InvoiceFile.entity";
 import { InvoiceExport } from "./entities/InvoiceExport.entity";
 import { InvoiceSequence } from "./entities/Sequence.entity";
 import { InvoiceDownloadSignerService } from "./services/DownloadSigner.service";
@@ -40,6 +41,7 @@ import { InvoicesOptions, ResolvedInvoicesOptions } from './types';
   entities: [
     InvoiceSequence,
     Invoice,
+    InvoiceFile,
     InvoiceExport,
   ],
   configuration(config) {
@@ -52,7 +54,7 @@ import { InvoicesOptions, ResolvedInvoicesOptions } from './types';
     return config;
   },
   adminApiExtensions: {
-    resolvers: [AdminResolver, InvoiceExportResolver],
+    resolvers: [AdminResolver, InvoiceEntityResolver, InvoiceExportResolver],
     schema: adminApiExtensions,
   },
 })

@@ -26,7 +26,47 @@ export const adminApiExtensions = gql`
     cancels: Invoice
 
     sequentialId: String!
+
+    """
+    The artifacts of this document, primary one first.
+
+    Scoped to the current channel: an invoice covering a marketplace order spans every
+    vendor involved, but each vendor only ever sees the files that settle their own
+    share.
+    """
+    files: [InvoiceFile!]!
+  }
+
+  """
+  One artifact of an invoice, e.g. the PDF or the machine readable XML beside it.
+  """
+  type InvoiceFile implements Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+
+    "Name the file is served under, extension included."
+    filename: String!
+
+    """
+    Opaque storage identifier. May be a filesystem path or a bucket key and is not
+    necessarily reachable by a browser, so never treat it as a link - use
+    "createInvoiceDownloadUrl" instead.
+    """
     assetUrl: String!
+
+    "Content type declared by the FileStrategy. Null when it did not claim one."
+    mimeType: String
+
+    """
+    Size of the file in bytes.
+
+    Deliberately a Float: GraphQL's Int is 32 bit signed and therefore caps at 2GB.
+    """
+    fileSizeBytes: Float!
+
+    "Position within the invoice. Zero is the primary document."
+    position: Int!
   }
 
   type InvoiceList implements PaginatedList {
@@ -57,7 +97,10 @@ export const adminApiExtensions = gql`
     "Name of the archive. Null until the export completes."
     filename: String
 
-    "Number of invoices written into the archive."
+    """
+    Number of files written into the archive. An invoice contributes one entry per
+    artifact, so this can exceed the number of invoices in the range.
+    """
     entryCount: Int!
 
     """
@@ -69,7 +112,7 @@ export const adminApiExtensions = gql`
     fileSizeBytes: Float!
 
     """
-    Invoices whose row exists but whose file was gone from storage. They are skipped
+    Files whose row exists but whose bytes were gone from storage. They are skipped
     rather than failing the export, so anything above zero means the archive is
     incomplete and worth investigating.
     """
@@ -198,6 +241,10 @@ export const adminApiExtensions = gql`
     Anyone holding the URL can download the file until it expires, so treat it as a
     secret and keep the lifetime short. Requires the plugins' "download" option.
 
+    "fileId" picks which artifact of the invoice to serve and defaults to the primary
+    one. It must belong to the given invoice and be visible in the current channel;
+    the signature covers it, so a minted URL cannot be edited into a different file.
+
     "expiresIn" is the validity in seconds and is taken at face value, so a value in
     the past yields a URL which is already dead. Defaults to the configured
     "download.defaultExpiresIn".
@@ -208,7 +255,7 @@ export const adminApiExtensions = gql`
     prefer a finite lifetime whenever the recipient can ask for a fresh link.
     Specifying it together with "expiresIn" is an error.
     """
-    createInvoiceDownloadUrl(id: ID!, expiresIn: Int, neverExpires: Boolean): String!
+    createInvoiceDownloadUrl(id: ID!, fileId: ID, expiresIn: Int, neverExpires: Boolean): String!
 
     """
     Queues a job that bundles every invoice issued in the given range into one archive.

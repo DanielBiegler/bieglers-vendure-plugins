@@ -1,5 +1,6 @@
 import { Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, Order, VendureEntity } from "@vendure/core";
 import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from "typeorm";
+import { InvoiceFile } from "./InvoiceFile.entity";
 
 export class CustomInvoiceFields { }
 
@@ -32,8 +33,15 @@ export class Invoice<Snapshot = any> extends VendureEntity implements ChannelAwa
   @Column({ nullable: false, unique: true })
   sequentialId: string;
 
-  @Column({ nullable: false, unique: true })
-  assetUrl: string;
+  /**
+   * The artifacts of this document, ordered by {@link InvoiceFile.position}, the first
+   * being the primary one. Never empty: an invoice is only written once its files are.
+   *
+   * Not eager, because the export may walk thousands of rows and pay for every
+   * relation it did not ask for.
+   */
+  @OneToMany(() => InvoiceFile, (file) => file.invoice)
+  files: InvoiceFile[];
 
   /**
    * If set, this document is a credit note cancelling the referenced invoice.

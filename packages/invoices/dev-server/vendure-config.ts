@@ -64,7 +64,7 @@ export const config: VendureConfig = {
       },
       // Left at the default ZipArchiveStrategy, i.e. one uncompressed archive.
       exportRetention: {
-        maxAge: 30, // seconds, so a week
+        maxAge: 30, // seconds, for quick testing
         schedule: "*/5 * * * *",
       },
     }),
