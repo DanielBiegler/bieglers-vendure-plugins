@@ -6,6 +6,7 @@ import "dotenv/config";
 import path from "path";
 import { DebugFileStrategy } from "../src/config/FileStrategy";
 import { StaticSequentialIdStrategy } from "../src/config/SequentialIdStrategy";
+import { AutoIssueInvoicesPlugin } from "../../../utils/auto-issue-invoices.plugin";
 import { DebugSnapshotStrategy, InvoicesPlugin } from "../src/index";
 
 const apiPort = process.env.API_PORT || 3000;
@@ -57,7 +58,6 @@ export const config: VendureConfig = {
       prefixStrategy: new StaticSequentialIdStrategy("INVOICE"),
       fileStrategy: new DebugFileStrategy(),
       storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "invoices")),
-      subscribeToOrderPlacedEvent: true,
       snapshotStrategy: new DebugSnapshotStrategy(),
       download: {
         signingSecret: process.env.INVOICE_DOWNLOAD_SECRET || "dev-only-insecure-secret",
@@ -68,6 +68,8 @@ export const config: VendureConfig = {
         schedule: "*/5 * * * *",
       },
     }),
+    // The plugin issues nothing on its own; this is the shop deciding when.
+    AutoIssueInvoicesPlugin,
     DefaultSchedulerPlugin.init({}),
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({

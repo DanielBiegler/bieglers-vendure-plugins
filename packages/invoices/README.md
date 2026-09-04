@@ -79,6 +79,80 @@ Currently shipped: `en`, `de`.
 Run `npm run i18n:extract` as well whenever you add or change a string in the dashboard extension,
 otherwise the catalogs go stale.
 
+## The strategies, in the order they run
+
+Issuing a document walks through six strategies. Each exists because the step before it
+cannot answer the question the step after it asks.
+
+1. **`DocumentTargetStrategy`** — *how many documents, and whose books do they belong to?*
+
+   Runs once per call to `issueDocuments`, and expands one order into a list of
+   `{ order, channel }` targets. Everything below then runs **once per target**.
+
+   Needed because a marketplace order is not one document. Vendure splits a basket
+   spanning three vendors into an aggregate order plus three seller orders, and each
+   vendor needs their own legally numbered invoice. Nothing else in the pipeline is in a
+   position to decide how many documents exist.
+
+   *Ships:* `SingleDocumentTargetStrategy` (default, one document) and
+   `PerSellerOrderTargetStrategy` (one per vendor).
+
+2. **`SequenceSelectionStrategy`** — *which counter does this document's number come from?*
+
+   Returns the `{ channelId, code }` of an `InvoiceSequence`.
+
+   Needed because "gapless" is a property of a *range*, not of the shop. A vendor's
+   numbering has to be continuous in their books, so vendors cannot share a counter — and
+   some jurisdictions want credit notes in a separate range again, which is what `code` is
+   for. Split out from the numbering itself because the choice of counter is policy, while
+   claiming the next value is mechanism.
+
+   *Ships:* `DefaultSequenceSelectionStrategy({ scope, creditNoteCode })`.
+
+3. **`SequentialIdStrategy`** — *what does the number look like?*
+
+   Returns the prefix that goes in front of the counter value, e.g. `ACME-2026-`.
+
+   Needed because the counter only produces an integer, and a human-facing document
+   identifier usually encodes the vendor, the year, or the document kind. It receives the
+   document context, so it can read `doc.channel` and give each vendor a distinct prefix.
+
+   *Ships:* `StaticSequentialIdStrategy`.
+
+   Steps 2 and 3 together produce the `sequentialId`. The counter is claimed under a row
+   lock inside your transaction, which is what makes the range gapless: a rollback takes
+   the number back with it.
+
+4. **`SnapshotStrategy`** — *what does this document say?*
+
+   Turns the live order into an immutable JSON record, stored on the invoice row.
+
+   Needed because orders are mutable and legal documents are not. Without a snapshot,
+   re-rendering a two-year-old invoice would print today's order, which is a different
+   document wearing the same number.
+
+5. **`FileStrategy`** — *what bytes does it become?*
+
+   Renders the snapshot into one or more files. Reads the snapshot, never the order —
+   that is what makes regeneration reproducible.
+
+   Returns a list rather than one file because a single document often has several
+   representations: a PDF with its Factur-X XML, or a PDF with attachments. Each file can
+   name the channels it is visible in, which is how one order's paperwork stays private
+   per vendor.
+
+6. **`ArchiveStrategy`** — *how are many documents bundled?*
+
+   Only used by bulk export, not by issuance. Packs the files of a date range into a
+   single streamed archive.
+
+   Needed because an accountant wants a year in one download, and reading thousands of
+   invoices into memory to zip them is exactly what a shop cannot afford.
+
+Finally the invoice row, its file rows, an order history entry and an `InvoiceEvent` are
+written — all inside your transaction, so a failure anywhere above leaves no document, no
+consumed number, and no orphaned file.
+
 ## Design Reasons and Decisions
 
 ### Gapless invoice sequences via row level transaction locks
@@ -246,8 +320,8 @@ to know:
   the encoded ones the GraphQL APIs hand out.
 
 Note that this scopes *visibility*, not numbering: all of these still share one `sequentialId`.
-Giving each vendor its own gapless range means issuing one invoice per vendor, which is a separate
-concern from how many files a single invoice carries.
+Giving each vendor their own gapless range means issuing one invoice per vendor - see
+[Multi-vendor marketplaces](#multi-vendor-marketplaces).
 
 ### Correcting an order: `reissueInvoice`
 
@@ -271,6 +345,102 @@ Leaving you with exactly the trail an accountant expects:
 Doing this as two separate `createInvoice` calls is possible but discouraged: without a shared transaction, a failure while issuing the replacement leaves the order credited with nothing to bill against. Because the sequence counter is claimed inside that same transaction, a rollback takes the numbers with it and the sequence stays gapless.
 
 The order is taken from the cancelled invoice rather than from the caller, so there is no way to credit one order and re-bill another.
+
+## Multi-vendor marketplaces
+
+An order spanning three vendors needs three *legally distinct* documents, each numbered in its own
+gapless range and readable only by the vendor it settles. That is a different problem from one
+invoice carrying several files, and Vendure already models it: `OrderSellerStrategy.splitOrder`
+turns the customer's basket into one **aggregate order** plus one **seller order per vendor**, each
+assigned to that vendor's channel.
+
+So the plugin issues one document per seller order:
+
+```ts
+InvoicesPlugin.init({
+  documentTargetStrategy: new PerSellerOrderTargetStrategy(),
+  // Each vendor's numbering has to be continuous in *their* books
+  sequenceSelectionStrategy: new DefaultSequenceSelectionStrategy({ scope: "channel" }),
+  prefixStrategy: myPerVendorPrefixStrategy,
+  // ...
+}),
+```
+
+### You decide when documents are issued
+
+**The plugin subscribes to nothing.** This is deliberate, and it is the one thing to understand
+before wiring it up.
+
+Vendure publishes `OrderPlacedEvent` *before* `OrderSplitter` has created a single seller order, and
+seller orders never publish one at all - they are written straight to the database, bypassing the
+state machine. There is no moment in the stock order lifecycle that means "a seller order exists and
+is billable", so any timing the plugin picked would be wrong for somebody, and the failure mode is
+issuing duplicate legally-numbered documents.
+
+The plugin therefore owns **policy** (which documents exist, whose channel, whose sequence) and
+**atomicity** (they all commit together). You own **timing**:
+
+```ts
+class MyOrderSellerStrategy implements OrderSellerStrategy {
+  // ... splitOrder, setOrderLineSellerChannel ...
+
+  async afterSellerOrdersCreated(ctx: RequestContext, aggregateOrder: Order) {
+    // Runs inside the transition's transaction, which is exactly what issueDocuments wants
+    await this.injector.get(InvoiceService).issueDocuments(ctx, { orderId: aggregateOrder.id });
+  }
+}
+```
+
+Or from the Admin API, whenever your workflow says so:
+
+```graphql
+mutation {
+  issueInvoiceDocuments(input: { orderId: "42" }) {
+    documents {
+      invoice { sequentialId }
+      channel { code }
+    }
+  }
+}
+```
+
+A single-vendor shop wires up the equivalent one-liner on `OrderPlacedEvent`, where "placed" *is*
+unambiguous:
+
+```ts
+eventBus.ofType(OrderPlacedEvent).subscribe(event => {
+  invoiceService.addToJobQueue(event.ctx, { orderId: event.order.id });
+});
+```
+
+### What you get
+
+Every document of a set is written in one transaction, so a failure on the third vendor takes the
+first two vendors' numbers back with it and every range stays gapless. Each invoice hangs off its own
+**seller order**, which is what keeps a co-vendor from reading it: order history entries are not
+channel-aware, so attaching documents to the shared aggregate order would leak every vendor's
+sequential IDs to every other vendor.
+
+`Invoice.files`, `createInvoiceDownloadUrl`, `Order.invoices` and the bulk export are all scoped to
+the requesting channel, so vendor Acme can neither list, download nor archive Globex's document.
+
+Three things worth knowing:
+
+- **`issueDocuments` must run inside a transaction.** It throws otherwise rather than opening one,
+  because opening one would quietly leave *your* surrounding writes uncovered by it.
+- **Call it on the default channel.** The documents land in whichever channels the target strategy
+  names, which may include channels the caller holds no permission on - that is the point, since the
+  marketplace operator issues on behalf of its vendors. `Invoice.files` still resolves against the
+  channel you *query* from, so read the returned `channel { code }` if you need the files.
+- **`includeAggregate` is off by default.** Vendure *duplicates* order lines onto seller orders
+  rather than moving them, so an aggregate document plus the seller documents sum to twice the sale.
+  Only enable it if the aggregate is a customer-facing summary your bookkeeping does not post.
+
+### Re-running it
+
+`issueDocuments` is safe to call again with `skipIfAlreadyIssued: true`, which is how you top up a
+vendor added to an order after the fact. It is best effort, not an idempotency key: it reads before
+it writes without a lock, so two simultaneous calls both see nothing and both issue.
 
 ## Order history
 

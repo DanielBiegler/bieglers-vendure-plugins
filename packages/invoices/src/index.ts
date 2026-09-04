@@ -19,11 +19,15 @@ export * from "./services/Invoice.service";
 export * from "./services/InvoiceExport.service";
 
 export * from "./constants";
+export * from "./utils/channel-context";
 export * from "./document-context";
 export * from "./events";
 export * from "./types";
 
 export * from "./config/ArchiveStrategy";
+export * from "./config/DocumentTargetStrategy";
+export * from "./config/PerSellerOrderTargetStrategy";
+export * from "./config/SequenceSelectionStrategy";
 export * from "./config/FileStrategy";
 export * from "./config/SequentialIdStrategy";
 export * from "./config/SnapshotStrategy";

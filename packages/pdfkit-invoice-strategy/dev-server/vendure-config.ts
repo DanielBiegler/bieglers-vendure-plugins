@@ -6,6 +6,7 @@ import { DashboardPlugin } from "@vendure/dashboard/plugin";
 import "dotenv/config";
 import path from "path";
 import { MerchantDetails, PdfkitFileStrategy, PdfkitSnapshotStrategy } from "../src";
+import { AutoIssueInvoicesPlugin } from "../../../utils/auto-issue-invoices.plugin";
 
 const apiPort = process.env.API_PORT || 3000;
 
@@ -83,13 +84,14 @@ export const config: VendureConfig = {
           outro: "Zahlbar ohne Abzug innerhalb von 14 Tagen nach Rechnungserhalt.",
         },
       }),
-      subscribeToOrderPlacedEvent: true,
       initialSequence: 1000,
       sequenceLeftPadCount: 5,
       download: {
         signingSecret: "test",
       },
     }),
+    // The plugin issues nothing on its own; this is the shop deciding when.
+    AutoIssueInvoicesPlugin,
     DefaultSearchPlugin.init({}),
     DashboardPlugin.init({
       route: 'dashboard',

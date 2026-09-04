@@ -14,6 +14,7 @@ import { createHmac } from "node:crypto";
 import { rm } from "node:fs/promises";
 import path from "path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { AutoIssueInvoicesPlugin } from "../../../utils/auto-issue-invoices.plugin";
 import { assertNoFailedJobs, awaitRunningJobs } from "../../../utils/e2e/await-running-jobs";
 import { initialData } from "../../../utils/e2e/e2e-initial-data";
 import { testConfig } from "../../../utils/e2e/test-config";
@@ -130,18 +131,18 @@ describe("InvoicesPlugin", { sequential: true }, () => {
         route: "assets",
         assetUploadDir: path.join(__dirname, "fixtures"),
       }),
+      AutoIssueInvoicesPlugin,
       InvoicesPlugin.init({
         prefixStrategy: new StaticSequentialIdStrategy(INVOICE_PREFIX),
         fileStrategy: new E2EFileStrategy(),
         storageStrategy: new LocalAssetStorageStrategy(path.join(__dirname, "test-invoices")),
         sequenceLeftPadCount: 4,
-        subscribeToOrderPlacedEvent: true,
         initialSequence: INITIAL_SEQUENCE_INVOICE,
         snapshotStrategy: new DebugSnapshotStrategy(),
         download: { signingSecret: DOWNLOAD_SIGNING_SECRET },
 
-        // IMPORTANT - This e2e suite specifically tests sharing the sequence across channels!
-        perChannelConfig: false,
+        // IMPORTANT - This e2e suite specifically tests sharing the sequence across
+        // channels, which is what the default SequenceSelectionStrategy does.
       }),
     ],
   });

@@ -1,10 +1,12 @@
 import { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { InjectableStrategy, Injector, PluginCommonModule, VendurePlugin } from "@vendure/core";
-import { AdminResolver, InvoiceEntityResolver } from "./api/admin.resolver";
+import { AdminResolver, InvoiceEntityResolver, OrderEntityResolver } from "./api/admin.resolver";
 import { adminApiExtensions } from "./api/api-extensions";
 import { InvoiceDownloadController } from "./api/invoice-download.controller";
 import { InvoiceExportResolver } from "./api/invoice-export.resolver";
+import { SingleDocumentTargetStrategy } from "./config/DocumentTargetStrategy";
+import { DefaultSequenceSelectionStrategy } from "./config/SequenceSelectionStrategy";
 import { ZipArchiveStrategy } from "./config/ZipArchiveStrategy";
 import { InvoicePermissions, PLUGIN_INIT_OPTIONS } from "./constants";
 import { Invoice } from "./entities/Invoice.entity";
@@ -54,7 +56,7 @@ import { InvoicesOptions, ResolvedInvoicesOptions } from './types';
     return config;
   },
   adminApiExtensions: {
-    resolvers: [AdminResolver, InvoiceEntityResolver, InvoiceExportResolver],
+    resolvers: [AdminResolver, InvoiceEntityResolver, OrderEntityResolver, InvoiceExportResolver],
     schema: adminApiExtensions,
   },
 })
@@ -76,8 +78,12 @@ export class InvoicesPlugin implements OnApplicationBootstrap, OnApplicationShut
     this.options = {
       ...options,
       // Resolved here rather than at the point of use so that `onApplicationBootstrap`
-      // gets a chance to inject dependencies into the default strategy too.
+      // gets a chance to inject dependencies into the default strategies too:
+      // `injectableStrategies()` scans the values of this object, so anything constructed
+      // lazily later would never receive its Injector.
       archiveStrategy: options.archiveStrategy ?? new ZipArchiveStrategy(),
+      documentTargetStrategy: options.documentTargetStrategy ?? new SingleDocumentTargetStrategy(),
+      sequenceSelectionStrategy: options.sequenceSelectionStrategy ?? new DefaultSequenceSelectionStrategy(),
     } as ResolvedInvoicesOptions<unknown>;
     return InvoicesPlugin;
   }

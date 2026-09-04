@@ -1,10 +1,10 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
-import { Allow, Ctx, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, UserInputError } from "@vendure/core";
+import { Allow, Ctx, Order, PaginatedList, RelationPaths, Relations, RequestContext, Transaction, UserInputError } from "@vendure/core";
 import { InvoicePermissions } from "../constants";
 import { Invoice } from "../entities/Invoice.entity";
 import { InvoiceFile } from "../entities/InvoiceFile.entity";
-import { MutationCreateInvoiceArgs, MutationCreateInvoiceDownloadUrlArgs, MutationReissueInvoiceArgs, MutationUpdateInvoiceArgs, QueryInvoiceArgs, QueryInvoiceListArgs } from "../generated-admin-types";
-import { InvoiceService, ReissueInvoiceResult } from "../services/Invoice.service";
+import { MutationCreateInvoiceArgs, MutationCreateInvoiceDownloadUrlArgs, MutationIssueInvoiceDocumentsArgs, MutationReissueInvoiceArgs, MutationUpdateInvoiceArgs, OrderInvoicesArgs, QueryInvoiceArgs, QueryInvoiceListArgs } from "../generated-admin-types";
+import { InvoiceService, IssuedDocumentSet, ReissueInvoiceResult } from "../services/Invoice.service";
 
 @Resolver()
 export class AdminResolver {
@@ -38,7 +38,22 @@ export class AdminResolver {
     @Args() args: MutationCreateInvoiceArgs,
     @Relations({ entity: Invoice, omit: ["files"] }) relations: RelationPaths<Invoice>,
   ): Promise<Invoice> {
-    return this.service.createInvoice(ctx, args.input, relations);
+    return this.service.issueDocument(ctx, args.input, relations);
+  }
+
+  /**
+   * The multi-vendor entry point. Like `reissueInvoice` it cannot use `@Relations`, since
+   * that decorator reads the selection set of the returned type - a wrapper here rather
+   * than an Invoice - and would resolve to no relations at all.
+   */
+  @Mutation()
+  @Transaction()
+  @Allow(InvoicePermissions.Create)
+  async issueInvoiceDocuments(
+    @Ctx() ctx: RequestContext,
+    @Args() args: MutationIssueInvoiceDocumentsArgs,
+  ): Promise<IssuedDocumentSet> {
+    return this.service.issueDocuments(ctx, args.input, ["order"]);
   }
 
   /**
@@ -85,6 +100,29 @@ export class AdminResolver {
     @Relations({ entity: Invoice, omit: ["files"] }) relations: RelationPaths<Invoice>,
   ): Promise<Invoice> {
     return this.service.updateInvoice(ctx, args.input, relations);
+  }
+}
+
+/**
+ * Resolves `Order.invoices`.
+ *
+ * A field resolver rather than a relation, because `Invoice` is channel-aware and the
+ * interesting case - an aggregate marketplace order whose documents live on its seller
+ * orders - is not reachable by any relation on Order at all.
+ */
+@Resolver("Order")
+export class OrderEntityResolver {
+  constructor(private service: InvoiceService) { }
+
+  @ResolveField()
+  async invoices(
+    @Ctx() ctx: RequestContext,
+    @Parent() order: Order,
+    @Args() args: OrderInvoicesArgs,
+  ): Promise<Invoice[]> {
+    return this.service.findForOrder(ctx, order.id, {
+      includeSellerOrders: args.includeSellerOrders ?? false,
+    });
   }
 }
 

@@ -1,6 +1,8 @@
 import { AssetStorageStrategy, ID } from "@vendure/core";
 import { ArchiveStrategy } from "./config/ArchiveStrategy";
+import { DocumentTargetStrategy } from "./config/DocumentTargetStrategy";
 import { FileStrategy } from "./config/FileStrategy";
+import { SequenceSelectionStrategy } from "./config/SequenceSelectionStrategy";
 import { SequentialIdStrategy } from "./config/SequentialIdStrategy";
 import { SnapshotStrategy } from "./config/SnapshotStrategy";
 import { PLUGIN_INVOICE_CREATED } from "./constants";
@@ -27,6 +29,27 @@ export interface InvoicesOptions<Snapshot = unknown> {
   fileStrategy: FileStrategy<Snapshot>,
 
   /**
+   * Expands "bill this order" into the set of documents that has to be written, and the
+   * channel each belongs to.
+   *
+   * Set {@link PerSellerOrderTargetStrategy} for a multi-vendor marketplace, where one
+   * order spanning three vendors needs three separately numbered documents.
+   *
+   * @default new SingleDocumentTargetStrategy() i.e. one document, in the current channel
+   */
+  documentTargetStrategy?: DocumentTargetStrategy,
+
+  /**
+   * Decides which {@link InvoiceSequence} a document draws its number from.
+   *
+   * Use `scope: "channel"` alongside a per-seller {@link documentTargetStrategy}, so each
+   * vendor gets a range that is gapless in their own books.
+   *
+   * @default new DefaultSequenceSelectionStrategy() i.e. one shared counter
+   */
+  sequenceSelectionStrategy?: SequenceSelectionStrategy,
+
+  /**
    * Used to persist, check and read generated files.
    * 
    * You decide whether or not your invoices are publically readable,
@@ -40,21 +63,6 @@ export interface InvoicesOptions<Snapshot = unknown> {
 
   /** Starting value for the invoice sequence when a config is auto-created. @default 1 */
   initialSequence?: number,
-
-  /**
-   * By default, sequential IDs used in invoices/etc. get shared across {@link Channel}s
-   * through the default channel. By setting `perChannelConfig` to `true`, each Channel
-   * **requires** their own configuration row.
-   * 
-   * In other words, if your Vendure instance hosts multiple distinct vendors,
-   * where each vendor is one Channel, you'll want to enable this in order to
-   * give every vendor their own unique, gapless invoice sequences.
-   * 
-   * @default false
-   */
-  perChannelConfig?: boolean,
-
-  subscribeToOrderPlacedEvent?: boolean,
 
   /**
    * Enables the `createInvoiceDownloadUrl` mutation and the endpoint it points at.
@@ -90,7 +98,12 @@ export interface InvoicesOptions<Snapshot = unknown> {
  * @category Plugin
  */
 export type ResolvedInvoicesOptions<Snapshot = unknown> =
-  Omit<InvoicesOptions<Snapshot>, "archiveStrategy"> & { archiveStrategy: ArchiveStrategy };
+  Omit<InvoicesOptions<Snapshot>, "archiveStrategy" | "documentTargetStrategy" | "sequenceSelectionStrategy">
+  & {
+    archiveStrategy: ArchiveStrategy;
+    documentTargetStrategy: DocumentTargetStrategy;
+    sequenceSelectionStrategy: SequenceSelectionStrategy;
+  };
 
 /**
  * @category Plugin

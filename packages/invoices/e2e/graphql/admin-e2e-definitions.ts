@@ -257,3 +257,28 @@ export const DELETE_INVOICE_EXPORT = gql`
     }
   }
 `;
+
+export const ISSUE_INVOICE_DOCUMENTS = gql`
+  mutation IssueInvoiceDocuments($input: IssueInvoiceDocumentsInput!) {
+    issueInvoiceDocuments(input: $input) {
+      order {
+        id
+        code
+      }
+      documents {
+        invoice {
+          id
+          sequentialId
+        }
+        order {
+          id
+          code
+        }
+        channel {
+          id
+          code
+        }
+      }
+    }
+  }
+`;

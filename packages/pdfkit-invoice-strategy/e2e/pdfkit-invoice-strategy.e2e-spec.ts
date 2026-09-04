@@ -28,6 +28,7 @@ import { MerchantDetails } from "../src/types";
 import { PdfkitFileStrategy } from "../src/PdfkitFileStrategy";
 import { PdfkitSnapshotStrategy } from "../src/PdfkitSnapshotStrategy";
 import { extractText, squash } from "../test/pdf-text";
+import { AutoIssueInvoicesPlugin } from "../../../utils/auto-issue-invoices.plugin";
 
 const TEST_PAYMENT_METHOD_CODE = "test-payment-method";
 const INVOICE_PREFIX = "PDFKIT-INVOICE";
@@ -59,6 +60,7 @@ describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
     importExportOptions: { importAssetsDir: path.join(__dirname, "fixtures") },
     plugins: [
       AssetServerPlugin.init({ route: "assets", assetUploadDir: path.join(__dirname, "fixtures") }),
+      AutoIssueInvoicesPlugin,
       InvoicesPlugin.init({
         prefixStrategy: new StaticSequentialIdStrategy(INVOICE_PREFIX),
         storageStrategy: new LocalAssetStorageStrategy(INVOICE_DIR),
@@ -69,7 +71,6 @@ describe("PdfkitInvoiceStrategy", { sequential: true }, () => {
         }),
         // Uncompressed streams are what make the rendered text assertable below.
         fileStrategy: new PdfkitFileStrategy({ compress: false }),
-        subscribeToOrderPlacedEvent: true,
         initialSequence: 2000,
         sequenceLeftPadCount: 4,
         download: { signingSecret: "e2e-download-signing-secret" },

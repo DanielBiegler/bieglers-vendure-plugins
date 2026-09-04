@@ -1,4 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
+import { OrderType } from "@vendure/common/lib/generated-types";
 import { unique } from "@vendure/common/lib/unique";
 import {
   assertFound,
@@ -16,7 +17,7 @@ import {
   ListQueryBuilder,
   ListQueryOptions,
   Logger,
-  OrderPlacedEvent,
+  Order,
   OrderService,
   PaginatedList,
   patchEntity,
@@ -27,9 +28,10 @@ import {
   UserInputError
 } from "@vendure/core";
 import { Readable } from "node:stream";
+import { In } from "typeorm";
 import { GeneratedFile } from "../config/FileStrategy";
+import { SequenceSelection } from "../config/SequenceSelectionStrategy";
 import {
-  DEFAULT_SEQUENCE_CODE,
   DOWNLOAD_KIND_INVOICE,
   INVOICE_DOWNLOAD_ROUTE,
   INVOICE_QUEUE_NAME,
@@ -44,7 +46,8 @@ import { InvoiceFile } from "../entities/InvoiceFile.entity";
 import { InvoiceSequence } from "../entities/Sequence.entity";
 import { CreditNoteEvent, InvoiceEvent } from "../events";
 import { CreateInvoiceInput, GetSingleInvoiceInput, ReissueInvoiceInput, UpdateInvoiceInput } from "../generated-admin-types";
-import { InvoicesOptions } from "../types";
+import { ResolvedInvoicesOptions } from "../types";
+import { assertInTransaction, forChannel } from "../utils/channel-context";
 import { openFileStream } from "../utils/open-file-stream";
 import { InvoiceDownloadSignerService } from "./DownloadSigner.service";
 
@@ -59,6 +62,58 @@ export interface ReissueInvoiceResult {
   creditNote: Invoice;
   /** Bills the order's current state. */
   invoice: Invoice;
+}
+
+/**
+ * One unit of work on the plugin's queue: a single document, or a whole set.
+ *
+ * @category Services
+ */
+export type InvoiceJobData =
+  | { kind: "document"; ctx: SerializedRequestContext; input: CreateInvoiceInput }
+  | { kind: "documentSet"; ctx: SerializedRequestContext; input: IssueDocumentsInput };
+
+/**
+ * What {@link InvoiceService.issueDocuments} was asked to do.
+ *
+ * @category Services
+ */
+export type IssueDocumentsInput = {
+  /** The order to bill. May be an aggregate, a seller or a plain order. */
+  orderId: ID;
+
+  /** Free-text reason, forwarded to every document's strategies. */
+  reason?: string;
+
+  /**
+   * Skip any target that already carries a document in its channel.
+   *
+   * Best effort only, and explicitly **not** an idempotency key: it reads before it
+   * writes without a lock, so two concurrent calls both see nothing and both issue. It
+   * exists so that a *later* call can top up documents for vendors added after the fact.
+   */
+  skipIfAlreadyIssued?: boolean;
+}
+
+/**
+ * @category Services
+ */
+export interface IssuedInvoiceDocument<Snapshot = any> {
+  invoice: Invoice<Snapshot>;
+  /** The order this document bills - the seller order, for a vendor's document. */
+  order: Order;
+  /** The channel it was issued in, and whose sequence it drew from. */
+  channel: Channel;
+}
+
+/**
+ * @category Services
+ */
+export interface IssuedDocumentSet<Snapshot = any> {
+  /** The order the caller named, as loaded in their own channel. */
+  order: Order;
+  /** In the order the documents were issued, and therefore numbered. */
+  documents: IssuedInvoiceDocument<Snapshot>[];
 }
 
 /**
@@ -80,19 +135,38 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     private orderService: OrderService,
     private signer: InvoiceDownloadSignerService,
     @Inject(PLUGIN_INIT_OPTIONS)
-    private options: InvoicesOptions<Snapshot>,
+    private options: ResolvedInvoicesOptions<Snapshot>,
   ) { }
 
-  private jobQueue: JobQueue<{
-    ctx: SerializedRequestContext;
-    input: CreateInvoiceInput;
-  }>;
+  private jobQueue: JobQueue<InvoiceJobData>;
 
   /**
-   * Convenience method for adding jobs to the plugins' queue
+   * Queues one document for asynchronous issuance.
+   *
+   * Nothing in this plugin calls it for you. Vendure publishes `OrderPlacedEvent` before
+   * `OrderSplitter` has created a single seller order, and seller orders never publish
+   * one at all, so there is no moment in the stock order lifecycle that reliably means
+   * "this is billable" - which makes the timing yours to decide, not ours to guess.
+   *
+   * @example
+   * ```ts
+   * eventBus.ofType(OrderPlacedEvent).subscribe(event => {
+   *   invoiceService.addToJobQueue(event.ctx, { orderId: event.order.id });
+   * });
+   * ```
    */
   async addToJobQueue(ctx: RequestContext, input: CreateInvoiceInput) {
-    const job = await this.jobQueue.add({ ctx: ctx.serialize(), input });
+    const job = await this.jobQueue.add({ kind: "document", ctx: ctx.serialize(), input });
+    Logger.verbose(`Job "${job.id}" added to queue "${job.queueName}"`, loggerCtx);
+    return job;
+  }
+
+  /**
+   * Queues a whole document set - one per vendor on a split marketplace order - for
+   * asynchronous issuance. See {@link issueDocuments}.
+   */
+  async addDocumentSetToJobQueue(ctx: RequestContext, input: IssueDocumentsInput) {
+    const job = await this.jobQueue.add({ kind: "documentSet", ctx: ctx.serialize(), input });
     Logger.verbose(`Job "${job.id}" added to queue "${job.queueName}"`, loggerCtx);
     return job;
   }
@@ -101,15 +175,6 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
    * Bootstrapping the plugin
    */
   async onModuleInit() {
-    if (this.options.subscribeToOrderPlacedEvent) {
-      this.eventBus.ofType(OrderPlacedEvent).subscribe(async (event) => {
-        this.addToJobQueue(event.ctx, { orderId: event.order.id })
-      });
-      Logger.info("Subscribed to: OrderPlacedEvent", loggerCtx);
-    } else {
-      Logger.info("Did not subscribe to OrderPlacedEvent due to subscribeToOrderPlacedEvent being false", loggerCtx);
-    }
-
     // TODO refund subscription for credit notes (?)
     // currently unsure how partial refunds/cancellations work exactly (?)
 
@@ -117,9 +182,14 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
       name: INVOICE_QUEUE_NAME,
       process: async (job) => {
         const ctx = RequestContext.deserialize(job.data.ctx);
-        const result = await this.connection.withTransaction(ctx, async (txCtx) => {
+        // The transaction lives here rather than inside the service methods, which assert
+        // it instead of opening one. A serialized context carries no transaction, so this
+        // is where a queued document gets its all-or-nothing guarantee back.
+        return this.connection.withTransaction(ctx, async (txCtx) => {
           try {
-            return await this.createInvoice(txCtx, job.data.input);
+            return job.data.kind === "documentSet"
+              ? await this.issueDocuments(txCtx, job.data.input)
+              : await this.issueDocument(txCtx, job.data.input);
           } catch (e) {
             if (e instanceof Error) {
               Logger.error(e.message, loggerCtx, e.stack);
@@ -129,7 +199,6 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
             throw e;
           }
         });
-        return result;
       },
     });
   }
@@ -183,13 +252,135 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
   }
 
   /**
-   * #TODO
+   * Issues one document for one order, in the channel `ctx` points at.
+   *
+   * The single-document primitive. It deliberately never fans out: use
+   * {@link issueDocuments} when a marketplace order needs one document per vendor.
+   *
+   * Must run inside a transaction, so that a failure takes the claimed sequence number
+   * back with it and the range stays gapless.
+   *
+   * Is Channel-Aware
    */
-  public async createInvoice(
+  public async issueDocument(
     ctx: RequestContext,
     input: CreateInvoiceInput,
     relations?: RelationPaths<Invoice<Snapshot>>
   ): Promise<Invoice> {
+    assertInTransaction(ctx, "issueDocument");
+
+    const doc = await this.validateAndBuildContext(ctx, input, ctx.channel);
+    return this.issueOne(ctx, doc, input, [], relations);
+  }
+
+  /**
+   * Issues every document the configured {@link DocumentTargetStrategy} maps this order
+   * onto, in one transaction.
+   *
+   * This is the multi-vendor entry point. The plugin owns *policy* - which documents
+   * exist, which channel each belongs to, which sequence each draws from - and
+   * *atomicity*: they all commit together, so a failure on the third vendor takes the
+   * first two vendors' numbers back with it and every range stays gapless.
+   *
+   * The plugin deliberately does **not** own *timing*. Nothing subscribes to an event and
+   * nothing fans out behind your back. Vendure publishes `OrderPlacedEvent` before
+   * `OrderSplitter` has created a single seller order, and seller orders never emit one
+   * at all, so there is no moment in the stock order lifecycle at which a plugin could
+   * correctly do this on its own. Call this from wherever your marketplace decides
+   * documents come into existence: your own `OrderSellerStrategy.afterSellerOrdersCreated`,
+   * your own `OrderProcess`, an admin action.
+   *
+   * Must run inside a transaction; it throws rather than opening one, because opening one
+   * here would quietly leave your surrounding writes uncovered by it.
+   *
+   * Is Channel-Aware for the lookup of `input.orderId`. The documents themselves are
+   * written in whichever channels the target strategy names, which may include channels
+   * the caller holds no permission on - that is the point, since the marketplace operator
+   * issues on behalf of its vendors. Authorize at your call site.
+   */
+  public async issueDocuments(
+    ctx: RequestContext,
+    input: IssueDocumentsInput,
+    relations?: RelationPaths<Invoice<Snapshot>>
+  ): Promise<IssuedDocumentSet<Snapshot>> {
+    assertInTransaction(ctx, "issueDocuments");
+
+    // Channel-scoped, so this lookup is what proves the caller may bill this order at all.
+    const order = await this.orderService.findOne(ctx, input.orderId);
+    if (!order) throw new EntityNotFoundError("Order", input.orderId);
+
+    const targets = await this.options.documentTargetStrategy.resolveTargets(ctx, order);
+    if (!targets.length) {
+      Logger.info(`No document targets resolved for order "${order.code}"; issuing nothing`, loggerCtx);
+      return { order, documents: [] };
+    }
+
+    // Tracked across the whole set rather than per document. Storage writes take no part
+    // in the transaction, so when document three throws, documents one and two have
+    // already put bytes in the bucket while their rows roll back - stranding files that
+    // nothing references.
+    const writtenFiles: string[] = [];
+    const documents: IssuedInvoiceDocument<Snapshot>[] = [];
+
+    try {
+      for (const target of targets) {
+        const channelCtx = forChannel(ctx, target.channel);
+
+        // Re-loaded through the target's own channel because a strategy is user code: it
+        // could hand back an order that has nothing to do with the channel it named, and
+        // this channel-scoped lookup turns that into a failure rather than a document
+        // filed in the wrong vendor's books.
+        const targetOrder = await this.orderService.findOne(channelCtx, target.order.id);
+        if (!targetOrder)
+          throw new UserInputError(
+            `Order "${target.order.id}" is not visible in channel "${target.channel.code}", ` +
+            `so no document can be issued for it there.`
+          );
+
+        if (input.skipIfAlreadyIssued && await this.hasInvoice(channelCtx, targetOrder.id)) {
+          Logger.verbose(`Order "${targetOrder.code}" already has a document in channel "${target.channel.code}"; skipping`, loggerCtx);
+          continue;
+        }
+
+        const doc: InvoiceDocumentContext = {
+          kind: "invoice",
+          order: targetOrder,
+          channel: target.channel,
+          aggregateOrder: targetOrder.aggregateOrderId
+            ? await this.orderService.getAggregateOrder(channelCtx, targetOrder)
+            : undefined,
+          meta: target.meta,
+        };
+
+        const invoice = await this.issueOne(
+          channelCtx,
+          doc,
+          { orderId: targetOrder.id, reason: input.reason },
+          writtenFiles,
+          relations,
+        );
+
+        documents.push({ invoice, order: targetOrder, channel: target.channel });
+      }
+    } catch (error) {
+      for (const assetUrl of writtenFiles) await this.deleteQuietly(assetUrl);
+      throw error;
+    }
+
+    return { order, documents };
+  }
+
+  /**
+   * Validates the input and decides which kind of document it describes.
+   *
+   * Split out from issuance so that {@link issueDocuments} can run the issuance half once
+   * per vendor while each target keeps its own validation.
+   */
+  private async validateAndBuildContext(
+    ctx: RequestContext,
+    input: CreateInvoiceInput,
+    channel: Channel,
+  ): Promise<InvoiceDocumentContext> {
     // findOne scopes the query to ctx.channel, so an order from a different channel returns undefined
     const order = await this.orderService.findOne(ctx, input.orderId);
     if (!order) throw new EntityNotFoundError("Order", input.orderId);
@@ -208,11 +399,35 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
         `Invoice "${invoiceToCancel.sequentialId}" belongs to order "${invoiceToCancel.orderId}", so it cannot be cancelled by a credit note for order "${order.id}".`
       );
 
-    const doc: InvoiceDocumentContext = invoiceToCancel
-      ? { kind: "creditNote", order, cancels: invoiceToCancel, reason: input.reason ?? undefined }
-      : { kind: "invoice", order };
+    const aggregateOrder = order.aggregateOrderId
+      ? await this.orderService.getAggregateOrder(ctx, order)
+      : undefined;
 
-    const sequentialId = await this.getNextSequentialId(ctx, DEFAULT_SEQUENCE_CODE, doc);
+    return invoiceToCancel
+      ? { kind: "creditNote", order, channel, aggregateOrder, cancels: invoiceToCancel, reason: input.reason ?? undefined }
+      : { kind: "invoice", order, channel, aggregateOrder };
+  }
+
+  /**
+   * Writes one document: number, snapshot, files, row, history entry, events.
+   *
+   * `ctx` must already be aimed at the channel the document belongs to - the sequence
+   * lookup, both strategies, the channel assignment inside {@link persistDocument} and
+   * the closing re-read are all channel-scoped, and handing this the caller's context on
+   * a marketplace would file the document in the wrong books or fail to find it again.
+   *
+   * `writtenFiles` accumulates across a whole document set; see {@link issueDocuments}.
+   */
+  private async issueOne(
+    ctx: RequestContext,
+    doc: InvoiceDocumentContext,
+    input: CreateInvoiceInput,
+    writtenFiles: string[],
+    relations?: RelationPaths<Invoice<Snapshot>>,
+  ): Promise<Invoice> {
+    const invoiceToCancel = doc.kind === "creditNote" ? doc.cancels : null;
+
+    const { sequentialId, selection } = await this.getNextSequentialId(ctx, doc);
     const snapshot = await this.options.snapshotStrategy.generate(ctx, sequentialId, doc);
 
     const { files } = await this.options.fileStrategy.generate(ctx, sequentialId, snapshot, doc)
@@ -220,17 +435,19 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
 
     const invoice = await this.persistDocument(ctx, {
       sequentialId: sequentialId,
+      sequenceOwnerChannelId: selection.channelId,
+      sequenceCode: selection.code,
       cancelsId: invoiceToCancel?.id,
-      order,
+      order: doc.order,
       // @ts-expect-error Generic doesnt play well with deep-partial
       snapshot,
-    }, files);
+    }, files, writtenFiles);
 
     await this.customFieldRelationService.updateRelations(ctx, Invoice, input, invoice);
 
     await this.historyService.createHistoryEntryForOrder({
       ctx,
-      orderId: order.id,
+      orderId: doc.order.id,
       type: PLUGIN_INVOICE_CREATED,
       data: {
         invoiceId: invoice.id,
@@ -239,13 +456,64 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
       },
     }, false);
 
-    Logger.verbose(`Created new Invoice(${invoice.id})`);
+    Logger.verbose(`Created new Invoice(${invoice.id}) in channel "${doc.channel.code}"`, loggerCtx);
 
     await this.eventBus.publish(new InvoiceEvent(ctx, invoice, "created", input));
-    if (input.cancels && invoiceToCancel)
+    if (invoiceToCancel)
       await this.eventBus.publish(new CreditNoteEvent(ctx, invoice, "created", input))
 
+    // Re-read through the same channel context: the invoice lives in `doc.channel` and
+    // findOne is channel-scoped, so the caller's context would come back empty here.
     return assertFound(this.findOne(ctx, { id: invoice.id }, relations));
+  }
+
+  /**
+   * Whether the order already carries a document (credit notes excluded) in this channel.
+   *
+   * A query builder rather than a `findOne` relation filter, matching how the export
+   * service joins channels: the channel condition is the only thing keeping a vendor's
+   * top-up from being decided by a co-vendor's document, so it is spelled out rather than
+   * left to relation-filter semantics.
+   */
+  private async hasInvoice(ctx: RequestContext, orderId: ID): Promise<boolean> {
+    const count = await this.connection
+      .getRepository(ctx, Invoice)
+      .createQueryBuilder("invoice")
+      .innerJoin("invoice.channels", "channel", "channel.id = :channelId", { channelId: ctx.channelId })
+      .where("invoice.orderId = :orderId", { orderId })
+      .andWhere("invoice.cancelsId IS NULL")
+      .getCount();
+
+    return count > 0;
+  }
+
+  /**
+   * Every document issued for an order that the current channel may see.
+   *
+   * `includeSellerOrders` additionally walks the seller orders a marketplace order was
+   * split into. Still channel-scoped, so on the default channel it gives the operator the
+   * complete picture while a vendor channel sees only their own share.
+   *
+   * Is Channel-Aware
+   */
+  public async findForOrder(
+    ctx: RequestContext,
+    orderId: ID,
+    options?: { includeSellerOrders?: boolean },
+  ): Promise<Invoice<Snapshot>[]> {
+    const orderIds: ID[] = [orderId];
+
+    if (options?.includeSellerOrders) {
+      const order = await this.orderService.findOne(ctx, orderId);
+      if (order?.type === OrderType.Aggregate)
+        for (const sellerOrder of await this.orderService.getSellerOrders(ctx, order))
+          orderIds.push(sellerOrder.id);
+    }
+
+    return this.connection.getRepository(ctx, Invoice<Snapshot>).find({
+      where: { orderId: In(orderIds), channels: { id: ctx.channelId } },
+      order: { createdAt: "ASC" },
+    });
   }
 
   /**
@@ -279,15 +547,36 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     if (original.cancelsId)
       throw new UserInputError(`Invoice "${original.sequentialId}" is a credit note. You can't reissue a credit note.`);
 
-    const creditNote = await this.createInvoice(ctx, {
-      orderId: original.orderId,
-      cancels: original.id,
-      reason: input.reason,
-    }, relations);
+    // Shared across both documents: the credit note's files are already in storage by the
+    // time the replacement can fail, and a rollback does not reach into the bucket.
+    const writtenFiles: string[] = [];
 
-    const invoice = await this.createInvoice(ctx, {
-      orderId: original.orderId,
-    }, relations);
+    let creditNote: Invoice;
+    let invoice: Invoice;
+    try {
+      creditNote = await this.issueOne(
+        ctx,
+        await this.validateAndBuildContext(ctx, {
+          orderId: original.orderId,
+          cancels: original.id,
+          reason: input.reason,
+        }, ctx.channel),
+        { orderId: original.orderId, cancels: original.id, reason: input.reason },
+        writtenFiles,
+        relations,
+      );
+
+      invoice = await this.issueOne(
+        ctx,
+        await this.validateAndBuildContext(ctx, { orderId: original.orderId }, ctx.channel),
+        { orderId: original.orderId },
+        writtenFiles,
+        relations,
+      );
+    } catch (error) {
+      for (const assetUrl of writtenFiles) await this.deleteQuietly(assetUrl);
+      throw error;
+    }
 
     Logger.verbose(
       `Reissued Invoice(${original.id}) as credit note "${creditNote.sequentialId}" and invoice "${invoice.sequentialId}"`,
@@ -467,58 +756,57 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
    *
    * Storage writes take no part in the surrounding database transaction, so a failure
    * part way through - or a rollback afterwards - would leave whatever already landed
-   * behind with nothing referencing it. Everything written is therefore tracked and
-   * swept before the error is rethrown.
+   * behind with nothing referencing it. Every asset URL is therefore appended to
+   * `written`, which the caller owns: it spans a whole document set, so only the caller
+   * knows whether more documents are still to come and when to sweep.
    */
   private async persistDocument(
     ctx: RequestContext,
     invoiceInput: DeepPartial<Invoice>,
     files: GeneratedFile[],
+    written: string[],
   ): Promise<Invoice> {
     const defaultChannelId = (await this.channelService.getDefaultChannel(ctx)).id;
-    // The default channel is always added on top
+    // The default channel is always added on top: it is where the operator of a
+    // marketplace works, and paperwork they cannot see is paperwork they cannot support.
     const channelIdsPerFile = files.map(file =>
       unique([...(file.channelIds ?? [ctx.channelId]), defaultChannelId]),
     );
 
-    const written: string[] = [];
-    try {
-      const rows: InvoiceFile[] = [];
-      for (const [position, file] of files.entries()) {
-        const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(file.filename, file.buffer);
-        written.push(assetUrl);
-        Logger.verbose(`Persisted file "${file.filename}" under "${assetUrl}"`, loggerCtx);
+    const rows: InvoiceFile[] = [];
+    for (const [position, file] of files.entries()) {
+      const assetUrl = await this.options.storageStrategy.writeFileFromBuffer(file.filename, file.buffer);
+      // Recorded before anything else can fail. Storage takes no part in the transaction,
+      // so a rollback leaves these bytes behind unless the caller sweeps them.
+      written.push(assetUrl);
+      Logger.verbose(`Persisted file "${file.filename}" under "${assetUrl}"`, loggerCtx);
 
-        rows.push(new InvoiceFile({
-          assetUrl,
-          filename: file.filename,
-          mimeType: file.mimeType ?? null,
-          fileSizeBytes: file.buffer.length,
-          position,
-          channels: channelIdsPerFile[position].map(id => ({ id })) as Channel[],
-        }));
-      }
-
-      const invoice = new Invoice(invoiceInput);
-      // Goes through the service so that the ChangeChannelEvent still fires, then gets
-      // widened to every channel its files reach: a vendor scoped out of the invoice
-      // itself could never reach the artifact that was meant for them.
-      await this.channelService.assignToCurrentChannel(invoice, ctx);
-      invoice.channels = unique([
-        ...invoice.channels.map(channel => channel.id),
-        ...channelIdsPerFile.flat(),
-      ]).map(id => ({ id })) as Channel[];
-
-      const saved = await this.connection.getRepository(ctx, Invoice).save(invoice);
-
-      for (const row of rows) row.invoiceId = saved.id;
-      await this.connection.getRepository(ctx, InvoiceFile).save(rows);
-
-      return saved;
-    } catch (error) {
-      for (const assetUrl of written) await this.deleteQuietly(assetUrl);
-      throw error;
+      rows.push(new InvoiceFile({
+        assetUrl,
+        filename: file.filename,
+        mimeType: file.mimeType ?? null,
+        fileSizeBytes: file.buffer.length,
+        position,
+        channels: channelIdsPerFile[position].map(id => ({ id })) as Channel[],
+      }));
     }
+
+    const invoice = new Invoice(invoiceInput);
+    // Goes through the service so that the ChangeChannelEvent still fires, then gets
+    // widened to every channel its files reach: a vendor scoped out of the invoice
+    // itself could never reach the artifact that was meant for them.
+    await this.channelService.assignToCurrentChannel(invoice, ctx);
+    invoice.channels = unique([
+      ...invoice.channels.map(channel => channel.id),
+      ...channelIdsPerFile.flat(),
+    ]).map(id => ({ id })) as Channel[];
+
+    const saved = await this.connection.getRepository(ctx, Invoice).save(invoice);
+
+    for (const row of rows) row.invoiceId = saved.id;
+    await this.connection.getRepository(ctx, InvoiceFile).save(rows);
+
+    return saved;
   }
 
   /**
@@ -546,39 +834,60 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
  */
   private async getNextSequentialId(
     ctx: RequestContext,
-    sequenceCode: typeof DEFAULT_SEQUENCE_CODE | (string & {}),
     doc: InvoiceDocumentContext,
-  ): Promise<string> {
+  ): Promise<{ sequentialId: string; selection: SequenceSelection }> {
+    // Only a doc comment before, which was survivable while every caller happened to be
+    // transactional. With per-vendor contexts in play a lost transaction is the failure
+    // that costs gaplessness, and on SQLite - where the row lock below is skipped - it
+    // would commit silently instead of complaining.
+    assertInTransaction(ctx, "getNextSequentialId");
+
+    const selection = await this.options.sequenceSelectionStrategy.select(ctx, doc);
     const sequenceRepo = this.connection.getRepository(ctx, InvoiceSequence);
     const supportsRowLock = ROW_LOCK_COMPATIBLE_DATABASES.includes(this.connection.rawConnection.options.type);
-    const channelId = this.options.perChannelConfig ? ctx.channelId : (await this.channelService.getDefaultChannel(ctx)).id;
 
-    let sequenceRow = await sequenceRepo.findOne({
-      where: {
-        ownerChannelId: channelId,
-        code: sequenceCode,
-      },
-      ...(supportsRowLock ? { lock: { mode: "pessimistic_write" } } : {}),
+    const findRow = () => sequenceRepo.findOne({
+      where: { ownerChannelId: selection.channelId, code: selection.code },
+      ...(supportsRowLock ? { lock: { mode: "pessimistic_write" as const } } : {}),
     });
 
-    if (!sequenceRow) {
-      // For the default case we can recover lazily
-      if (sequenceCode === DEFAULT_SEQUENCE_CODE) {
-        Logger.warn(`No InvoiceSequence found for channel "${channelId}". Creating a default row with code "${sequenceCode}"`, loggerCtx);
-        const newSequence = await this.channelService.assignToCurrentChannel(
-          new InvoiceSequence({
-            ownerChannelId: channelId,
-            code: sequenceCode,
-            sequence: this.options.initialSequence,
-          }),
-          ctx
-        );
+    let sequenceRow = await findRow();
 
-        sequenceRow = await sequenceRepo.save(newSequence);
-      } else {
-        const error = new Error(`No InvoiceSequence found for channel "${channelId}" with code "${sequenceCode}"`);
+    if (!sequenceRow) {
+      if (selection.autoCreate === false) {
+        const error = new Error(
+          `No InvoiceSequence for channel "${selection.channelId}" with code "${selection.code}", ` +
+          `and the SequenceSelectionStrategy refused to create one.`
+        );
         Logger.error(error.message, loggerCtx, error.stack);
         throw error;
+      }
+
+      Logger.warn(
+        `No InvoiceSequence found for channel "${selection.channelId}" with code "${selection.code}". Creating one.`,
+        loggerCtx,
+      );
+
+      const defaultChannelId = (await this.channelService.getDefaultChannel(ctx)).id;
+
+      try {
+        sequenceRow = await sequenceRepo.save(
+          new InvoiceSequence({
+            ownerChannelId: selection.channelId,
+            code: selection.code,
+            sequence: selection.initialSequence ?? this.options.initialSequence,
+            // Set explicitly rather than through assignToCurrentChannel, which would use
+            // `ctx.channelId`. Under a shared global counter and a per-vendor context
+            // that would hand a vendor's channel the marketplace's master sequence row,
+            // making it visible - and editable - to that vendor.
+            channels: unique([selection.channelId, defaultChannelId]).map(id => ({ id })) as Channel[],
+          })
+        );
+      } catch (error) {
+        // Two documents of the same set can be the first ever on their channel, miss the
+        // row together and both insert. The loser re-reads, this time behind the lock.
+        sequenceRow = await findRow();
+        if (!sequenceRow) throw error;
       }
     }
 
@@ -587,6 +896,6 @@ export class InvoiceService<Snapshot = any> implements OnModuleInit {
     sequenceRow.sequence += 1;
     await sequenceRepo.save(sequenceRow);
 
-    return `${prefix}${paddedSequence}`;
+    return { sequentialId: `${prefix}${paddedSequence}`, selection };
   }
 }

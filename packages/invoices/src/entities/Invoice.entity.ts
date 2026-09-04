@@ -1,10 +1,16 @@
 import { Channel, ChannelAware, DeepPartial, EntityId, HasCustomFields, ID, Order, VendureEntity } from "@vendure/core";
-import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from "typeorm";
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, Unique } from "typeorm";
 import { InvoiceFile } from "./InvoiceFile.entity";
 
 export class CustomInvoiceFields { }
 
+/**
+ * A number is unique within the counter that issued it, which is what gapless sequential
+ * numbering actually means. Scoping the constraint this way is what lets two vendors in a
+ * marketplace each run their own range without being forced onto distinct prefixes.
+ */
 @Entity()
+@Unique(["sequenceOwnerChannelId", "sequenceCode", "sequentialId"])
 export class Invoice<Snapshot = any> extends VendureEntity implements ChannelAware, HasCustomFields {
   constructor(input?: DeepPartial<Invoice>) {
     super(input);
@@ -24,14 +30,30 @@ export class Invoice<Snapshot = any> extends VendureEntity implements ChannelAwa
   snapshot: Snapshot;
 
   /**
-   * Unique identifier used for accounting
-   * 
+   * Identifier used for accounting.
+   *
    * Format: Optional prefix, followed by a gapless sequential number
-   * 
+   *
+   * Unique per issuing counter rather than globally - see the `@Unique` on this entity.
+   *
    * @example "INVOICE123"
    */
-  @Column({ nullable: false, unique: true })
+  @Column({ nullable: false })
   sequentialId: string;
+
+  /**
+   * `InvoiceSequence.ownerChannelId` of the counter {@link sequentialId} was drawn from.
+   *
+   * Recorded rather than re-derived because the {@link SequenceSelectionStrategy} may
+   * change over the life of a shop, and an accountant asking "which range is this
+   * document from" needs the answer that was true when it was issued.
+   */
+  @EntityId({ nullable: false })
+  sequenceOwnerChannelId: ID;
+
+  /** `InvoiceSequence.code` of the counter {@link sequentialId} was drawn from. */
+  @Column({ nullable: false })
+  sequenceCode: string;
 
   /**
    * The artifacts of this document, ordered by {@link InvoiceFile.position}, the first

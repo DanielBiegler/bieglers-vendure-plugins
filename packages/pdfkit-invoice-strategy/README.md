@@ -102,7 +102,8 @@ new PdfkitSnapshotStrategy({
 });
 ```
 
-Combine it with `perChannelConfig: true` on the invoices plugin so each seller also gets their own
+Combine it with `sequenceSelectionStrategy: new DefaultSequenceSelectionStrategy({ scope: "channel" })`
+on the invoices plugin so each seller also gets their own
 gapless invoice sequence.
 
 ## Customizing

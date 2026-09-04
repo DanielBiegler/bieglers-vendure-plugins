@@ -138,6 +138,52 @@ export const adminApiExtensions = gql`
     endsAt: DateTime!
   }
 
+  input IssueInvoiceDocumentsInput {
+    "The order to bill. May be an aggregate, a seller or a plain order."
+    orderId: ID!
+    "Free-text reason, forwarded to every document's strategies."
+    reason: String
+    """
+    Skip any target that already carries a document in its channel.
+
+    Best effort, explicitly not an idempotency key: it reads before it writes without a
+    lock, so two concurrent calls both see nothing and both issue. Use it to top up
+    documents for vendors that were added after the fact.
+    """
+    skipIfAlreadyIssued: Boolean
+  }
+
+  type IssuedInvoiceDocument {
+    invoice: Invoice!
+    "The order this document bills - the seller order, for a vendor's document."
+    order: Order!
+    """
+    The channel it was issued in, and whose sequence it drew from.
+
+    Worth reading: "Invoice.files" resolves against the channel *you* are querying from,
+    so a caller outside this channel sees an empty file list for this document.
+    """
+    channel: Channel!
+  }
+
+  type IssueInvoiceDocumentsResult {
+    "The order you named, as loaded in your own channel."
+    order: Order!
+    "In the order the documents were issued, and therefore numbered."
+    documents: [IssuedInvoiceDocument!]!
+  }
+
+  extend type Order {
+    """
+    Documents issued for this order, scoped to the current channel.
+
+    "includeSellerOrders" additionally walks the seller orders a marketplace order was
+    split into. Still channel-scoped, so the default channel sees the complete picture of
+    an aggregate order while a vendor channel sees only their own share.
+    """
+    invoices(includeSellerOrders: Boolean): [Invoice!]!
+  }
+
   input GetSingleInvoiceInput {
     id: ID
     sequentialId: String
@@ -210,6 +256,21 @@ export const adminApiExtensions = gql`
     """
     """
     createInvoice(input: CreateInvoiceInput!): Invoice!
+
+    """
+    Issues every document the configured DocumentTargetStrategy maps this order onto, in
+    one transaction.
+
+    This is the multi-vendor entry point: an order split across three vendors yields three
+    separately numbered documents, each in its vendor's channel and drawn from its
+    vendor's sequence. They commit together, so a failure on the third takes the first
+    two numbers back with it and every range stays gapless.
+
+    Call it on the default channel. The documents are written in whichever channels the
+    target strategy names, which may include channels you hold no permission on - that is
+    deliberate, since a marketplace operator issues on behalf of its vendors.
+    """
+    issueInvoiceDocuments(input: IssueInvoiceDocumentsInput!): IssueInvoiceDocumentsResult!
 
     """
     Corrects an already issued invoice by cancelling it with a full credit note and
